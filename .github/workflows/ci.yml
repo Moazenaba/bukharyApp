@@ -1,0 +1,36 @@
+name: CI
+
+# Every pushed branch is checked; pull requests too, so branch protection can require the checks.
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Unit tests and builds
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+      - run: ./gradlew --no-daemon testDebugUnitTest assembleDebug
+      # Release must build with an https server URL; this placeholder only proves the release
+      # configuration (minify, ProGuard rules) compiles. The APK is unsigned and not published.
+      - run: ./gradlew --no-daemon assembleRelease -PAPI_BASE_URL=https://ci.invalid/
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-reports
+          path: app/build/reports/tests/
+          if-no-files-found: ignore
