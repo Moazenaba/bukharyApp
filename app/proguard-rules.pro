@@ -19,3 +19,7 @@
 -keep class com.example.data.remote.** { *; }
 -keep class com.example.data.local.entities.** { *; }
 
+
+# Tink (used by androidx.security:security-crypto) references compile-time-only Error Prone
+# annotations that are not on the runtime classpath; R8 fails the release build without this.
+-dontwarn com.google.errorprone.annotations.**
