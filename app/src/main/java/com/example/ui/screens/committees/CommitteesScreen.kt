@@ -2,6 +2,13 @@ package com.example.ui.screens.committees
 
 import androidx.compose.material3.minimumInteractiveComponentSize
 import android.content.Intent
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material.icons.filled.MenuBook
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import android.widget.Toast
+import android.content.ActivityNotFoundException
 import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -93,13 +100,11 @@ fun CommitteesScreen(
 
     val canAdd = currentUser?.hasPermission(SystemPermissions.ADD_NEW_COMMITTEE) ?: false
 
-    val filterTabs = listOf(
-        "all" to "الكل (${committees.size})"
-    ) + OrderedStageKeys.map { (key, _) ->
+    // Only stages that have committees are offered as filters; keeps the row short and every chip meaningful.
+    val filterTabs = listOf("all" to "الكل (${committees.size})") + OrderedStageKeys.mapNotNull { (key, _) ->
         val count = committees.count { it.stages.getStage(key).completed }
-        val emoji = StageColorMap[key]?.emoji ?: ""
-        val name = StageColorMap[key]?.name ?: ""
-        key to "$emoji $name ($count)"
+        if (count == 0 && key != selectedStageFilter) null
+        else key to "${StageColorMap[key]?.name ?: ""} ($count)"
     }
 
     Scaffold(
@@ -130,7 +135,7 @@ fun CommitteesScreen(
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = onSearchChange,
-                placeholder = { Text("بحث باسم اللجنة، رقمها، اسم الشيخ، أو الكتاب...") },
+                placeholder = { Text("ابحث باسم اللجنة أو الشيخ أو الكتاب") },
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Primary700) },
                 modifier = Modifier
                     .fillMaxWidth()
@@ -141,7 +146,7 @@ fun CommitteesScreen(
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            // Horizontal Stage Filter Tabs
+            // Stage filter chips
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -149,32 +154,12 @@ fun CommitteesScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 filterTabs.forEach { (key, label) ->
-                    val isSelected = selectedStageFilter == key
-                    val stageSet = StageColorMap[key]
-
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(9999.dp))
-                            .background(
-                                if (isSelected) Primary700 else Color.White
-                            )
-                            .border(
-                                1.dp,
-                                if (isSelected) Primary800 else Color(0xFFE2E8F0),
-                                RoundedCornerShape(9999.dp)
-                            )
-                            .minimumInteractiveComponentSize().clickable { onStageFilterChange(key) }
-                            .padding(horizontal = 12.dp, vertical = 6.dp)
-                            .testTag("filter_tab_$key"),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = label,
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                            color = if (isSelected) Color.White else Color(0xFF475569)
-                        )
-                    }
+                    FilterChip(
+                        selected = selectedStageFilter == key,
+                        onClick = { onStageFilterChange(key) },
+                        label = { Text(label, style = MaterialTheme.typography.labelMedium) },
+                        modifier = Modifier.testTag("filter_tab_$key")
+                    )
                 }
             }
 
@@ -189,9 +174,11 @@ fun CommitteesScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            text = "🔍",
-                            fontSize = 40.sp
+                        Icon(
+                            imageVector = Icons.Default.Search,
+                            contentDescription = null,
+                            tint = Color(0xFF64748B),
+                            modifier = Modifier.size(40.dp)
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
@@ -199,6 +186,12 @@ fun CommitteesScreen(
                             style = MaterialTheme.typography.titleMedium,
                             color = Color(0xFF64748B)
                         )
+                        if (searchQuery.isNotBlank() || selectedStageFilter != "all") {
+                            TextButton(onClick = {
+                                onSearchChange("")
+                                onStageFilterChange("all")
+                            }) { Text("مسح البحث والتصفية") }
+                        }
                     }
                 }
             } else {
@@ -244,7 +237,10 @@ fun CommitteeCard(
 ) {
     val context = LocalContext.current
     val activeStageKey = committee.stages.getCurrentActiveStage()
-    val isCompleted = committee.stages.ceremony.completed
+    var confirmDelete by remember { mutableStateOf(false) }
+    val doneCount = OrderedStageKeys.count { (key, _) -> committee.stages.getStage(key).completed }
+    val totalStages = OrderedStageKeys.size
+    val activeName = StageColorMap[activeStageKey]?.name ?: ""
 
     Card(
         modifier = Modifier
@@ -254,74 +250,59 @@ fun CommitteeCard(
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = SurfacePure),
         border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
-            // Header: # Badge + Name + Students count
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .size(36.dp)
-                            .clip(CircleShape)
-                            .background(Primary700),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "${committee.committeeNumber}",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Black,
-                            color = Color.White
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Column {
-                        Text(
-                            text = committee.committeeName,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = Primary900
-                        )
-                        Text(
-                            text = "${committee.branch} • ${if (committee.isWomenCommittee) "مصلى الأخوات 🧕" else "مصلى الرجال 👨"}",
-                            style = MaterialTheme.typography.bodySmall,
-                            fontSize = 12.sp,
-                            color = Color(0xFF64748B)
-                        )
-                    }
-                }
-
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(Color(0xFFFEF3C7))
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(Primary700),
+                    contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "${committee.studentsCount} طالباً",
-                        style = MaterialTheme.typography.labelSmall,
+                        text = "${committee.committeeNumber}",
+                        style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFFB45309)
+                        color = Color.White
+                    )
+                }
+                Spacer(modifier = Modifier.width(10.dp))
+                Column {
+                    Text(
+                        text = committee.committeeName,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = Primary900
+                    )
+                    Text(
+                        text = "${committee.branch} • ${if (committee.isWomenCommittee) "مصلى الأخوات" else "مصلى الرجال"} • ${committee.studentsCount} طالباً",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color(0xFF64748B)
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
-            // Book & Sheikh
-            Text(
-                text = "📖 ${committee.competitionBook}",
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = Color(0xFF0F766E)
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Default.MenuBook,
+                    contentDescription = "كتاب المسابقة",
+                    tint = Color(0xFF64748B),
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = committee.competitionBook,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Primary900
+                )
+            }
 
             if (committee.sheikhName.isNotBlank()) {
-                Spacer(modifier = Modifier.height(4.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -330,114 +311,107 @@ fun CommitteeCard(
                     Text(
                         text = "الشيخ: ${committee.sheikhName}",
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color(0xFF334155),
-                        fontWeight = FontWeight.Medium
+                        color = Color(0xFF334155)
                     )
-
                     if (committee.sheikhPhone.isNotBlank()) {
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = Color(0xFFF0FDF4),
-                            modifier = Modifier.clickable {
-                                try {
-                                    val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:${committee.sheikhPhone}"))
-                                    context.startActivity(intent)
-                                } catch (e: Exception) {}
+                        TextButton(onClick = {
+                            try {
+                                context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:${committee.sheikhPhone}")))
+                            } catch (e: ActivityNotFoundException) {
+                                Toast.makeText(context, "لا يوجد تطبيق اتصال على هذا الجهاز", Toast.LENGTH_SHORT).show()
                             }
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Call,
-                                    contentDescription = null,
-                                    tint = Color(0xFF16A34A),
-                                    modifier = Modifier.size(12.dp)
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    text = "اتصال",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = Color(0xFF16A34A),
-                                    fontSize = 12.sp
-                                )
-                            }
+                        }) {
+                            Icon(
+                                imageVector = Icons.Default.Call,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("اتصال بالشيخ", style = MaterialTheme.typography.labelMedium)
                         }
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
-            // Mini Progress Dots for 9 Stages
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(Color(0xFFF8FAFC))
-                    .padding(horizontal = 8.dp, vertical = 6.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+            // Progress: one readable fact instead of nine unlabeled dots.
+            Column(
+                modifier = Modifier.semantics(mergeDescendants = true) {
+                    contentDescription = "المرحلة الحالية: $activeName، أنجزت $doneCount من $totalStages مراحل"
+                }
             ) {
-                OrderedStageKeys.forEach { (key, _) ->
-                    val done = committee.stages.getStage(key).completed
-                    val stageSet = StageColorMap[key]
-
-                    Box(
-                        modifier = Modifier
-                            .size(10.dp)
-                            .clip(CircleShape)
-                            .background(
-                                if (done) stageSet?.dot ?: Primary700 else Color(0xFFCBD5E1)
-                            )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    StageBadge(
+                        stageKey = activeStageKey,
+                        completed = true,
+                        showActiveLabel = true
+                    )
+                    Text(
+                        text = "$doneCount من $totalStages",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = Color(0xFF64748B)
                     )
                 }
+                Spacer(modifier = Modifier.height(8.dp))
+                LinearProgressIndicator(
+                    progress = { doneCount / totalStages.toFloat() },
+                    modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)),
+                    color = Primary700,
+                    trackColor = Color(0xFFE2E8F0)
+                )
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
-            // Footer: Current Active Stage Badge + Action Buttons
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                StageBadge(
-                    stageKey = activeStageKey,
-                    completed = true,
-                    showActiveLabel = true
-                )
-
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (canDelete) {
-                        IconButton(onClick = onDelete, modifier = Modifier.size(48.dp)) {
-                            Icon(
-                                imageVector = Icons.Default.Delete,
-                                contentDescription = "حذف اللجنة",
-                                tint = Color(0xFFEF4444),
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
-                    }
-
-                    Button(
-                        onClick = onOpenDetail,
-                        shape = RoundedCornerShape(8.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Primary700),
-                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                        modifier = Modifier.height(32.dp)
-                    ) {
-                        Text(
-                            text = "المراحل والتفاصيل ⬅",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
+                if (canDelete) {
+                    IconButton(onClick = { confirmDelete = true }) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "حذف اللجنة",
+                            tint = Color(0xFFB91C1C),
+                            modifier = Modifier.size(20.dp)
                         )
                     }
+                } else {
+                    Spacer(modifier = Modifier.width(1.dp))
+                }
+
+                TextButton(onClick = onOpenDetail) {
+                    Text("المراحل والتفاصيل", fontWeight = FontWeight.Bold)
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
                 }
             }
         }
+    }
+
+    if (confirmDelete) {
+        AlertDialog(
+            onDismissRequest = { confirmDelete = false },
+            title = { Text("حذف اللجنة رقم ${committee.committeeNumber}؟") },
+            text = { Text("سيتم حذف لجنة ${committee.committeeName} ومراحلها ودرجاتها نهائياً، ولا يمكن التراجع.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmDelete = false
+                    onDelete()
+                }) { Text("حذف", color = Color(0xFFB91C1C), fontWeight = FontWeight.Bold) }
+            },
+            dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text("إلغاء") } }
+        )
     }
 }
 
@@ -462,7 +436,7 @@ fun AddCommitteeDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = "➕ إضافة وتوثيق لجنة جديدة",
+                text = "إضافة لجنة جديدة",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = Primary900

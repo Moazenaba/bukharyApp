@@ -11,6 +11,19 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Calculate
+import androidx.compose.material.icons.filled.Campaign
+import androidx.compose.material.icons.filled.Checklist
+import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.EditNote
+import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material.icons.filled.FactCheck
+import androidx.compose.material.icons.filled.HowToReg
+import androidx.compose.material.icons.filled.Verified
+import androidx.compose.material.icons.filled.Circle
+import androidx.compose.material3.Icon
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -58,16 +71,11 @@ fun StageBadge(
         Row(
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(
-                modifier = Modifier
-                    .size(6.dp)
-                    .clip(CircleShape)
-                    .background(dot)
-            )
-            Spacer(modifier = Modifier.width(5.dp))
-            Text(
-                text = stageSet.emoji,
-                fontSize = 12.sp
+            Icon(
+                imageVector = stageIcon(stageKey),
+                contentDescription = null,
+                tint = dot,
+                modifier = Modifier.size(14.dp)
             )
             Spacer(modifier = Modifier.width(4.dp))
             Text(
@@ -78,4 +86,18 @@ fun StageBadge(
             )
         }
     }
+}
+
+/** Functional icon for each competition stage (replaces the old emoji markers). */
+fun stageIcon(stageKey: String): ImageVector = when (stageKey) {
+    "registration" -> Icons.Filled.HowToReg
+    "exam" -> Icons.Filled.EditNote
+    "scoring" -> Icons.Filled.Checklist
+    "aggregation" -> Icons.Filled.Calculate
+    "review" -> Icons.Filled.FactCheck
+    "sheet" -> Icons.Filled.Description
+    "accreditation" -> Icons.Filled.Verified
+    "announcement" -> Icons.Filled.Campaign
+    "ceremony" -> Icons.Filled.EmojiEvents
+    else -> Icons.Filled.Circle
 }
