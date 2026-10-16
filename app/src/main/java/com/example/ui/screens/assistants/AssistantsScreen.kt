@@ -182,7 +182,7 @@ fun AssistantsScreen(
                             text = "بصفتك السوبر أدمن، يمكنك بضغطة زر إنشاء أذن وصلاحية مخصصة بالاسم والتفاصيل التي تحددها (مثل: دخول امتحان كتاب التوحيد فقط، أو التحكم بلجنة محددة)، وتعيينها فورياً لأي مساعد.",
                             style = MaterialTheme.typography.bodySmall,
                             color = Color(0xFF78350F),
-                            fontSize = 11.sp
+                            fontSize = 12.sp
                         )
 
                         if (customPermissions.isNotEmpty()) {
@@ -220,7 +220,7 @@ fun AssistantsScreen(
                                                     text = perm.description,
                                                     style = MaterialTheme.typography.bodySmall,
                                                     color = Color(0xFF78350F),
-                                                    fontSize = 11.sp
+                                                    fontSize = 12.sp
                                                 )
                                             }
                                         }
@@ -235,7 +235,7 @@ fun AssistantsScreen(
                                                 style = MaterialTheme.typography.labelSmall,
                                                 color = GoldPrimary,
                                                 fontWeight = FontWeight.Bold,
-                                                fontSize = 10.sp
+                                                fontSize = 12.sp
                                             )
                                         }
                                     }
@@ -522,7 +522,7 @@ fun ApprovedUserCard(
                     text = "الصلاحيات الممنوحة: ${user.permissions.joinToString(" • ")}",
                     style = MaterialTheme.typography.bodySmall,
                     color = Color(0xFF64748B),
-                    fontSize = 11.sp
+                    fontSize = 12.sp
                 )
             }
         }
@@ -631,7 +631,7 @@ fun ApproveUserDialog(
                             Column {
                                 Text(text = "🔑 ${cPerm.name}", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
                                 if (cPerm.description.isNotBlank()) {
-                                    Text(text = cPerm.description, style = MaterialTheme.typography.bodySmall, fontSize = 10.sp, color = Color(0xFF64748B))
+                                    Text(text = cPerm.description, style = MaterialTheme.typography.bodySmall, fontSize = 12.sp, color = Color(0xFF64748B))
                                 }
                             }
                         }

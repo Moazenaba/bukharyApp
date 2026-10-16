@@ -572,7 +572,7 @@ fun QuickActionButton(
                 Text(
                     text = subtitle,
                     style = MaterialTheme.typography.bodySmall,
-                    fontSize = 11.sp,
+                    fontSize = 12.sp,
                     color = if (containerColor == Color.White) Color(0xFF64748B) else Color.White.copy(alpha = 0.8f)
                 )
             }
@@ -622,7 +622,7 @@ fun HomeTaskItem(
                         Text(
                             text = if (task.priority == "urgent") "🔴 عاجل" else if (task.priority == "high") "🟡 هام" else "🟢 عادي",
                             style = MaterialTheme.typography.labelSmall,
-                            fontSize = 10.sp,
+                            fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
                             color = badgeText
                         )
@@ -651,7 +651,7 @@ fun HomeTaskItem(
                     Text(
                         text = "التسليم: ${task.deliverable}",
                         style = MaterialTheme.typography.bodySmall,
-                        fontSize = 11.sp,
+                        fontSize = 12.sp,
                         color = Color(0xFF64748B)
                     )
                 }
@@ -715,7 +715,7 @@ fun CeremonyCard(
             Text(
                 text = "الموعد: ${committee.ceremonyDetails.date} • ${committee.ceremonyDetails.time}",
                 style = MaterialTheme.typography.bodySmall,
-                fontSize = 11.sp,
+                fontSize = 12.sp,
                 color = Color(0xFF15803D),
                 fontWeight = FontWeight.Bold
             )
@@ -723,7 +723,7 @@ fun CeremonyCard(
             Text(
                 text = "المكان: ${committee.ceremonyDetails.venue}",
                 style = MaterialTheme.typography.bodySmall,
-                fontSize = 11.sp,
+                fontSize = 12.sp,
                 color = Color(0xFF475569),
                 maxLines = 1
             )

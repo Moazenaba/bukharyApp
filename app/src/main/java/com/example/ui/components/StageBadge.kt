@@ -67,7 +67,7 @@ fun StageBadge(
             Spacer(modifier = Modifier.width(5.dp))
             Text(
                 text = stageSet.emoji,
-                fontSize = 11.sp
+                fontSize = 12.sp
             )
             Spacer(modifier = Modifier.width(4.dp))
             Text(

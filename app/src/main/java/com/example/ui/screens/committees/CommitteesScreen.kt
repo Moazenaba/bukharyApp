@@ -1,5 +1,6 @@
 package com.example.ui.screens.committees
 
+import androidx.compose.material3.minimumInteractiveComponentSize
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.background
@@ -162,7 +163,7 @@ fun CommitteesScreen(
                                 if (isSelected) Primary800 else Color(0xFFE2E8F0),
                                 RoundedCornerShape(9999.dp)
                             )
-                            .clickable { onStageFilterChange(key) }
+                            .minimumInteractiveComponentSize().clickable { onStageFilterChange(key) }
                             .padding(horizontal = 12.dp, vertical = 6.dp)
                             .testTag("filter_tab_$key"),
                         contentAlignment = Alignment.Center
@@ -288,7 +289,7 @@ fun CommitteeCard(
                         Text(
                             text = "${committee.branch} • ${if (committee.isWomenCommittee) "مصلى الأخوات 🧕" else "مصلى الرجال 👨"}",
                             style = MaterialTheme.typography.bodySmall,
-                            fontSize = 11.sp,
+                            fontSize = 12.sp,
                             color = Color(0xFF64748B)
                         )
                     }
@@ -359,7 +360,7 @@ fun CommitteeCard(
                                     text = "اتصال",
                                     style = MaterialTheme.typography.labelSmall,
                                     color = Color(0xFF16A34A),
-                                    fontSize = 10.sp
+                                    fontSize = 12.sp
                                 )
                             }
                         }
@@ -410,7 +411,7 @@ fun CommitteeCard(
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (canDelete) {
-                        IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
+                        IconButton(onClick = onDelete, modifier = Modifier.size(48.dp)) {
                             Icon(
                                 imageVector = Icons.Default.Delete,
                                 contentDescription = "حذف اللجنة",

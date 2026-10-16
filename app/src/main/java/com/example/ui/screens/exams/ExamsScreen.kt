@@ -1,5 +1,6 @@
 package com.example.ui.screens.exams
 
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.background
@@ -281,7 +282,7 @@ fun ExamCard(
                 }
 
                 if (canDelete) {
-                    IconButton(onClick = onDelete, modifier = Modifier.size(28.dp)) {
+                    IconButton(onClick = onDelete, modifier = Modifier.size(48.dp)) {
                         Icon(Icons.Default.Delete, contentDescription = "حذف", tint = Color(0xFFEF4444), modifier = Modifier.size(16.dp))
                     }
                 }
@@ -348,7 +349,7 @@ fun ExamCard(
                 Text(
                     text = "📄 ${exam.pdfFileName.ifBlank { "نموذج_امتحان.pdf" }} (${exam.pdfFileSize})",
                     style = MaterialTheme.typography.bodySmall,
-                    fontSize = 11.sp,
+                    fontSize = 12.sp,
                     color = Color(0xFF64748B)
                 )
 
@@ -528,7 +529,7 @@ fun AddExamDialog(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(8.dp))
                                 .background(if (isSel) Primary700 else Color(0xFFF1F5F9))
-                                .clickable { branch = bName }
+                                .minimumInteractiveComponentSize().clickable { branch = bName }
                                 .padding(horizontal = 10.dp, vertical = 6.dp),
                             contentAlignment = Alignment.Center
                         ) {

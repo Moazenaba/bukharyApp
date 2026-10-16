@@ -146,7 +146,7 @@ fun BukhariTopBar(
                         text = activeCourseName ?: if (isOnline) "متصل بالخادم" else "غير متصل — تعرض آخر بيانات محفوظة",
                         style = MaterialTheme.typography.bodySmall,
                         color = Primary200,
-                        fontSize = 11.sp
+                        fontSize = 12.sp
                     )
                 }
             }
@@ -189,7 +189,7 @@ fun BukhariTopBar(
                                         containerColor = Color(0xFFEF4444),
                                         contentColor = Color.White
                                     ) {
-                                        Text("$unreadCount", fontSize = 10.sp)
+                                        Text("$unreadCount", fontSize = 12.sp)
                                     }
                                 }
                             }

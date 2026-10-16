@@ -1,5 +1,6 @@
 package com.example.ui.screens.committees
 
+import androidx.compose.material3.minimumInteractiveComponentSize
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -179,7 +180,7 @@ fun CommitteeDetailModal(
                             text = "الدورة: ${committee.courseName}",
                             style = MaterialTheme.typography.bodySmall,
                             color = Color(0xFF64748B),
-                            fontSize = 11.sp
+                            fontSize = 12.sp
                         )
                     }
                 }
@@ -259,14 +260,14 @@ fun CommitteeDetailModal(
                             .weight(1f)
                             .clip(RoundedCornerShape(8.dp))
                             .background(if (isSel) Primary700 else Color.Transparent)
-                            .clickable { activeTab = idx }
+                            .minimumInteractiveComponentSize().clickable { activeTab = idx }
                             .padding(vertical = 8.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = title,
                             style = MaterialTheme.typography.labelSmall,
-                            fontSize = 11.sp,
+                            fontSize = 12.sp,
                             fontWeight = if (isSel) FontWeight.Bold else FontWeight.Medium,
                             color = if (isSel) Color.White else Color(0xFF475569)
                         )

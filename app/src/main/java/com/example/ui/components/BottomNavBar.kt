@@ -17,6 +17,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
+import androidx.compose.material3.NavigationRail
+import androidx.compose.material3.NavigationRailItem
+import androidx.compose.material3.NavigationRailItemDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -89,6 +92,47 @@ fun BukhariBottomNavBar(
                     unselectedTextColor = Color(0xFF64748B)
                 ),
                 modifier = Modifier.testTag("nav_item_${item.screen.route}")
+            )
+        }
+    }
+}
+
+/** Wide-window (tablet / foldable / landscape) counterpart of [BukhariBottomNavBar]. */
+@Composable
+fun BukhariNavigationRail(
+    currentUser: AppUser?,
+    currentScreen: AppNavScreen,
+    onScreenSelected: (AppNavScreen) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val accessibleItems = remember(currentUser) {
+        BottomNavItems.filter { item -> currentUser?.canAccessScreen(item.screen) != false }
+    }
+
+    NavigationRail(
+        modifier = modifier.testTag("navigation_rail"),
+        containerColor = Color.White
+    ) {
+        accessibleItems.forEach { item ->
+            val isSelected = currentScreen == item.screen
+            NavigationRailItem(
+                selected = isSelected,
+                onClick = { onScreenSelected(item.screen) },
+                icon = {
+                    Icon(
+                        imageVector = if (isSelected) item.selectedIcon else item.unselectedIcon,
+                        contentDescription = null
+                    )
+                },
+                label = { Text(text = item.label, style = MaterialTheme.typography.labelSmall) },
+                colors = NavigationRailItemDefaults.colors(
+                    selectedIconColor = Primary700,
+                    selectedTextColor = Primary800,
+                    indicatorColor = Primary100,
+                    unselectedIconColor = Color(0xFF64748B),
+                    unselectedTextColor = Color(0xFF64748B)
+                ),
+                modifier = Modifier.testTag("rail_item_${item.screen.route}")
             )
         }
     }

@@ -246,7 +246,7 @@ fun SummaryPill(title: String, value: String, color: Color) {
         Text(
             text = title,
             style = MaterialTheme.typography.labelSmall,
-            fontSize = 10.sp,
+            fontSize = 12.sp,
             color = Color(0xFF64748B)
         )
     }
@@ -300,7 +300,7 @@ fun TrackerRowCard(
                         Text(
                             text = "الشيخ: ${committee.sheikhName}",
                             style = MaterialTheme.typography.bodySmall,
-                            fontSize = 11.sp,
+                            fontSize = 12.sp,
                             color = Color(0xFF64748B)
                         )
                     }
@@ -318,7 +318,7 @@ fun TrackerRowCard(
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Bold,
                             color = Color(0xFFB45309),
-                            fontSize = 10.sp
+                            fontSize = 12.sp
                         )
                     }
 
@@ -435,7 +435,7 @@ fun QuickSwitchItem(
             Text(
                 text = label,
                 style = MaterialTheme.typography.labelSmall,
-                fontSize = 10.sp,
+                fontSize = 12.sp,
                 fontWeight = if (checked) FontWeight.Bold else FontWeight.Medium,
                 color = if (checked) activeColor else Color(0xFF64748B)
             )

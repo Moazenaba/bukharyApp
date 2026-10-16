@@ -15,6 +15,10 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.ui.platform.LocalConfiguration
+import com.example.ui.components.BukhariNavigationRail
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.CircularProgressIndicator
@@ -93,6 +97,11 @@ class MainActivity : ComponentActivity() {
                 val selectedStageFilter by viewModel.selectedStageFilter.collectAsStateWithLifecycle()
                 val snackbarMessage by viewModel.snackBarMessage.collectAsStateWithLifecycle()
 
+                val isWide = LocalConfiguration.current.screenWidthDp >= 600
+                val onScreenSelected: (AppNavScreen) -> Unit = { screen ->
+                    if (currentUser?.canAccessScreen(screen) == true) viewModel.navigateTo(screen)
+                    else viewModel.showMessage("هذه الشاشة غير متاحة لدورك")
+                }
                 val snackbarHostState = remember { SnackbarHostState() }
                 val defaultCourse = courses.find { it.isDefault } ?: courses.find { it.status == "active" }
 
@@ -126,7 +135,7 @@ class MainActivity : ComponentActivity() {
                         }
                     },
                     bottomBar = {
-                        if (isLoggedIn) {
+                        if (isLoggedIn && !isWide) {
                             BukhariBottomNavBar(
                                 currentUser = currentUser,
                                 currentScreen = currentScreen,
@@ -138,7 +147,7 @@ class MainActivity : ComponentActivity() {
                         }
                     },
                     snackbarHost = { SnackbarHost(snackbarHostState) },
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.fillMaxSize().imePadding()
                 ) { innerPadding ->
                     when {
                         isRestoring -> Column(
@@ -160,7 +169,15 @@ class MainActivity : ComponentActivity() {
                             modifier = Modifier.padding(innerPadding)
                         )
 
-                        else -> Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+                        else -> Row(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+                            if (isWide) {
+                                BukhariNavigationRail(
+                                    currentUser = currentUser,
+                                    currentScreen = currentScreen,
+                                    onScreenSelected = onScreenSelected
+                                )
+                            }
+                            Box(modifier = Modifier.weight(1f).fillMaxSize()) {
                             AnimatedContent(
                                 targetState = currentScreen,
                                 transitionSpec = { fadeIn() togetherWith fadeOut() },
@@ -248,6 +265,7 @@ class MainActivity : ComponentActivity() {
                                         onUpdateCeremony = { viewModel.updateCeremony(selectedCommittee.id, it) }
                                     ) }
                                 }
+                            }
                             }
                         }
                     }

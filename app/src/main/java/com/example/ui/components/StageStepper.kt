@@ -162,7 +162,7 @@ fun InteractiveStageStepper(
                             Text(
                                 text = "تم الإنجاز في: ${stageItem.completedAt}",
                                 style = MaterialTheme.typography.bodySmall,
-                                fontSize = 11.sp,
+                                fontSize = 12.sp,
                                 color = stageSet?.text?.copy(alpha = 0.8f) ?: Color(0xFF64748B)
                             )
                         }
@@ -173,7 +173,7 @@ fun InteractiveStageStepper(
                         Text(
                             text = if (stageItem.completed) "مكتمل ✓" else "تحديد كمنجز",
                             style = MaterialTheme.typography.labelSmall,
-                            fontSize = 11.sp,
+                            fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
                             color = if (stageItem.completed) stageSet?.text ?: Primary700 else Color(0xFF94A3B8)
                         )

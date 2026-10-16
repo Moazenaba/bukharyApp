@@ -1,5 +1,6 @@
 package com.example.ui.screens.schedule
 
+import androidx.compose.material3.minimumInteractiveComponentSize
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -184,7 +185,7 @@ fun ScheduleScreen(
                             .clip(RoundedCornerShape(10.dp))
                             .background(if (isSel) Primary700 else SurfacePure)
                             .border(1.dp, if (isSel) Primary800 else Color(0xFFE2E8F0), RoundedCornerShape(10.dp))
-                            .clickable { selectedFilter = key }
+                            .minimumInteractiveComponentSize().clickable { selectedFilter = key }
                             .padding(vertical = 8.dp),
                         contentAlignment = Alignment.Center
                     ) {
@@ -313,7 +314,7 @@ fun ScheduleTaskCard(
                             Text(
                                 text = if (task.priority == "urgent") "عاجل" else if (task.priority == "high") "هام" else "عادي",
                                 style = MaterialTheme.typography.labelSmall,
-                                fontSize = 10.sp,
+                                fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = badgeText
                             )
@@ -326,7 +327,7 @@ fun ScheduleTaskCard(
                             style = MaterialTheme.typography.labelSmall,
                             color = Color(0xFF0F766E),
                             fontWeight = FontWeight.Bold,
-                            fontSize = 11.sp
+                            fontSize = 12.sp
                         )
 
                         task.committeeNumber?.let {
@@ -341,7 +342,7 @@ fun ScheduleTaskCard(
                     }
 
                     if (canDelete) {
-                        IconButton(onClick = onDelete, modifier = Modifier.size(24.dp)) {
+                        IconButton(onClick = onDelete, modifier = Modifier.size(48.dp)) {
                             Icon(Icons.Default.Delete, contentDescription = "حذف", tint = Color(0xFFEF4444), modifier = Modifier.size(16.dp))
                         }
                     }
@@ -361,7 +362,7 @@ fun ScheduleTaskCard(
                         text = "📦 المطلوب تسليمه: ${task.deliverable}",
                         style = MaterialTheme.typography.bodySmall,
                         color = Color(0xFF334155),
-                        fontSize = 11.sp
+                        fontSize = 12.sp
                     )
                 }
 
@@ -370,7 +371,7 @@ fun ScheduleTaskCard(
                         text = "المعاون المسؤول: ${task.assignedAssistantName}",
                         style = MaterialTheme.typography.bodySmall,
                         color = Color(0xFF64748B),
-                        fontSize = 11.sp
+                        fontSize = 12.sp
                     )
                 }
 
@@ -393,7 +394,7 @@ fun ScheduleTaskCard(
                             text = "اكتمل في: ${task.completedAt}",
                             style = MaterialTheme.typography.labelSmall,
                             color = Color(0xFF16A34A),
-                            fontSize = 10.sp
+                            fontSize = 12.sp
                         )
                     }
                 }
@@ -522,7 +523,7 @@ fun AddTaskDialog(
                                 .clip(RoundedCornerShape(8.dp))
                                 .background(if (isSel) Primary100 else Color(0xFFF1F5F9))
                                 .border(1.dp, if (isSel) Primary700 else Color(0xFFCBD5E1), RoundedCornerShape(8.dp))
-                                .clickable { priority = key }
+                                .minimumInteractiveComponentSize().clickable { priority = key }
                                 .padding(vertical = 6.dp),
                             contentAlignment = Alignment.Center
                         ) {
@@ -554,7 +555,7 @@ fun AddTaskDialog(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(8.dp))
                                 .background(if (isSel) Primary700 else Color(0xFFF1F5F9))
-                                .clickable { type = key }
+                                .minimumInteractiveComponentSize().clickable { type = key }
                                 .padding(horizontal = 10.dp, vertical = 6.dp),
                             contentAlignment = Alignment.Center
                         ) {
