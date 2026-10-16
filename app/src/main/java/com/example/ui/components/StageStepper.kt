@@ -162,7 +162,7 @@ fun InteractiveStageStepper(
 
                         if (stageItem.completed && !stageItem.completedAt.isNullOrBlank()) {
                             Text(
-                                text = "تم الإنجاز في: ${stageItem.completedAt}",
+                                text = "تم الإنجاز في: ${Dates.displayTime(stageItem.completedAt)}",
                                 style = MaterialTheme.typography.bodySmall,
                                 fontSize = 12.sp,
                                 color = stageSet?.text?.copy(alpha = 0.8f) ?: Color(0xFF64748B)

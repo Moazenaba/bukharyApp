@@ -28,6 +28,10 @@ data class DatabaseStatus(
     val lastSyncAt: Long?,
     val pendingWrites: Int,
     val failedWrites: List<FailedWrite>,
+    /** Writes the server refused (4xx), kept for the user to retry or discard. */
+    val refusedWrites: List<com.example.data.repository.RefusedWrite> = emptyList(),
+    /** Records skipped during the last sync because they could not be read. */
+    val skippedRecords: Int = 0,
     val localTables: List<DatabaseTableCount>,
     val server: ServerDatabaseInfo? = null
 )

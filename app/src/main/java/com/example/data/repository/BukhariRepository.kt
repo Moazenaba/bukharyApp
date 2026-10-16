@@ -65,16 +65,20 @@ data class SyncResult(val online: Boolean, val message: String)
  */
 /** Sends one request. [ApiClient] in the app; a scripted fake in tests. */
 fun interface RequestSender {
-    fun send(method: String, path: String, bodyJson: String?): ApiClient.SendResult
+    fun send(method: String, path: String, bodyJson: String?, idempotencyKey: String?): ApiClient.SendResult
 }
+
+/** A queued write the server refused, kept for the user to retry or discard (MOB-03). */
+data class RefusedWrite(val id: Long, val label: String, val message: String?, val httpCode: Int?, val createdAt: Long)
 
 class BukhariRepository(
     private val db: AppDatabase,
     private val api: ApiService = ApiClient.apiService,
-    private val sender: RequestSender = RequestSender { method, path, body -> ApiClient.send(method, path, body) }
+    private val sender: RequestSender = RequestSender { method, path, body, key -> ApiClient.send(method, path, body, key) },
+    /** The signed-in user; queued writes are tagged with it and only that user's session sends them. */
+    private val userIdProvider: () -> String? = { ApiClient.tokenStore?.sessionUserId }
 ) {
     private val tag = "BukhariRepository"
-    private val queueMutex = Mutex()
     private var lastSyncAt: Long? = null
     private var lastSyncOnline = false
 
@@ -101,6 +105,7 @@ class BukhariRepository(
      */
     suspend fun syncWithRemoteApi(): SyncResult = withContext(Dispatchers.IO) {
         if (!ApiClient.isConfigured) return@withContext SyncResult(false, "لم يتم ضبط عنوان الخادم")
+        ApiClient.skippedRecords = 0
         val waiting = flushPendingOps().waiting
         if (waiting > 0) {
             lastSyncOnline = false
@@ -155,33 +160,53 @@ class BukhariRepository(
 
     private fun enc(id: String): String = URLEncoder.encode(id, "UTF-8").replace("+", "%20")
 
-    /** Queues a write and tries to deliver it (and anything queued before it) right away. */
+    /** Queues a write for the signed-in user and tries to deliver it (and anything queued before it) right away. */
     private suspend fun push(label: String, method: String, path: String, body: Any? = null, versionOf: String? = null): WriteResult {
         val json = body?.let { ApiClient.moshi.adapter(Any::class.java).toJson(it) }
-        val id = db.pendingOpDao().insert(PendingOpEntity(label = label, method = method, path = path, bodyJson = json, versionOf = versionOf))
+        val id = db.pendingOpDao().insert(
+            PendingOpEntity(label = label, method = method, path = path, bodyJson = json, versionOf = versionOf, userId = userIdProvider())
+        )
         return flushPendingOps().outcomes[id] ?: WriteResult.Queued
     }
 
     /**
-     * Sends queued writes in order. Stops when the server is unreachable or the session
-     * expired. A write that keeps failing with server errors is parked after [MAX_ATTEMPTS]
-     * so it does not block everything behind it; refused writes are dropped and reported.
+     * Sends this user's queued writes in order. Only one flush runs at a time in the whole process
+     * (the app and the background worker share one lock), each write is claimed before it is sent,
+     * and every write carries its idempotency key, so nothing is applied twice (MOB-04).
+     * - unreachable server: stop, keep everything for later;
+     * - 401: the session ended; keep everything and tell the app (MOB-01);
+     * - 5xx/429: count the attempt; park after [MAX_ATTEMPTS] so it does not block the rest;
+     * - other 4xx: keep it as refused, with the server's message, for the user to retry or discard (MOB-03);
+     *   a 404 for a delete means it is already gone, which is what was wanted.
      */
     suspend fun flushPendingOps(): FlushReport = withContext(Dispatchers.IO) {
         queueMutex.withLock {
             val outcomes = mutableMapOf<Long, WriteResult>()
-            for (op in db.pendingOpDao().getActive()) {
-                val res = sender.send(op.method, op.path, bodyWithVersion(op))
+            val userId = userIdProvider()
+            for (op in db.pendingOpDao().getActive(userId)) {
+                val now = System.currentTimeMillis()
+                if (db.pendingOpDao().claim(op.id, now, now - CLAIM_TIMEOUT_MS) == 0) continue
+                val res = sender.send(op.method, op.path, bodyWithVersion(op), op.idempotencyKey.ifBlank { null })
                 val code = res.code
                 when {
-                    code == null -> break
-                    code in 200..299 -> {
+                    code == null -> {
+                        db.pendingOpDao().release(op.id)
+                        break
+                    }
+                    code in 200..299 || (code == 404 && op.method == "DELETE") -> {
                         db.pendingOpDao().deleteById(op.id)
                         outcomes[op.id] = WriteResult.Sent
                         storeServerVersion(res.body)
                     }
                     code == 401 -> {
+                        db.pendingOpDao().release(op.id)
                         ApiClient.onUnauthorized?.invoke()
+                        break
+                    }
+                    code == 426 -> {
+                        // This app version is too old for the server: keep the write until the app is updated.
+                        db.pendingOpDao().recordFailure(op.id, op.attempts, false, res.message ?: "يرجى تحديث التطبيق")
+                        outcomes[op.id] = WriteResult.Rejected(res.message ?: "يرجى تحديث التطبيق إلى أحدث إصدار")
                         break
                     }
                     code >= 500 || code == 429 -> {
@@ -191,13 +216,14 @@ class BukhariRepository(
                         if (!park) break
                     }
                     else -> {
-                        Log.w(tag, "${op.label} refused by server: HTTP $code ${res.message}")
-                        db.pendingOpDao().deleteById(op.id)
-                        outcomes[op.id] = WriteResult.Rejected(res.message ?: "رفض الخادم هذا التعديل")
+                        Log.w(tag, "${op.label} refused by server: HTTP $code")
+                        val message = res.message ?: "رفض الخادم هذا التعديل"
+                        db.pendingOpDao().markRejected(op.id, code, message)
+                        outcomes[op.id] = WriteResult.Rejected(message)
                     }
                 }
             }
-            FlushReport(outcomes, db.pendingOpDao().countActive())
+            FlushReport(outcomes, db.pendingOpDao().countActive(userId))
         }
     }
 
@@ -233,121 +259,168 @@ class BukhariRepository(
 
     suspend fun discardFailedWrites() = withContext(Dispatchers.IO) { db.pendingOpDao().deleteFailed() }
 
-    /** Removes everything this user had on the device (logout, expired session). */
-    suspend fun clearAllData() = withContext(Dispatchers.IO) {
-        db.clearAllTables()
+    /** Writes the server refused, with its message, waiting for the user's decision (MOB-03). */
+    suspend fun refusedWrites(): List<RefusedWrite> = withContext(Dispatchers.IO) {
+        db.pendingOpDao().getRejected().map { RefusedWrite(it.id, it.label, it.lastError, it.httpCode, it.createdAt) }
+    }
+
+    /** Sends a refused write again, after a sync brought the record's current version. */
+    suspend fun retryRefusedWrite(id: Long): FlushReport = withContext(Dispatchers.IO) {
+        db.pendingOpDao().unreject(id)
+        flushPendingOps()
+    }
+
+    suspend fun discardRefusedWrite(id: Long) = withContext(Dispatchers.IO) { db.pendingOpDao().deleteById(id) }
+
+    /** Writes that have not reached the server, of any user (shown before logout and at sign-in). */
+    suspend fun unsentCount(): Int = withContext(Dispatchers.IO) { db.pendingOpDao().countUnsent() }
+
+    /** Users other than [userId] who left unsent work on this device. */
+    suspend fun otherUsersWithUnsentWork(userId: String): List<String> = withContext(Dispatchers.IO) {
+        db.pendingOpDao().unsentUserIds().filter { it != userId }
+    }
+
+    /** Deletes unsent work of users other than [userId], after the person who signed in agreed. */
+    suspend fun discardOtherUsersWork(userId: String) = withContext(Dispatchers.IO) { db.pendingOpDao().deleteOtherUsers(userId) }
+
+    /**
+     * Removes the cached server data. Unsent work stays unless [keepQueue] is false, which only
+     * happens when the user explicitly chose to discard it (MOB-01, MOB-02).
+     */
+    suspend fun clearAllData(keepQueue: Boolean = true) = withContext(Dispatchers.IO) {
+        db.withTransaction {
+            db.courseDao().clearAll()
+            db.committeeDao().clearAll()
+            db.appUserDao().clearAll()
+            db.examDao().clearAll()
+            db.scheduleTaskDao().clearAll()
+            db.notificationDao().clearAll()
+            db.customPermissionDao().clearAll()
+            if (!keepQueue) db.pendingOpDao().clearAll()
+        }
         _sheetRows.value = emptyList()
         lastSyncAt = null
         lastSyncOnline = false
     }
 
-    private fun now(): String = SimpleDateFormat("yyyy/MM/dd - hh:mm a", Locale("ar")).format(Date())
+    /** ISO-8601 UTC, the format the server stores (MOB-15); the server stamps its own time on stage changes. */
+    private fun now(): String = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US)
+        .apply { timeZone = java.util.TimeZone.getTimeZone("UTC") }
+        .format(Date())
 
     // ------------------------------------------------------------------ committees
 
+    /** Creates a committee or saves its base data (the server keeps stages and documents it already has). */
     suspend fun saveCommittee(committee: Committee): WriteResult = withContext(Dispatchers.IO) {
         val entity = CommitteeEntity.fromDomain(committee)
         db.committeeDao().insertCommittee(entity)
         push("saveCommittee", "POST", "api/committees", entity, versionOf = "committee:${entity.id}")
     }
 
-    /** Sends only the stage that changed; the server merges stages per key. */
+    /** Workflow intents go to POST /api/committees/:id/actions; the server applies the rule (MOB-07). */
+    private suspend fun committeeAction(label: String, committeeId: String, action: Map<String, Any?>): WriteResult =
+        push(label, "POST", "api/committees/${enc(committeeId)}/actions", mapOf("action" to action.filterValues { it != null }))
+
+    /** Completes or reopens one stage; the server checks the stage order and records who and when. */
     suspend fun updateStage(committeeId: String, stageKey: String, completed: Boolean): WriteResult = withContext(Dispatchers.IO) {
         val entity = db.committeeDao().getCommitteeById(committeeId) ?: return@withContext WriteResult.Rejected("اللجنة غير موجودة")
         val updatedStages = entity.stages.updateStage(stageKey, completed, if (completed) now() else null)
         db.committeeDao().updateCommittee(entity.copy(stages = updatedStages))
-        push("updateStage", "PATCH", "api/committees/${enc(committeeId)}", mapOf("stages" to mapOf(stageKey to updatedStages.getStage(stageKey))))
-    }
-
-    /** The server records who received the committee from the session; only notes are sent. */
-    suspend fun recordAssistantHandover(committeeId: String, me: AppUser, phone: String): WriteResult = withContext(Dispatchers.IO) {
-        val entity = db.committeeDao().getCommitteeById(committeeId) ?: return@withContext WriteResult.Rejected("اللجنة غير موجودة")
-        val stamp = now()
-        val reception = com.example.data.model.AssistantReception(assistantId = me.id, receivedByName = me.name, receivedAt = stamp, phone = phone)
-        val stages = mapOf(
-            "registration" to entity.stages.registration.copy(completed = true, completedAt = entity.stages.registration.completedAt ?: stamp),
-            "exam" to entity.stages.exam.copy(completed = true, completedAt = entity.stages.exam.completedAt ?: stamp)
+        committeeAction(
+            "updateStage", committeeId,
+            mapOf("type" to if (completed) "completeStage" else "reopenStage", "stage" to stageKey)
         )
-        db.committeeDao().updateCommittee(
-            entity.copy(receivedByAssistant = reception, stages = entity.stages.copy(registration = stages.getValue("registration"), exam = stages.getValue("exam")))
-        )
-        push(
-            "recordAssistantHandover", "PATCH", "api/committees/${enc(committeeId)}",
-            mapOf("receivedByAssistant" to mapOf("status" to "received", "phone" to phone.ifBlank { null }), "stages" to stages)
-        )
-    }
-
-    suspend fun approveExamReadiness(committeeId: String, me: AppUser): WriteResult = withContext(Dispatchers.IO) {
-        val entity = db.committeeDao().getCommitteeById(committeeId) ?: return@withContext WriteResult.Rejected("اللجنة غير موجودة")
-        val approval = com.example.data.model.ExamApproval(assistantId = me.id, approvedByName = me.name, approvedAt = now())
-        db.committeeDao().updateCommittee(entity.copy(examApprovedBy = approval))
-        push("approveExamReadiness", "PATCH", "api/committees/${enc(committeeId)}", mapOf("examApprovedBy" to emptyMap<String, Any>()))
-    }
-
-    /** Scoring stage is complete exactly when every question is corrected (same rule as the web). */
-    suspend fun updateScoring(committeeId: String, scoring: ScoringDetails): WriteResult = withContext(Dispatchers.IO) {
-        val entity = db.committeeDao().getCommitteeById(committeeId) ?: return@withContext WriteResult.Rejected("اللجنة غير موجودة")
-        val allDone = scoring.questions.isNotEmpty() && scoring.questions.all { it.completed }
-        val patch = mutableMapOf<String, Any>("scoringDetails" to scoring)
-        var stages = entity.stages
-        if (allDone != entity.stages.scoring.completed) {
-            stages = stages.updateStage("scoring", allDone, if (allDone) now() else null)
-            patch["stages"] = mapOf("scoring" to stages.scoring)
-        }
-        db.committeeDao().updateCommittee(entity.copy(scoringDetails = scoring, stages = stages))
-        push("updateScoring", "PATCH", "api/committees/${enc(committeeId)}", patch, versionOf = "committee:$committeeId")
-    }
-
-    suspend fun updateAggregation(committeeId: String, aggregation: AggregationDetails): WriteResult = withContext(Dispatchers.IO) {
-        val entity = db.committeeDao().getCommitteeById(committeeId) ?: return@withContext WriteResult.Rejected("اللجنة غير موجودة")
-        val patch = mutableMapOf<String, Any>("aggregationDetails" to aggregation)
-        var stages = entity.stages
-        if (aggregation.isConfirmedMatch != entity.stages.aggregation.completed) {
-            stages = stages.updateStage("aggregation", aggregation.isConfirmedMatch, if (aggregation.isConfirmedMatch) now() else null)
-            patch["stages"] = mapOf("aggregation" to stages.aggregation)
-        }
-        db.committeeDao().updateCommittee(entity.copy(aggregationDetails = aggregation, stages = stages))
-        push("updateAggregation", "PATCH", "api/committees/${enc(committeeId)}", patch, versionOf = "committee:$committeeId")
     }
 
     /**
-     * Saves the ceremony details. The ceremony stage counts as done only once its date has
-     * arrived; a future date just schedules it (and its calendar task).
+     * Records that the assistant received the committee (or, with [cancel], clears it). Like the web,
+     * this does not complete any stage; stages are completed explicitly (D-03).
+     */
+    suspend fun recordAssistantHandover(committeeId: String, me: AppUser, phone: String, cancel: Boolean = false): WriteResult =
+        withContext(Dispatchers.IO) {
+            val entity = db.committeeDao().getCommitteeById(committeeId) ?: return@withContext WriteResult.Rejected("اللجنة غير موجودة")
+            val reception = if (cancel) null
+            else com.example.data.model.AssistantReception(assistantId = me.id, receivedByName = me.name, receivedAt = now(), phone = phone)
+            db.committeeDao().updateCommittee(entity.copy(receivedByAssistant = reception))
+            committeeAction(
+                "recordAssistantHandover", committeeId,
+                if (cancel) mapOf("type" to "cancelReception") else mapOf("type" to "receive", "status" to "received", "phone" to phone.ifBlank { null })
+            )
+        }
+
+    suspend fun approveExamReadiness(committeeId: String, me: AppUser, revoke: Boolean = false): WriteResult = withContext(Dispatchers.IO) {
+        val entity = db.committeeDao().getCommitteeById(committeeId) ?: return@withContext WriteResult.Rejected("اللجنة غير موجودة")
+        val approval = if (revoke) null else com.example.data.model.ExamApproval(assistantId = me.id, approvedByName = me.name, approvedAt = now())
+        db.committeeDao().updateCommittee(entity.copy(examApprovedBy = approval))
+        committeeAction("approveExamReadiness", committeeId, mapOf("type" to if (revoke) "revokeReadiness" else "approveReadiness"))
+    }
+
+    /**
+     * Ticks one question. When every question is scored the scoring stage is completed too, and
+     * reopened when one is unticked: the same rule as the web.
+     */
+    suspend fun updateQuestion(committeeId: String, questionId: String, completed: Boolean): WriteResult = withContext(Dispatchers.IO) {
+        val entity = db.committeeDao().getCommitteeById(committeeId) ?: return@withContext WriteResult.Rejected("اللجنة غير موجودة")
+        val questions = entity.scoringDetails.questions.map {
+            if (it.id == questionId) it.copy(completed = completed, completedAt = if (completed) now() else null) else it
+        }
+        val scoring = entity.scoringDetails.copy(questions = questions)
+        db.committeeDao().updateCommittee(entity.copy(scoringDetails = scoring))
+        val result = committeeAction("updateQuestion", committeeId, mapOf("type" to "updateQuestion", "questionId" to questionId, "completed" to completed))
+        val allDone = questions.isNotEmpty() && questions.all { it.completed }
+        if (result !is WriteResult.Rejected && allDone != entity.stages.scoring.completed && Permissions.canOn("committees.scoring", committeeId)) {
+            updateStage(committeeId, "scoring", allDone)
+        }
+        result
+    }
+
+    /**
+     * Replaces the scoring document (examiner names, the list of questions). This replaces the whole
+     * document, so it carries the version the phone has; a newer edit elsewhere is refused (API-11).
+     */
+    suspend fun updateScoring(committeeId: String, scoring: ScoringDetails): WriteResult = withContext(Dispatchers.IO) {
+        val entity = db.committeeDao().getCommitteeById(committeeId) ?: return@withContext WriteResult.Rejected("اللجنة غير موجودة")
+        db.committeeDao().updateCommittee(entity.copy(scoringDetails = scoring))
+        push("updateScoring", "PATCH", "api/committees/${enc(committeeId)}", mapOf("scoringDetails" to scoring), versionOf = "committee:$committeeId")
+    }
+
+    /** Aggregation details; the aggregation stage itself is completed separately, as on the web (D-03). */
+    suspend fun updateAggregation(committeeId: String, aggregation: AggregationDetails): WriteResult = withContext(Dispatchers.IO) {
+        val entity = db.committeeDao().getCommitteeById(committeeId) ?: return@withContext WriteResult.Rejected("اللجنة غير موجودة")
+        db.committeeDao().updateCommittee(entity.copy(aggregationDetails = aggregation))
+        committeeAction(
+            "updateAggregation", committeeId,
+            mapOf(
+                "type" to "updateAggregation",
+                "aggregatorName" to aggregation.aggregatorName.ifBlank { null },
+                "scoringReviewerName" to aggregation.scoringReviewerName.ifBlank { null },
+                "aggregationReviewerName" to aggregation.reviewerName.ifBlank { null },
+                "reviewConfirmed" to aggregation.isConfirmedMatch,
+                "date" to aggregation.date.ifBlank { null },
+                "notes" to aggregation.notes.ifBlank { null }
+            )
+        )
+    }
+
+    /**
+     * Schedules the ceremony. The server stores it and keeps its single calendar task in step; the
+     * ceremony stage is completed explicitly, not by the date (D-03, WEB-08).
      */
     suspend fun updateCeremony(committeeId: String, ceremony: CeremonyDetails): WriteResult = withContext(Dispatchers.IO) {
         val entity = db.committeeDao().getCommitteeById(committeeId) ?: return@withContext WriteResult.Rejected("اللجنة غير موجودة")
-        val today = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
-        val held = ceremony.date.isNotBlank() && ceremony.date <= today
-        val patch = mutableMapOf<String, Any>("ceremonyDetails" to ceremony)
-        var stages = entity.stages
-        if (held != entity.stages.ceremony.completed) {
-            stages = stages.updateStage("ceremony", held, if (held) "${ceremony.date} ${ceremony.time}".trim() else null)
-            patch["stages"] = mapOf("ceremony" to stages.ceremony)
-        }
-        db.committeeDao().updateCommittee(entity.copy(ceremonyDetails = ceremony, stages = stages))
-        val result = push("updateCeremony", "PATCH", "api/committees/${enc(committeeId)}", patch, versionOf = "committee:$committeeId")
-        if (result !is WriteResult.Rejected && ceremony.date.isNotBlank() && Permissions.can("tasks.write")) {
-            saveTask(
-                ScheduleTask(
-                    // Same id the web app uses, so both update one task.
-                    id = "task-ceremony-${entity.id}",
-                    title = "حفل تكريم لجنة #${entity.committeeNumber} (${entity.sheikhName.ifBlank { entity.committeeName }})",
-                    date = ceremony.date,
-                    time = ceremony.time,
-                    committeeId = entity.id,
-                    committeeNumber = entity.committeeNumber,
-                    type = "ceremony",
-                    priority = "urgent",
-                    deliverable = listOfNotNull(
-                        ceremony.honoreesCount.takeIf { it > 0 }?.let { "تكريم $it طالباً" },
-                        ceremony.attendingSheikhs.takeIf { it.isNotEmpty() }?.let { "حضور: ${it.joinToString("، ")}" }
-                    ).joinToString(" • "),
-                    notes = listOfNotNull(ceremony.venue.ifBlank { null }?.let { "مكان الحفل: $it" }, ceremony.notes.ifBlank { null }).joinToString(". "),
-                    completed = held
-                )
+        db.committeeDao().updateCommittee(entity.copy(ceremonyDetails = ceremony))
+        committeeAction(
+            "updateCeremony", committeeId,
+            mapOf(
+                "type" to "scheduleCeremony",
+                "ceremonyDate" to ceremony.date.ifBlank { null },
+                "ceremonyTime" to ceremony.time.ifBlank { null },
+                "ceremonyPlace" to ceremony.venue.ifBlank { null },
+                "honoredStudentsCount" to ceremony.honoreesCount,
+                "attendingSheikhs" to ceremony.attendingSheikhs,
+                "notes" to ceremony.notes.ifBlank { null }
             )
-        }
-        result
+        )
     }
 
     suspend fun deleteCommittee(committeeId: String): WriteResult = withContext(Dispatchers.IO) {
@@ -368,13 +441,14 @@ class BukhariRepository(
         push("deleteExam", "DELETE", "api/exams/${enc(examId)}")
     }
 
-    /** Downloads an exam's PDF (super admins and committee heads only). */
+    /** Downloads an exam's PDF (allowed roles, within their exam allow-list). */
     suspend fun downloadExamFile(examId: String): ByteArray? = withContext(Dispatchers.IO) {
         ApiClient.download("api/exams/${enc(examId)}/file")
     }
 
     // ------------------------------------------------------------------ tasks
 
+    /** The server takes the committee and the assignee by id and fills in number and name (MOB-06). */
     suspend fun saveTask(task: ScheduleTask): WriteResult = withContext(Dispatchers.IO) {
         val entity = ScheduleTaskEntity.fromDomain(task)
         db.scheduleTaskDao().insertTask(entity)
@@ -402,30 +476,45 @@ class BukhariRepository(
 
     suspend fun getLocalUser(id: String): AppUser? = withContext(Dispatchers.IO) { db.appUserDao().getUserById(id)?.toDomain() }
 
-    suspend fun approveUser(userId: String, assignedCommittees: List<Int>, permissions: List<String>, role: UserRole): WriteResult =
+    /** Identity fields the server requires on every user save; access fields are added only when they change. */
+    private fun identity(entity: AppUserEntity): MutableMap<String, Any?> =
+        mutableMapOf("id" to entity.id, "name" to entity.name, "phone" to entity.phone, "email" to entity.email.ifBlank { null })
+
+    /**
+     * Approves an applicant. Only what changed is sent (MOB-09): the role only when a super admin
+     * changed it, committees by id, permissions only when chosen. Nothing else is overwritten.
+     */
+    suspend fun approveUser(userId: String, committeeIds: List<String>?, permissions: List<String>?, role: UserRole?): WriteResult =
         withContext(Dispatchers.IO) {
             val entity = db.appUserDao().getUserById(userId) ?: return@withContext WriteResult.Rejected("المستخدم غير موجود")
-            val updated = entity.copy(status = "approved", assignedCommittees = assignedCommittees, permissions = permissions, roleKey = role.roleKey, roleId = role.roleKey)
-            db.appUserDao().updateUser(updated)
-            push("approveUser", "POST", "api/users", updated, versionOf = "user:$userId")
+            val body = identity(entity)
+            body["status"] = "approved"
+            if (role != null && role.roleKey != entity.roleKey) body["role"] = role.roleKey
+            if (committeeIds != null) body["assignedCommitteeIds"] = committeeIds
+            if (permissions != null) body["permissions"] = permissions
+            db.appUserDao().updateUser(
+                entity.copy(
+                    status = "approved",
+                    roleKey = role?.roleKey ?: entity.roleKey,
+                    roleId = role?.roleKey ?: entity.roleId,
+                    assignedCommitteeIds = committeeIds ?: entity.assignedCommitteeIds,
+                    permissions = permissions ?: entity.permissions
+                )
+            )
+            push("approveUser", "POST", "api/users", body, versionOf = "user:$userId")
         }
 
-    /** Rejection keeps the account (status "rejected"), the same as on the web. */
+    /** Rejection keeps the account (status "rejected"), with the reason, the same as on the web. */
     suspend fun rejectUser(userId: String, reason: String?): WriteResult = withContext(Dispatchers.IO) {
         val entity = db.appUserDao().getUserById(userId) ?: return@withContext WriteResult.Rejected("المستخدم غير موجود")
-        val updated = entity.copy(status = "rejected")
-        db.appUserDao().updateUser(updated)
-        val body = ApiClient.moshi.adapter(AppUserEntity::class.java).toJsonValue(updated) as Map<*, *>
-        push("rejectUser", "POST", "api/users", body + ("rejectionReason" to reason?.ifBlank { null }), versionOf = "user:$userId")
+        db.appUserDao().updateUser(entity.copy(status = "rejected"))
+        val body = identity(entity)
+        body["status"] = "rejected"
+        body["rejectionReason"] = reason?.ifBlank { null }
+        push("rejectUser", "POST", "api/users", body, versionOf = "user:$userId")
     }
 
-    // ------------------------------------------------------------------ settings & notifications
-
-    suspend fun saveCustomPermission(name: String, description: String): WriteResult = withContext(Dispatchers.IO) {
-        val entity = CustomPermissionEntity(id = "perm_${java.util.UUID.randomUUID()}", name = name.trim(), description = description.trim())
-        db.customPermissionDao().insertCustomPermission(entity)
-        push("saveCustomPermission", "POST", "api/custom-permissions", mapOf("id" to entity.id, "label" to entity.name, "description" to entity.description))
-    }
+    // ------------------------------------------------------------------ notifications
 
     suspend fun markNotificationRead(id: String): WriteResult = withContext(Dispatchers.IO) {
         db.notificationDao().markAsRead(id)
@@ -465,8 +554,10 @@ class BukhariRepository(
             message = if (lastSyncOnline) "آخر تحديث من الخادم نجح" else "لم يتم التحديث من الخادم في هذه الجلسة",
             serverUrl = ApiClient.baseUrl,
             lastSyncAt = lastSyncAt,
-            pendingWrites = db.pendingOpDao().countActive(),
+            pendingWrites = db.pendingOpDao().countActive(userIdProvider()),
             failedWrites = db.pendingOpDao().getFailed().map { FailedWrite(it.id, it.label, it.lastError) },
+            refusedWrites = db.pendingOpDao().getRejected().map { RefusedWrite(it.id, it.label, it.lastError, it.httpCode, it.createdAt) },
+            skippedRecords = ApiClient.skippedRecords,
             localTables = local,
             server = server
         )
@@ -474,5 +565,11 @@ class BukhariRepository(
 
     companion object {
         const val MAX_ATTEMPTS = 5
+
+        /** A claim older than this belongs to a flusher that died; the write may be sent again. */
+        private const val CLAIM_TIMEOUT_MS = 2 * 60 * 1000L
+
+        /** One lock for every repository instance in the process: the app and the background worker (MOB-04). */
+        private val queueMutex = Mutex()
     }
 }

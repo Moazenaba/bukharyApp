@@ -104,6 +104,8 @@ fun CentralLoginPortal(
     onRegisterRequest: (name: String, phone: String, email: String, role: UserRole, pass: String, notes: String, onDone: (String?) -> Unit) -> Unit,
     onTrackRequest: (code: String, onResult: (String) -> Unit) -> Unit,
     isSubmitting: Boolean,
+    /** Writes saved on this device that have not reached the server yet (MOB-01). */
+    unsentCount: Int = 0,
     modifier: Modifier = Modifier
 ) {
     var selectedTab by rememberSaveable { mutableIntStateOf(TAB_LOGIN) }
@@ -120,6 +122,19 @@ fun CentralLoginPortal(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Spacer(modifier = Modifier.height(24.dp))
+        if (unsentCount > 0) {
+            Text(
+                text = "لديك $unsentCount من التعديلات المحفوظة على هذا الجهاز لم تُرسل بعد. سجّل الدخول بنفس الحساب لإرسالها.",
+                style = MaterialTheme.typography.bodySmall,
+                color = Color(0xFF92400E),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color(0xFFFEF3C7))
+                    .padding(12.dp)
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+        }
         Box(
             modifier = Modifier
                 .size(76.dp)
@@ -226,7 +241,7 @@ fun CentralLoginPortal(
             title = { Text("نسيت كلمة المرور؟") },
             text = {
                 Text(
-                    "تواصل مع المشرف العام ليعيد تعيين كلمة المرور لحسابك، ثم سجّل الدخول بالكلمة الجديدة وغيّرها من إعدادات حسابك."
+                    "تواصل مع المشرف العام ليعيد تعيين كلمة المرور لحسابك. سجّل الدخول بكلمة المرور المؤقتة التي يعطيك إياها، وسيطلب منك التطبيق اختيار كلمة مرور جديدة قبل المتابعة."
                 )
             },
             confirmButton = { TextButton(onClick = { showForgotPassword = false }) { Text("حسناً") } }

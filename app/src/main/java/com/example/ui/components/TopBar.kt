@@ -74,6 +74,7 @@ fun BukhariTopBar(
     onNavigate: (AppNavScreen) -> Unit,
     onMarkNotificationRead: (String) -> Unit,
     onLogout: () -> Unit,
+    onChangePassword: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "topBarSpin")
@@ -311,6 +312,13 @@ fun BukhariTopBar(
                                 }
                             )
                         }
+                        DropdownMenuItem(
+                            text = { Text("🔑 تغيير كلمة المرور") },
+                            onClick = {
+                                onChangePassword()
+                                showMenu = false
+                            }
+                        )
                         DropdownMenuItem(
                             text = { Text("🚪 تسجيل الخروج", color = Color(0xFFEF4444)) },
                             onClick = {

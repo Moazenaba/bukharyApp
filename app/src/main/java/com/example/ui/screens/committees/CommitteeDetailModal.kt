@@ -1,9 +1,6 @@
 package com.example.ui.screens.committees
 
 import androidx.compose.material3.minimumInteractiveComponentSize
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -82,9 +79,11 @@ fun CommitteeDetailModal(
     currentUser: AppUser?,
     onClose: () -> Unit,
     onToggleStage: (stageKey: String, currentStatus: Boolean) -> Unit,
-    /** The server records who received/approved from the logged-in session. */
-    onAssistantReception: (phone: String) -> Unit,
-    onApproveExam: () -> Unit,
+    /** The server records who received/approved from the logged-in session; `cancel`/`revoke` undo it. */
+    onAssistantReception: (phone: String, cancel: Boolean) -> Unit,
+    onApproveExam: (revoke: Boolean) -> Unit,
+    /** One question ticked or unticked: only that question is sent. */
+    onUpdateQuestion: (questionId: String, completed: Boolean) -> Unit,
     onUpdateScoring: (ScoringDetails) -> Unit,
     onUpdateAggregation: (AggregationDetails) -> Unit,
     onUpdateCeremony: (CeremonyDetails) -> Unit,
@@ -109,8 +108,7 @@ fun CommitteeDetailModal(
     var aggReviewerName by remember { mutableStateOf(committee.aggregationDetails.reviewerName) }
     var confirmedMatch by remember { mutableStateOf(committee.aggregationDetails.isConfirmedMatch) }
 
-    val todayDateStr = remember { SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date()) }
-    val todayHijriOrDateStr = remember { SimpleDateFormat("yyyy/MM/dd", Locale.US).format(Date()) }
+    val todayDateStr = remember { com.example.ui.components.Dates.today() }
 
     // Ceremony state
     var ceremonyDate by remember { mutableStateOf(committee.ceremonyDetails.date) }
@@ -119,8 +117,8 @@ fun CommitteeDetailModal(
     var honoreesCount by remember { mutableIntStateOf(if (committee.ceremonyDetails.honoreesCount > 0) committee.ceremonyDetails.honoreesCount else committee.studentsCount) }
     var sheikhsInput by remember { mutableStateOf(committee.ceremonyDetails.attendingSheikhs.joinToString("، ")) }
 
-    // What the server will accept from this user for this committee.
-    val inScope = Permissions.inScope(committee.committeeNumber)
+    // What the server will accept from this user for this committee (scope by committee id).
+    val inScope = Permissions.inScope(committee.id)
     val canReception = inScope && Permissions.can("committees.reception")
     val canScoring = inScope && Permissions.can("committees.scoring")
     val canFinalize = inScope && Permissions.can("committees.finalize")
@@ -132,6 +130,10 @@ fun CommitteeDetailModal(
         }
     }
     var newQuestionLabel by remember { mutableStateOf("") }
+    /** The id of a question the server already has, by its label; null for one added on this screen. */
+    val savedQuestionId: (String) -> String? = { label ->
+        committee.scoringDetails.questions.firstOrNull { it.label.ifBlank { "السؤال ${it.questionNumber}" } == label }?.id
+    }
 
     val scrollState = rememberScrollState()
 
@@ -317,7 +319,7 @@ fun CommitteeDetailModal(
                                         color = Color(0xFF15803D)
                                     )
                                     Text(
-                                        text = "التوقيت: ${committee.receivedByAssistant.receivedAt} • هاتف: ${committee.receivedByAssistant.phone}",
+                                        text = "التوقيت: ${com.example.ui.components.Dates.displayTime(committee.receivedByAssistant.receivedAt)} • هاتف: ${committee.receivedByAssistant.phone}",
                                         style = MaterialTheme.typography.bodySmall,
                                         color = Color(0xFF166534)
                                     )
@@ -338,13 +340,17 @@ fun CommitteeDetailModal(
                         Spacer(modifier = Modifier.height(10.dp))
 
                         if (canReception) Button(
-                            onClick = { onAssistantReception(asstPhone) },
+                            onClick = { onAssistantReception(asstPhone, false) },
                             modifier = Modifier.fillMaxWidth(),
                             colors = ButtonDefaults.buttonColors(containerColor = Primary700),
                             shape = RoundedCornerShape(10.dp)
                         ) {
-                            Text("توثيق واعتماد الاستلام الميداني 📥")
+                            Text(if (committee.receivedByAssistant != null) "تحديث توثيق الاستلام 📥" else "توثيق واعتماد الاستلام الميداني 📥")
                         }
+                        if (canReception && committee.receivedByAssistant != null) TextButton(
+                            onClick = { onAssistantReception(asstPhone, true) },
+                            modifier = Modifier.fillMaxWidth()
+                        ) { Text("إلغاء توثيق الاستلام") }
 
                         Spacer(modifier = Modifier.height(20.dp))
 
@@ -370,7 +376,7 @@ fun CommitteeDetailModal(
                                         color = Color(0xFF1D4ED8)
                                     )
                                     Text(
-                                        text = "التوقيت: ${committee.examApprovedBy.approvedAt}",
+                                        text = "التوقيت: ${com.example.ui.components.Dates.displayTime(committee.examApprovedBy.approvedAt)}",
                                         style = MaterialTheme.typography.bodySmall,
                                         color = Color(0xFF1E40AF)
                                     )
@@ -380,14 +386,18 @@ fun CommitteeDetailModal(
 
                         Spacer(modifier = Modifier.height(10.dp))
 
-                        if (canReception) Button(
-                            onClick = { onApproveExam() },
+                        if (canReception && committee.examApprovedBy == null) Button(
+                            onClick = { onApproveExam(false) },
                             modifier = Modifier.fillMaxWidth(),
                             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2563EB)),
                             shape = RoundedCornerShape(10.dp)
                         ) {
                             Text("اعتماد بدء وتوزيع الامتحان 🟦")
                         }
+                        if (canReception && committee.examApprovedBy != null) TextButton(
+                            onClick = { onApproveExam(true) },
+                            modifier = Modifier.fillMaxWidth()
+                        ) { Text("إلغاء اعتماد الجاهزية") }
                     }
                 }
             }
@@ -446,10 +456,11 @@ fun CommitteeDetailModal(
                                     .padding(vertical = 3.dp)
                                     .clip(RoundedCornerShape(8.dp))
                                     .background(if (done) Color(0xFFFEF3C7) else Color(0xFFF8FAFC))
-                                    .clickable {
+                                    .clickable(enabled = canScoring) {
                                         val newMap = questionsState.toMutableMap()
                                         newMap[qKey] = !done
                                         questionsState = newMap
+                                        savedQuestionId(qKey)?.let { onUpdateQuestion(it, !done) }
                                     }
                                     .padding(horizontal = 10.dp, vertical = 6.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -458,10 +469,12 @@ fun CommitteeDetailModal(
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Checkbox(
                                         checked = done,
+                                        enabled = canScoring,
                                         onCheckedChange = {
                                             val newMap = questionsState.toMutableMap()
                                             newMap[qKey] = it
                                             questionsState = newMap
+                                            savedQuestionId(qKey)?.let { id -> onUpdateQuestion(id, it) }
                                         }
                                     )
                                     Text(
@@ -522,7 +535,7 @@ fun CommitteeDetailModal(
                             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD97706)),
                             shape = RoundedCornerShape(10.dp)
                         ) {
-                            Text("حفظ وتحديث درجات التصحيح 🟠")
+                            Text("حفظ أسماء المصححين والأسئلة الجديدة 🟠")
                         }
 
                         Spacer(modifier = Modifier.height(20.dp))
@@ -567,6 +580,7 @@ fun CommitteeDetailModal(
                         ) {
                             Checkbox(
                                 checked = confirmedMatch,
+                                enabled = canScoring,
                                 onCheckedChange = { confirmedMatch = it }
                             )
                             Spacer(modifier = Modifier.width(6.dp))
@@ -588,7 +602,7 @@ fun CommitteeDetailModal(
                                         aggregatorName = aggregatorName,
                                         reviewerName = aggReviewerName,
                                         isConfirmedMatch = confirmedMatch,
-                                        date = todayHijriOrDateStr
+                                        date = todayDateStr
                                     )
                                 )
                             },
@@ -620,12 +634,11 @@ fun CommitteeDetailModal(
 
                         Spacer(modifier = Modifier.height(10.dp))
 
-                        OutlinedTextField(
+                        com.example.ui.components.DateField(
                             value = ceremonyDate,
                             onValueChange = { ceremonyDate = it },
-                            label = { Text("تاريخ الحفل (YYYY-MM-DD)") },
-                            singleLine = true,
-                            modifier = Modifier.fillMaxWidth()
+                            label = "تاريخ الحفل",
+                            allowClear = true
                         )
 
                         Spacer(modifier = Modifier.height(8.dp))
@@ -688,6 +701,12 @@ fun CommitteeDetailModal(
                         ) {
                             Text("حفظ وجدولة حفل التكريم بالتقويم 🎓")
                         }
+                        if (canFinalize) Text(
+                            text = "يظهر الموعد في التقويم تلقائياً. إتمام مرحلة الحفل يتم من تبويب المراحل.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color(0xFF64748B),
+                            modifier = Modifier.padding(top = 6.dp)
+                        )
                     }
                 }
             }

@@ -157,7 +157,13 @@ data class AppUserEntity(
     // The server and web app call this field "role".
     @Json(name = "role") val roleKey: String = "assistant",
     val status: String = "approved",
+    /** Committee numbers (read-only, derived by the server). Numbers repeat across courses. */
     val assignedCommittees: List<Int> = emptyList(),
+    /** Assigned committees by id: what the server checks. */
+    val assignedCommitteeIds: List<String> = emptyList(),
+    val allCommitteesAllowed: Boolean = false,
+    /** Set after an admin password reset: a new password must be chosen first. */
+    val mustChangePassword: Boolean = false,
     val permissions: List<String> = emptyList(),
     val createdAt: String = "",
     val approvedAt: String? = null,
@@ -174,6 +180,9 @@ data class AppUserEntity(
         role = UserRole.fromKey(roleKey),
         status = status,
         assignedCommittees = assignedCommittees,
+        assignedCommitteeIds = assignedCommitteeIds,
+        allCommitteesAllowed = allCommitteesAllowed,
+        mustChangePassword = mustChangePassword,
         permissions = permissions,
         createdAt = createdAt,
         approvedAt = approvedAt,
@@ -193,6 +202,9 @@ data class AppUserEntity(
             roleKey = model.role.roleKey,
             status = model.status,
             assignedCommittees = model.assignedCommittees,
+            assignedCommitteeIds = model.assignedCommitteeIds,
+            allCommitteesAllowed = model.allCommitteesAllowed,
+            mustChangePassword = model.mustChangePassword,
             permissions = model.permissions,
             createdAt = model.createdAt,
             approvedAt = model.approvedAt,

@@ -10,25 +10,45 @@ class PermissionsTest {
     fun reset() = Permissions.clear()
 
     @Test
-    fun `heads and assistants act only on assigned committees`() {
-        Permissions.role = "assistant"
-        Permissions.assignedCommittees = listOf(3, 4)
-        assertTrue(Permissions.inScope(3))
-        assertFalse(Permissions.inScope(5))
+    fun `committee-scoped users act only on assigned committees, by id`() {
+        Permissions.applyServerScope(listOf("c-3", "c-4"), null)
+        assertTrue(Permissions.inScope("c-3"))
+        assertFalse(Permissions.inScope("c-5"))
     }
 
     @Test
-    fun `super admins and teachers are not limited by committee`() {
-        Permissions.role = "super_admin"
-        Permissions.assignedCommittees = emptyList()
-        assertTrue(Permissions.inScope(99))
+    fun `the same committee number in another course is a different committee`() {
+        Permissions.applyServerScope(listOf("course1-n1"), null)
+        assertFalse(Permissions.inScope("course2-n1"))
     }
 
     @Test
-    fun `an action is offered only when the server granted it`() {
+    fun `all committees from the server means every committee`() {
+        Permissions.applyServerScope("all", null)
+        assertTrue(Permissions.inScope("anything"))
+    }
+
+    @Test
+    fun `an unknown scope means no committee rather than all`() {
+        Permissions.applyServerScope(listOf(1.0, 2.0), null)
+        assertFalse(Permissions.inScope("c-1"))
+    }
+
+    @Test
+    fun `an action is offered only when the server granted it and the committee is in scope`() {
         Permissions.actions = mapOf("committees.reception" to true, "committees.finalize" to false)
-        assertTrue(Permissions.can("committees.reception"))
+        Permissions.applyServerScope(listOf("c-1"), null)
+        assertTrue(Permissions.canOn("committees.reception", "c-1"))
+        assertFalse(Permissions.canOn("committees.reception", "c-2"))
         assertFalse(Permissions.can("committees.finalize"))
         assertFalse(Permissions.can("unknown.action"))
+    }
+
+    @Test
+    fun `exam files follow the allow-list`() {
+        Permissions.actions = mapOf("exams.file" to true)
+        Permissions.applyServerScope("all", listOf("exam-a"))
+        assertTrue(Permissions.canOpenExam("exam-a"))
+        assertFalse(Permissions.canOpenExam("exam-b"))
     }
 }

@@ -92,5 +92,24 @@ object Migrations {
         }
     }
 
-    val ALL = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+    /**
+     * 4 -> 5: queued writes remember who made them and carry an idempotency key; refused writes
+     * stay visible instead of being dropped; users carry committee ids (MOB-01, MOB-03, MOB-04).
+     */
+    val MIGRATION_4_5 = object : Migration(4, 5) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE `pending_ops` ADD COLUMN `userId` TEXT")
+            db.execSQL("ALTER TABLE `pending_ops` ADD COLUMN `idempotencyKey` TEXT NOT NULL DEFAULT ''")
+            // Existing writes get their own key; hex(randomblob) is unique enough for one device.
+            db.execSQL("UPDATE `pending_ops` SET `idempotencyKey` = lower(hex(randomblob(16))) WHERE `idempotencyKey` = ''")
+            db.execSQL("ALTER TABLE `pending_ops` ADD COLUMN `rejected` INTEGER NOT NULL DEFAULT 0")
+            db.execSQL("ALTER TABLE `pending_ops` ADD COLUMN `httpCode` INTEGER")
+            db.execSQL("ALTER TABLE `pending_ops` ADD COLUMN `claimedAt` INTEGER")
+            db.execSQL("ALTER TABLE `app_users` ADD COLUMN `assignedCommitteeIds` TEXT NOT NULL DEFAULT '[]'")
+            db.execSQL("ALTER TABLE `app_users` ADD COLUMN `allCommitteesAllowed` INTEGER NOT NULL DEFAULT 0")
+            db.execSQL("ALTER TABLE `app_users` ADD COLUMN `mustChangePassword` INTEGER NOT NULL DEFAULT 0")
+        }
+    }
+
+    val ALL = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
 }

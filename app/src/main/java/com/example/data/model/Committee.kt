@@ -113,7 +113,7 @@ data class ScoringDetails(
         val byLabel = questions.associateBy { it.displayLabel() }
         val updated = status.entries.mapIndexed { index, (label, done) ->
             val existing = byLabel[label] ?: QuestionScoringItem(
-                id = "q${index + 1}",
+                id = "q-${index + 1}",
                 questionNumber = index + 1,
                 label = label
             )

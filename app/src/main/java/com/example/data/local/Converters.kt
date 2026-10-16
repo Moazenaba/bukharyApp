@@ -48,8 +48,8 @@ class Converters {
         return try {
             stringListAdapter.fromJson(value) ?: emptyList()
         } catch (e: Exception) {
-            // A stored value that no longer parses is shown as empty; log it so it is noticed.
-            Log.w("Converters", "Unreadable stored value: ${value.take(200)}", e)
+            // A stored value that no longer parses is shown as empty. Its content may be personal data, so only its size is logged.
+            Log.w("Converters", "Unreadable stored value (${value.length} characters); content not logged", e)
             emptyList()
         }
     }
@@ -65,8 +65,8 @@ class Converters {
         return try {
             intListAdapter.fromJson(value) ?: emptyList()
         } catch (e: Exception) {
-            // A stored value that no longer parses is shown as empty; log it so it is noticed.
-            Log.w("Converters", "Unreadable stored value: ${value.take(200)}", e)
+            // A stored value that no longer parses is shown as empty. Its content may be personal data, so only its size is logged.
+            Log.w("Converters", "Unreadable stored value (${value.length} characters); content not logged", e)
             emptyList()
         }
     }
@@ -82,8 +82,8 @@ class Converters {
         return try {
             stringBooleanMapAdapter.fromJson(value) ?: emptyMap()
         } catch (e: Exception) {
-            // A stored value that no longer parses is shown as empty; log it so it is noticed.
-            Log.w("Converters", "Unreadable stored value: ${value.take(200)}", e)
+            // A stored value that no longer parses is shown as empty. Its content may be personal data, so only its size is logged.
+            Log.w("Converters", "Unreadable stored value (${value.length} characters); content not logged", e)
             emptyMap()
         }
     }
@@ -99,8 +99,8 @@ class Converters {
         return try {
             stagesMapAdapter.fromJson(value) ?: StagesMap()
         } catch (e: Exception) {
-            // A stored value that no longer parses is shown as empty; log it so it is noticed.
-            Log.w("Converters", "Unreadable stored value: ${value.take(200)}", e)
+            // A stored value that no longer parses is shown as empty. Its content may be personal data, so only its size is logged.
+            Log.w("Converters", "Unreadable stored value (${value.length} characters); content not logged", e)
             StagesMap()
         }
     }
@@ -116,8 +116,8 @@ class Converters {
         return try {
             scoringDetailsAdapter.fromJson(value) ?: ScoringDetails()
         } catch (e: Exception) {
-            // A stored value that no longer parses is shown as empty; log it so it is noticed.
-            Log.w("Converters", "Unreadable stored value: ${value.take(200)}", e)
+            // A stored value that no longer parses is shown as empty. Its content may be personal data, so only its size is logged.
+            Log.w("Converters", "Unreadable stored value (${value.length} characters); content not logged", e)
             ScoringDetails()
         }
     }
@@ -133,8 +133,8 @@ class Converters {
         return try {
             aggregationDetailsAdapter.fromJson(value) ?: AggregationDetails()
         } catch (e: Exception) {
-            // A stored value that no longer parses is shown as empty; log it so it is noticed.
-            Log.w("Converters", "Unreadable stored value: ${value.take(200)}", e)
+            // A stored value that no longer parses is shown as empty. Its content may be personal data, so only its size is logged.
+            Log.w("Converters", "Unreadable stored value (${value.length} characters); content not logged", e)
             AggregationDetails()
         }
     }
@@ -150,8 +150,8 @@ class Converters {
         return try {
             ceremonyDetailsAdapter.fromJson(value) ?: CeremonyDetails()
         } catch (e: Exception) {
-            // A stored value that no longer parses is shown as empty; log it so it is noticed.
-            Log.w("Converters", "Unreadable stored value: ${value.take(200)}", e)
+            // A stored value that no longer parses is shown as empty. Its content may be personal data, so only its size is logged.
+            Log.w("Converters", "Unreadable stored value (${value.length} characters); content not logged", e)
             CeremonyDetails()
         }
     }
@@ -167,8 +167,8 @@ class Converters {
         return try {
             assistantReceptionAdapter.fromJson(value)
         } catch (e: Exception) {
-            // A stored value that no longer parses is shown as empty; log it so it is noticed.
-            Log.w("Converters", "Unreadable stored value: ${value.take(200)}", e)
+            // A stored value that no longer parses is shown as empty. Its content may be personal data, so only its size is logged.
+            Log.w("Converters", "Unreadable stored value (${value.length} characters); content not logged", e)
             null
         }
     }
@@ -184,8 +184,8 @@ class Converters {
         return try {
             examApprovalAdapter.fromJson(value)
         } catch (e: Exception) {
-            // A stored value that no longer parses is shown as empty; log it so it is noticed.
-            Log.w("Converters", "Unreadable stored value: ${value.take(200)}", e)
+            // A stored value that no longer parses is shown as empty. Its content may be personal data, so only its size is logged.
+            Log.w("Converters", "Unreadable stored value (${value.length} characters); content not logged", e)
             null
         }
     }

@@ -23,6 +23,7 @@ import com.example.data.model.ScheduleTask
 import com.example.data.model.ScoringDetails
 import com.example.data.model.UserRole
 import com.example.data.remote.ApiClient
+import com.example.data.remote.AssignableUserDto
 import com.example.data.remote.AuthResult
 import com.example.data.remote.AuthenticationService
 import com.example.data.remote.SheetRowDto
@@ -100,6 +101,22 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _lastSyncOk = MutableStateFlow(false)
     val lastSyncOk: StateFlow<Boolean> = _lastSyncOk.asStateFlow()
 
+    /** Writes on this device that have not reached the server (shown at sign-in and before logout). */
+    private val _unsentCount = MutableStateFlow(0)
+    val unsentCount: StateFlow<Int> = _unsentCount.asStateFlow()
+
+    /** Set when logout was requested while writes are still unsent: the user decides (MOB-02). */
+    private val _logoutConfirmation = MutableStateFlow<Int?>(null)
+    val logoutConfirmation: StateFlow<Int?> = _logoutConfirmation.asStateFlow()
+
+    /** Set when another account left unsent work on this device: kept or discarded by choice (MOB-01). */
+    private val _foreignUnsentWork = MutableStateFlow(false)
+    val foreignUnsentWork: StateFlow<Boolean> = _foreignUnsentWork.asStateFlow()
+
+    /** People the current user may assign tasks to (from the server, limited to their committees). */
+    private val _assignableUsers = MutableStateFlow<List<AssignableUserDto>>(emptyList())
+    val assignableUsers: StateFlow<List<AssignableUserDto>> = _assignableUsers.asStateFlow()
+
     val courses: StateFlow<List<Course>> = repository.allCourses.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
     val committees: StateFlow<List<Committee>> = repository.allCommittees.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
     val users: StateFlow<List<AppUser>> = repository.allUsers.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
@@ -141,6 +158,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     init {
         ApiClient.onUnauthorized = { viewModelScope.launch { endSession("انتهت صلاحية الجلسة، يرجى تسجيل الدخول مرة أخرى", revoke = false) } }
+        viewModelScope.launch { _unsentCount.value = repository.unsentCount() }
         connectivity.registerNetworkCallback(
             NetworkRequest.Builder().addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET).build(),
             networkCallback
@@ -159,7 +177,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 refreshFromServer()
             } else {
                 authService.forgetSession()
-                repository.clearAllData()
+                // Cached data goes; unsent work stays for its author's next sign-in (MOB-01).
+                repository.clearAllData(keepQueue = true)
+                _unsentCount.value = repository.unsentCount()
                 _isRestoringSession.value = false
             }
         }
@@ -181,7 +201,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
             val result = repository.syncWithRemoteApi()
             _lastSyncOk.value = result.online
-            _databaseStatus.value = repository.getDatabaseStatus()
+            val status = repository.getDatabaseStatus()
+            _databaseStatus.value = status
+            _unsentCount.value = repository.unsentCount()
+            // Writes the background worker sent and the server refused are reported, not lost (MOB-03).
+            if (status.refusedWrites.isNotEmpty()) {
+                showMessage("رفض الخادم ${status.refusedWrites.size} من التعديلات المرسلة؛ راجعها في «حالة البيانات والمزامنة»")
+            }
             result.online
         } finally {
             _isSyncing.value = false
@@ -238,8 +264,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             _isSubmitting.value = true
             when (val result = authService.login(phoneOrEmail, pass)) {
                 is AuthResult.Success -> {
-                    // Never show a previous user's cached data.
-                    repository.clearAllData()
+                    // Never show a previous user's cached data; unsent work is kept per user (MOB-01).
+                    repository.clearAllData(keepQueue = true)
+                    _foreignUnsentWork.value = repository.otherUsersWithUnsentWork(result.user.id).isNotEmpty()
                     repository.cacheUser(result.user)
                     _currentUser.value = result.user
                     _currentNavScreen.value = AppNavScreen.HOME
@@ -286,20 +313,107 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         else -> status
     }
 
-    fun logout() {
-        viewModelScope.launch { endSession("تم تسجيل الخروج", revoke = true) }
+    /** Asks first when writes have not reached the server yet (MOB-02). */
+    fun requestLogout() {
+        viewModelScope.launch {
+            val unsent = repository.unsentCount()
+            if (unsent > 0) _logoutConfirmation.value = unsent else endSession("تم تسجيل الخروج", revoke = true)
+        }
     }
 
-    /** Ends the session and removes this user's data and unsent changes from the device. */
-    private suspend fun endSession(message: String, revoke: Boolean) {
+    fun cancelLogout() {
+        _logoutConfirmation.value = null
+    }
+
+    /** Tries to send the waiting writes, then asks again only if some are still unsent. */
+    fun syncThenLogout() {
+        _logoutConfirmation.value = null
+        viewModelScope.launch {
+            refreshFromServer()
+            val unsent = repository.unsentCount()
+            if (unsent > 0) _logoutConfirmation.value = unsent else endSession("تم إرسال التعديلات وتسجيل الخروج", revoke = true)
+        }
+    }
+
+    /**
+     * Logs out. [discardUnsent] deletes the unsent writes (the user chose it); otherwise they stay on
+     * the device and are sent after this user signs in again.
+     */
+    fun logout(discardUnsent: Boolean = false) {
+        _logoutConfirmation.value = null
+        viewModelScope.launch {
+            endSession(
+                if (discardUnsent) "تم تسجيل الخروج وحذف التعديلات غير المرسلة"
+                else if (repository.unsentCount() > 0) "تم تسجيل الخروج؛ التعديلات غير المرسلة محفوظة وستُرسل بعد دخولك مرة أخرى"
+                else "تم تسجيل الخروج",
+                revoke = true,
+                discardUnsent = discardUnsent
+            )
+        }
+    }
+
+    fun keepForeignUnsentWork() {
+        _foreignUnsentWork.value = false
+    }
+
+    fun discardForeignUnsentWork() {
+        val me = _currentUser.value ?: return
+        viewModelScope.launch {
+            repository.discardOtherUsersWork(me.id)
+            _foreignUnsentWork.value = false
+            _unsentCount.value = repository.unsentCount()
+            showMessage("تم حذف تعديلات الحساب الآخر غير المرسلة")
+        }
+    }
+
+    /**
+     * Ends the session. Cached server data and downloaded exam files are removed; unsent writes are
+     * kept unless the user chose to discard them, even when the server ended the session (MOB-01).
+     */
+    private suspend fun endSession(message: String, revoke: Boolean, discardUnsent: Boolean = false) {
         if (!_isLoggedIn.value && _currentUser.value == null) return
         _isLoggedIn.value = false
         _currentUser.value = null
         closeCommitteeDetail()
         if (revoke) authService.logout() else authService.forgetSession()
-        repository.clearAllData()
+        repository.clearAllData(keepQueue = !discardUnsent)
+        deleteExamFiles()
         _databaseStatus.value = null
-        showMessage(message)
+        _assignableUsers.value = emptyList()
+        val unsent = repository.unsentCount()
+        _unsentCount.value = unsent
+        showMessage(if (!revoke && unsent > 0) "$message — لديك $unsent تعديلات محفوظة ستُرسل بعد تسجيل الدخول" else message)
+    }
+
+    /** Downloaded exam PDFs are not left on the device after the session (MOB-12). */
+    private suspend fun deleteExamFiles() = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+        java.io.File(getApplication<Application>().cacheDir, "exams").deleteRecursively()
+    }
+
+    /** Changes the own password (and completes a forced change after an admin reset). */
+    fun changePassword(current: String, next: String, onDone: (Boolean) -> Unit) {
+        if (_isSubmitting.value) return
+        viewModelScope.launch {
+            _isSubmitting.value = true
+            authService.changePassword(current, next)
+                .onSuccess { me ->
+                    repository.cacheUser(me)
+                    _currentUser.value = me
+                    showMessage("تم تغيير كلمة المرور")
+                    onDone(true)
+                    refreshFromServer()
+                }
+                .onFailure {
+                    showMessage(it.message ?: "تعذر تغيير كلمة المرور")
+                    onDone(false)
+                }
+            _isSubmitting.value = false
+        }
+    }
+
+    /** Loads who the current user may assign tasks to. */
+    fun loadAssignableUsers() {
+        viewModelScope.launch { _assignableUsers.value = authService.assignableUsers() }
     }
 
     // ---------------- committees
@@ -319,15 +433,23 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         write("تم حذف اللجنة") { repository.deleteCommittee(committeeId) }
     }
 
-    fun recordAssistantReception(committeeId: String, phone: String) {
+    fun recordAssistantReception(committeeId: String, phone: String, cancel: Boolean = false) {
         val me = _currentUser.value ?: return
-        write("تم توثيق استلام اللجنة ✓") { repository.recordAssistantHandover(committeeId, me, phone) }
+        write(if (cancel) "تم إلغاء توثيق الاستلام" else "تم توثيق استلام اللجنة ✓") {
+            repository.recordAssistantHandover(committeeId, me, phone, cancel)
+        }
     }
 
-    fun approveExamReadiness(committeeId: String) {
+    fun approveExamReadiness(committeeId: String, revoke: Boolean = false) {
         val me = _currentUser.value ?: return
-        write("تم اعتماد جاهزية الامتحان ✓") { repository.approveExamReadiness(committeeId, me) }
+        write(if (revoke) "تم إلغاء اعتماد الجاهزية" else "تم اعتماد جاهزية الامتحان ✓") {
+            repository.approveExamReadiness(committeeId, me, revoke)
+        }
     }
+
+    /** Ticks or unticks one question; only that question is sent. */
+    fun updateQuestion(committeeId: String, questionId: String, completed: Boolean) =
+        write(if (completed) "تم تصحيح السؤال ✓" else "تم إلغاء تصحيح السؤال") { repository.updateQuestion(committeeId, questionId, completed) }
 
     fun updateScoring(committeeId: String, scoring: ScoringDetails) =
         write("تم حفظ التصحيح ✓") { repository.updateScoring(committeeId, scoring) }
@@ -354,7 +476,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
             val dir = java.io.File(getApplication<Application>().cacheDir, "exams").apply { mkdirs() }
             val file = java.io.File(dir, "${exam.id}.pdf")
-            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { file.writeBytes(bytes) }
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                // Only the exam being opened is kept on the device (MOB-12).
+                dir.listFiles()?.filter { it != file }?.forEach { it.delete() }
+                file.writeBytes(bytes)
+            }
             onReady(file)
         }
     }
@@ -369,14 +495,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     // ---------------- users & permissions
 
-    fun approveUser(user: AppUser, committees: List<Int>, permissions: List<String>, role: UserRole) =
-        write("تم اعتماد حساب ${user.name} ✓") { repository.approveUser(user.id, committees, permissions, role) }
+    /** Null arguments are left unchanged on the server (MOB-09). */
+    fun approveUser(user: AppUser, committeeIds: List<String>?, permissions: List<String>?, role: UserRole?) =
+        write("تم اعتماد حساب ${user.name} ✓") { repository.approveUser(user.id, committeeIds, permissions, role) }
 
     fun rejectUser(user: AppUser, reason: String? = null) =
         write("تم تسجيل الاعتذار عن طلب ${user.name}") { repository.rejectUser(user.id, reason) }
-
-    fun createCustomPermission(name: String, description: String) =
-        write("تمت إضافة الصلاحية المخصصة ($name)") { repository.saveCustomPermission(name, description) }
 
     fun markNotificationRead(id: String) {
         viewModelScope.launch { repository.markNotificationRead(id) }
@@ -401,6 +525,25 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             repository.discardFailedWrites()
             refreshFromServer()
             showMessage("تم تجاهل التعديلات التي تعذر إرسالها واستعادة بيانات الخادم")
+        }
+    }
+
+    /** Sends a refused write again after reloading the server's current data (e.g. after a conflict). */
+    fun retryRefusedWrite(id: Long) {
+        viewModelScope.launch {
+            refreshFromServer()
+            val report = repository.retryRefusedWrite(id)
+            val outcome = report.outcomes[id]
+            showMessage(if (outcome is WriteResult.Rejected) "رفض الخادم التعديل مرة أخرى: ${outcome.message}" else "تمت إعادة إرسال التعديل")
+            refreshFromServer()
+        }
+    }
+
+    fun discardRefusedWrite(id: Long) {
+        viewModelScope.launch {
+            repository.discardRefusedWrite(id)
+            refreshFromServer()
+            showMessage("تم حذف التعديل المرفوض واستعادة بيانات الخادم")
         }
     }
 }

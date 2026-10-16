@@ -94,11 +94,13 @@ fun CommitteesScreen(
     onOpenCommitteeDetail: (String) -> Unit,
     onSaveCommittee: (Committee) -> Unit,
     onDeleteCommittee: (String) -> Unit,
+    allCommittees: List<Committee> = committees,
     modifier: Modifier = Modifier
 ) {
     var showAddDialog by remember { mutableStateOf(false) }
 
-    val canAdd = currentUser?.hasPermission(SystemPermissions.ADD_NEW_COMMITTEE) ?: false
+    // Controls follow the server's evaluated actions and committee scope (MOB-10).
+    val canAdd = com.example.data.remote.Permissions.can("committees.create")
 
     // Only stages that have committees are offered as filters; keeps the row short and every chip meaningful.
     val filterTabs = listOf("all" to "الكل (${committees.size})") + OrderedStageKeys.mapNotNull { (key, _) ->
@@ -204,7 +206,7 @@ fun CommitteesScreen(
                             committee = committee,
                             onOpenDetail = { onOpenCommitteeDetail(committee.id) },
                             onDelete = { onDeleteCommittee(committee.id) },
-                            canDelete = currentUser?.hasPermission(SystemPermissions.MANAGE_COMMITTEES) ?: false
+                            canDelete = com.example.data.remote.Permissions.canOn("committees.delete", committee.id)
                         )
                     }
                     item {
@@ -218,7 +220,7 @@ fun CommitteesScreen(
     if (showAddDialog) {
         AddCommitteeDialog(
             activeCourses = activeCourses,
-            existingCount = committees.size,
+            allCommittees = allCommittees,
             onDismiss = { showAddDialog = false },
             onSave = {
                 onSaveCommittee(it)
@@ -418,11 +420,12 @@ fun CommitteeCard(
 @Composable
 fun AddCommitteeDialog(
     activeCourses: List<Course>,
-    existingCount: Int,
+    /** Every committee (not the filtered list), to suggest the next free number in the chosen course (MOB-11). */
+    allCommittees: List<Committee>,
     onDismiss: () -> Unit,
     onSave: (Committee) -> Unit
 ) {
-    var number by remember { mutableIntStateOf(existingCount + 1) }
+    var number by remember { mutableIntStateOf(1) }
     var name by remember { mutableStateOf("") }
     var branch by remember { mutableStateOf("") }
     var book by remember { mutableStateOf("") }
@@ -431,6 +434,10 @@ fun AddCommitteeDialog(
     var studentsCount by remember { mutableIntStateOf(0) }
     var isWomen by remember { mutableStateOf(false) }
     var courseId by remember { mutableStateOf(activeCourses.firstOrNull()?.id ?: "") }
+    // Next free number within the chosen course (numbers are unique per course).
+    androidx.compose.runtime.LaunchedEffect(courseId) {
+        number = (allCommittees.filter { it.courseId == courseId }.maxOfOrNull { it.committeeNumber } ?: 0) + 1
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -551,8 +558,10 @@ fun AddCommitteeDialog(
             Button(
                 enabled = courseId.isNotBlank() && number > 0,
                 onClick = {
+                    // Same starting point as the web: registration done, five questions (MOB-07);
+                    // a random id cannot collide with another device's (MOB-11).
                     val newCommittee = Committee(
-                        id = "comm-${System.currentTimeMillis()}",
+                        id = "comm-${java.util.UUID.randomUUID()}",
                         committeeNumber = number,
                         committeeName = name.ifBlank { "لجنة رقم $number" },
                         branch = branch,
@@ -562,7 +571,12 @@ fun AddCommitteeDialog(
                         studentsCount = studentsCount,
                         isWomenCommittee = isWomen,
                         courseId = courseId,
-                        stages = StagesMap()
+                        stages = StagesMap().updateStage("registration", true, null),
+                        scoringDetails = com.example.data.model.ScoringDetails(
+                            questions = (1..5).map { i ->
+                                com.example.data.model.QuestionScoringItem(id = "q-$i", questionNumber = i, label = "السؤال $i")
+                            }
+                        )
                     )
                     onSave(newCommittee)
                 },

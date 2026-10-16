@@ -6,6 +6,7 @@ import androidx.test.core.app.ApplicationProvider
 import com.example.data.local.AppDatabase
 import com.example.data.local.entities.PendingOpEntity
 import com.example.data.remote.ApiClient
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -26,13 +27,14 @@ class PendingOpsQueueTest {
     private lateinit var db: AppDatabase
     private lateinit var sender: ScriptedSender
     private lateinit var repository: BukhariRepository
+    private var currentUser: String? = "u1"
 
     @Before
     fun setUp() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java).allowMainThreadQueries().build()
         sender = ScriptedSender()
-        repository = BukhariRepository(db, sender = sender)
+        repository = BukhariRepository(db, sender = sender, userIdProvider = { currentUser })
     }
 
     @After
@@ -41,8 +43,8 @@ class PendingOpsQueueTest {
         ApiClient.onUnauthorized = null
     }
 
-    private fun queue(label: String, path: String = "api/committees/$label") = runBlocking {
-        db.pendingOpDao().insert(PendingOpEntity(label = label, method = "POST", path = path, bodyJson = "{}"))
+    private fun queue(label: String, path: String = "api/committees/$label", method: String = "POST", userId: String? = "u1") = runBlocking {
+        db.pendingOpDao().insert(PendingOpEntity(label = label, method = method, path = path, bodyJson = "{}", userId = userId))
     }
 
     private fun reply(code: Int?, message: String? = null, body: String? = null) = ApiClient.SendResult(code, message, body)
@@ -56,7 +58,7 @@ class PendingOpsQueueTest {
 
         assertEquals(0, report.waiting)
         assertTrue(report.outcomes.values.single() is WriteResult.Sent)
-        assertEquals(0, db.pendingOpDao().getActive().size)
+        assertEquals(0, db.pendingOpDao().getActive("u1").size)
     }
 
     @Test
@@ -81,7 +83,7 @@ class PendingOpsQueueTest {
         repository.flushPendingOps()
 
         assertEquals(listOf("POST api/committees/a", "POST api/committees/b"), sender.calls)
-        assertEquals(listOf("b"), db.pendingOpDao().getActive().map { it.label })
+        assertEquals(listOf("b"), db.pendingOpDao().getActive("u1").map { it.label })
     }
 
     @Test
@@ -96,20 +98,100 @@ class PendingOpsQueueTest {
 
         assertEquals(listOf("stuck"), db.pendingOpDao().getFailed().map { it.label })
         assertTrue(sender.calls.contains("POST api/committees/next"))
-        assertEquals(0, db.pendingOpDao().countActive())
+        assertEquals(0, db.pendingOpDao().countActive("u1"))
     }
 
     @Test
-    fun `a write the server refuses is dropped and reported, not retried`() = runBlocking {
+    fun `a write the server refuses is kept as refused with its message, not dropped (MOB-03)`() = runBlocking {
         queue("refused")
+        queue("next")
         sender.replies += reply(409, "هذه اللجنة عُدّلت من مستخدم آخر")
+        sender.replies += reply(200)
 
         val report = repository.flushPendingOps()
 
-        val outcome = report.outcomes.values.single()
+        val outcome = report.outcomes.values.first()
         assertTrue(outcome is WriteResult.Rejected)
         assertEquals("هذه اللجنة عُدّلت من مستخدم آخر", (outcome as WriteResult.Rejected).message)
-        assertEquals(0, db.pendingOpDao().getActive().size)
+        // It no longer blocks the queue, but it is still there for the user to decide.
+        assertEquals(0, db.pendingOpDao().getActive("u1").size)
+        val refused = repository.refusedWrites().single()
+        assertEquals("refused", refused.label)
+        assertEquals(409, refused.httpCode)
+    }
+
+    @Test
+    fun `a refused write can be sent again or discarded`() = runBlocking {
+        queue("refused")
+        sender.replies += reply(409, "conflict")
+        repository.flushPendingOps()
+        val id = repository.refusedWrites().single().id
+
+        sender.replies += reply(200)
+        assertTrue(repository.retryRefusedWrite(id).outcomes[id] is WriteResult.Sent)
+        assertEquals(emptyList<RefusedWrite>(), repository.refusedWrites())
+    }
+
+    @Test
+    fun `a delete of something already gone counts as done`() = runBlocking {
+        queue("gone", path = "api/tasks/t1", method = "DELETE")
+        sender.replies += reply(404, "المهمة غير موجودة")
+
+        val report = repository.flushPendingOps()
+
+        assertTrue(report.outcomes.values.single() is WriteResult.Sent)
+        assertEquals(emptyList<RefusedWrite>(), repository.refusedWrites())
+    }
+
+    @Test
+    fun `every write carries its own idempotency key (MOB-04)`() = runBlocking {
+        queue("a")
+        queue("b")
+        sender.replies += reply(200)
+        sender.replies += reply(200)
+
+        repository.flushPendingOps()
+
+        assertEquals(2, sender.keys.toSet().size)
+        assertTrue(sender.keys.all { !it.isNullOrBlank() })
+    }
+
+    @Test
+    fun `two flushers on one database send each write once (MOB-04)`() = runBlocking {
+        queue("a")
+        queue("b")
+        repeat(4) { sender.replies += reply(200) }
+        val worker = BukhariRepository(db, sender = sender, userIdProvider = { "u1" })
+
+        kotlinx.coroutines.coroutineScope {
+            launch(kotlinx.coroutines.Dispatchers.IO) { repository.flushPendingOps() }
+            launch(kotlinx.coroutines.Dispatchers.IO) { worker.flushPendingOps() }
+        }
+
+        assertEquals(listOf("POST api/committees/a", "POST api/committees/b"), sender.calls)
+    }
+
+    @Test
+    fun `another user's unsent work is never sent under this session (MOB-01)`() = runBlocking {
+        queue("mine", userId = "u1")
+        queue("theirs", userId = "u2")
+        sender.replies += reply(200)
+
+        repository.flushPendingOps()
+
+        assertEquals(listOf("POST api/committees/mine"), sender.calls)
+        assertEquals(listOf("u2"), repository.otherUsersWithUnsentWork("u1"))
+    }
+
+    @Test
+    fun `ending the session keeps unsent work unless the user discards it (MOB-01, MOB-02)`() = runBlocking {
+        queue("offline-reception")
+
+        repository.clearAllData(keepQueue = true)
+        assertEquals(1, repository.unsentCount())
+
+        repository.clearAllData(keepQueue = false)
+        assertEquals(0, repository.unsentCount())
     }
 
     @Test
@@ -122,7 +204,8 @@ class PendingOpsQueueTest {
         repository.flushPendingOps()
 
         assertTrue(expired)
-        assertEquals(1, db.pendingOpDao().countActive())
+        // The write is still there, waiting for the user to sign in again (MOB-01).
+        assertEquals(1, db.pendingOpDao().countActive("u1"))
     }
 
     @Test
@@ -140,10 +223,15 @@ class PendingOpsQueueTest {
 /** Replays scripted replies in order and records every request it was asked to send. */
 private class ScriptedSender : RequestSender {
     val replies = ArrayDeque<ApiClient.SendResult>()
-    val calls = mutableListOf<String>()
+    val calls = java.util.Collections.synchronizedList(mutableListOf<String>())
+    val keys = java.util.Collections.synchronizedList(mutableListOf<String?>())
+    val bodies = java.util.Collections.synchronizedList(mutableListOf<String?>())
 
-    override fun send(method: String, path: String, bodyJson: String?): ApiClient.SendResult {
+    @Synchronized
+    override fun send(method: String, path: String, bodyJson: String?, idempotencyKey: String?): ApiClient.SendResult {
         calls += "$method $path"
+        keys += idempotencyKey
+        bodies += bodyJson
         return replies.removeFirst()
     }
 }

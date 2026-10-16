@@ -22,23 +22,40 @@ data class LoginResponse(
     val token: String? = null,
     val refreshToken: String? = null,
     val user: AppUserEntity? = null,
+    val mustChangePassword: Boolean = false,
     val message: String? = null
 )
 
 /** What the server allows this user to do (server/policy.ts), evaluated by the server. */
 data class ServerPermissions(
     val role: String = "",
-    val actions: Map<String, Boolean> = emptyMap()
+    val actions: Map<String, Boolean> = emptyMap(),
+    /** "all" or a list of committee ids. */
+    val committeeScope: Any? = null,
+    /** "all" or a list of exam ids. */
+    val exams: Any? = null,
+    val mustChangePassword: Boolean = false
 )
 
-data class MeResponse(val success: Boolean = false, val user: AppUserEntity? = null, val permissions: ServerPermissions = ServerPermissions())
+data class MeResponse(
+    val success: Boolean = false,
+    val user: AppUserEntity? = null,
+    val permissions: ServerPermissions = ServerPermissions(),
+    val mustChangePassword: Boolean = false
+)
+
+data class ChangePasswordRequest(val currentPassword: String, val newPassword: String)
+
+/** Someone a task may be assigned to (GET /api/users/assignable). */
+data class AssignableUserDto(val id: String, val name: String = "", val role: String = "")
+data class AssignableUsersResponse(val success: Boolean = false, val users: List<AssignableUserDto> = emptyList())
 
 data class RegisterResponse(val success: Boolean = false, val requestCode: String? = null, val message: String? = null)
 
 /** Public status of a join request; nothing personal is returned. */
 data class JoinStatusResponse(val success: Boolean = false, val status: String? = null, val interviewDate: String? = null)
 
-/** A saved course-sheet row (Web: SummerCourseRow). Read-only on mobile. */
+/** A saved course-sheet row (Web: SummerCourseRow). Read-only on mobile (D-09: sheet editing stays on the web). */
 data class SheetRowDto(
     val id: String,
     val number: Int = 0,
@@ -115,6 +132,13 @@ interface ApiService {
 
     @POST("api/auth/logout")
     suspend fun logout(@Body body: Map<String, String>): Response<ApiAck>
+
+    /** Returns a new session (other sessions of the user are ended by the server). */
+    @POST("api/auth/change-password")
+    suspend fun changePassword(@Body body: ChangePasswordRequest): Response<LoginResponse>
+
+    @GET("api/users/assignable")
+    suspend fun getAssignableUsers(): Response<AssignableUsersResponse>
 
     @GET("api/courses")
     suspend fun getCourses(): Response<CoursesResponse>
