@@ -1,8 +1,8 @@
 name: CI
 
+# Every pushed branch is checked; pull requests too, so branch protection can require the checks.
 on:
   push:
-    branches: [main]
   pull_request:
 
 permissions:
