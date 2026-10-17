@@ -52,9 +52,12 @@ fun DatabaseInspectorScreen(
     onLoadStatus: () -> Unit,
     onRetryFailed: () -> Unit,
     onDiscardFailed: () -> Unit,
+    onRetryRefused: (Long) -> Unit = {},
+    onDiscardRefused: (Long) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var confirmDiscard by remember { mutableStateOf(false) }
+    var refusedToDiscard by remember { mutableStateOf<Long?>(null) }
     LaunchedEffect(Unit) { onLoadStatus() }
 
     Column(
@@ -102,8 +105,31 @@ fun DatabaseInspectorScreen(
             }
         }
 
+        // Writes the server refused are kept here, never dropped silently (MOB-03).
+        if (databaseStatus.refusedWrites.isNotEmpty()) {
+            Section("تعديلات رفضها الخادم (${databaseStatus.refusedWrites.size})") {
+                Text(
+                    "رفض الخادم هذه التعديلات، غالباً لأن البيانات عُدّلت من مكان آخر أو تغيّرت صلاحياتك. أعد الإرسال بعد التحديث، أو احذفها لتعود بيانات الخادم.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color(0xFF475569)
+                )
+                databaseStatus.refusedWrites.forEach { r ->
+                    Spacer(Modifier.height(8.dp))
+                    Text("• ${r.label}: ${r.message ?: "رفض الخادم التعديل"}${r.httpCode?.let { " (HTTP $it)" } ?: ""}", style = MaterialTheme.typography.bodySmall, color = Color(0xFFB91C1C))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(onClick = { onRetryRefused(r.id) }, modifier = Modifier.weight(1f)) { Text("إعادة الإرسال") }
+                        OutlinedButton(onClick = { refusedToDiscard = r.id }, modifier = Modifier.weight(1f)) { Text("حذف") }
+                    }
+                }
+            }
+        }
+
         Section("البيانات المحفوظة على الجهاز") {
             databaseStatus.localTables.forEach { Line(it.nameAr, it.count.toString()) }
+            if (databaseStatus.skippedRecords > 0) {
+                // Records the server sent that this version could not read (MOB-14).
+                Line("سجلات لم تُقرأ في آخر تحديث", databaseStatus.skippedRecords.toString())
+            }
         }
 
         databaseStatus.server?.let { server ->
@@ -132,6 +158,21 @@ fun DatabaseInspectorScreen(
                 }) { Text("تجاهل", color = Color(0xFFB91C1C)) }
             },
             dismissButton = { TextButton(onClick = { confirmDiscard = false }) { Text("إلغاء") } }
+        )
+    }
+
+    refusedToDiscard?.let { id ->
+        AlertDialog(
+            onDismissRequest = { refusedToDiscard = null },
+            title = { Text("حذف التعديل المرفوض؟") },
+            text = { Text("لن يُرسل هذا التعديل، وستعود بيانات الخادم الحالية. لا يمكن التراجع.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    refusedToDiscard = null
+                    onDiscardRefused(id)
+                }) { Text("حذف", color = Color(0xFFB91C1C)) }
+            },
+            dismissButton = { TextButton(onClick = { refusedToDiscard = null }) { Text("إلغاء") } }
         )
     }
 }

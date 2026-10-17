@@ -12,8 +12,9 @@ android {
     applicationId = "org.bukhari.competition"
     minSdk = 24
     targetSdk = 36
-    versionCode = 1
-    versionName = "1.0"
+    // Raise on every release: the server can require a minimum versionCode (MIN_ANDROID_VERSION_CODE).
+    versionCode = 2
+    versionName = "1.1.0"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -76,12 +77,7 @@ android {
 // This makes it easy to add them back in the future if needed.
 dependencies {
   implementation(platform(libs.androidx.compose.bom))
-  // implementation(libs.accompanist.permissions)
   implementation(libs.androidx.activity.compose)
-  // implementation(libs.androidx.camera.camera2)
-  // implementation(libs.androidx.camera.core)
-  // implementation(libs.androidx.camera.lifecycle)
-  // implementation(libs.androidx.camera.view)
   implementation(libs.androidx.compose.material.icons.core)
   implementation(libs.androidx.compose.material.icons.extended)
   implementation(libs.androidx.compose.material3)
@@ -89,15 +85,15 @@ dependencies {
   implementation(libs.androidx.compose.ui.graphics)
   implementation(libs.androidx.compose.ui.tooling.preview)
   implementation(libs.androidx.core.ktx)
-  // implementation(libs.androidx.datastore.preferences)
   implementation(libs.androidx.lifecycle.runtime.compose)
   implementation(libs.androidx.lifecycle.runtime.ktx)
   implementation(libs.androidx.lifecycle.viewmodel.compose)
-  implementation(libs.androidx.navigation.compose)
   implementation(libs.androidx.room.ktx)
+  // Unused by the code; kept because it fixes the Compose versions the build resolves. Remove with the next
+  // dependency refresh (needs network to resolve the BOM versions).
+  implementation(libs.androidx.navigation.compose)
   implementation(libs.androidx.room.runtime)
   implementation(libs.androidx.work.runtime.ktx)
-  // implementation(libs.coil.compose)
   implementation(libs.converter.moshi)
 
   implementation(libs.kotlinx.coroutines.android)
@@ -132,5 +128,12 @@ gradle.taskGraph.whenReady {
   val url = (project.findProperty("API_BASE_URL") as String?) ?: System.getenv("API_BASE_URL")
   if (allTasks.any { it.name.contains("Release") } && (url == null || !url.startsWith("https://"))) {
     throw GradleException("Set API_BASE_URL (https://...) for release builds, e.g. -PAPI_BASE_URL=https://example.org/")
+  }
+  // A build meant for users must be signed (MOB-13). CI's compile check passes no flag and stays unsigned.
+  val requireSigning = (project.findProperty("requireReleaseSigning") as String?) == "true"
+  if (requireSigning && allTasks.any { it.name.contains("Release") } &&
+    (System.getenv("KEYSTORE_PATH").isNullOrBlank() || System.getenv("STORE_PASSWORD").isNullOrBlank() || System.getenv("KEY_PASSWORD").isNullOrBlank())
+  ) {
+    throw GradleException("requireReleaseSigning: set KEYSTORE_PATH, STORE_PASSWORD and KEY_PASSWORD to build a release for users.")
   }
 }

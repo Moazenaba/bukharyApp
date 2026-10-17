@@ -46,7 +46,13 @@ data class AppUser(
     val passportNumber: String = "",
     val role: UserRole = UserRole.ASSISTANT,
     val status: String = "approved", // pending, approved, rejected
+    /** Committee numbers, for display only (numbers repeat across courses). */
     val assignedCommittees: List<Int> = emptyList(),
+    /** Assigned committees by id: what the server checks. */
+    val assignedCommitteeIds: List<String> = emptyList(),
+    val allCommitteesAllowed: Boolean = false,
+    /** After an admin password reset the user must choose a new password first. */
+    val mustChangePassword: Boolean = false,
     val permissions: List<String> = emptyList(),
     val createdAt: String = "",
     val approvedAt: String? = null,
@@ -65,16 +71,16 @@ data class AppUser(
      */
     fun canAccessScreen(screen: AppNavScreen): Boolean {
         if (role == UserRole.SUPER_ADMIN) return true
+        val p = com.example.data.remote.Permissions
         return when (screen) {
             AppNavScreen.HOME -> true
-            AppNavScreen.COURSE_TRACKER -> hasPermission(SystemPermissions.DATABASE_SHEETS) || role == UserRole.AUDITOR
-            AppNavScreen.COMMITTEES -> hasPermission(SystemPermissions.MANAGE_COMMITTEES) ||
-                role == UserRole.ASSISTANT || role == UserRole.TEACHER || role == UserRole.AUDITOR
-            AppNavScreen.EXAMS -> hasPermission(SystemPermissions.EXAMS_PDF)
-            AppNavScreen.SCHEDULE -> hasPermission(SystemPermissions.CALENDAR_SCHEDULE) || role == UserRole.ASSISTANT
-            AppNavScreen.ASSISTANTS -> com.example.data.remote.Permissions.can("users.read")
+            AppNavScreen.COURSE_TRACKER -> p.can("summerRows.write") || p.can("audit.read")
+            AppNavScreen.COMMITTEES -> true
+            AppNavScreen.EXAMS -> p.can("exams.write") || p.can("exams.file")
+            AppNavScreen.SCHEDULE -> p.can("tasks.write") || role == UserRole.ASSISTANT
+            AppNavScreen.ASSISTANTS -> p.can("users.read")
             AppNavScreen.DATABASE_INSPECTOR -> true // shows this device's own sync state; server details only for admins
-            AppNavScreen.STATISTICS -> hasPermission(SystemPermissions.PROGRESS_STATS) || role == UserRole.AUDITOR
+            AppNavScreen.STATISTICS -> p.can("stats.read")
         }
     }
 }

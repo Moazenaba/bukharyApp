@@ -28,6 +28,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -87,7 +88,11 @@ class MainActivity : ComponentActivity() {
                 val exams by viewModel.exams.collectAsStateWithLifecycle()
                 val users by viewModel.users.collectAsStateWithLifecycle()
                 val notifications by viewModel.notifications.collectAsStateWithLifecycle()
-                val customPermissions by viewModel.customPermissions.collectAsStateWithLifecycle()
+                val unsentCount by viewModel.unsentCount.collectAsStateWithLifecycle()
+                val logoutConfirmation by viewModel.logoutConfirmation.collectAsStateWithLifecycle()
+                val foreignUnsentWork by viewModel.foreignUnsentWork.collectAsStateWithLifecycle()
+                val assignableUsers by viewModel.assignableUsers.collectAsStateWithLifecycle()
+                var showChangePassword by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(false) }
                 val sheetRows by viewModel.sheetRows.collectAsStateWithLifecycle()
                 val databaseStatus by viewModel.databaseStatus.collectAsStateWithLifecycle()
                 val isSyncing by viewModel.isSyncing.collectAsStateWithLifecycle()
@@ -112,6 +117,42 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
+                // Logout with unsent writes: the user chooses; nothing is deleted without consent (MOB-02).
+                logoutConfirmation?.let { count ->
+                    androidx.compose.material3.AlertDialog(
+                        onDismissRequest = { viewModel.cancelLogout() },
+                        title = { Text("تعديلات لم تُرسل بعد") },
+                        text = {
+                            Text("لديك $count من التعديلات لم تصل إلى الخادم. يمكنك إرسالها الآن، أو الخروج مع إبقائها على الجهاز لتُرسل بعد دخولك مرة أخرى، أو حذفها.")
+                        },
+                        confirmButton = {
+                            Column(horizontalAlignment = Alignment.End) {
+                                androidx.compose.material3.TextButton(onClick = { viewModel.syncThenLogout() }) { Text("إرسال ثم الخروج") }
+                                androidx.compose.material3.TextButton(onClick = { viewModel.logout(discardUnsent = false) }) { Text("الخروج مع الإبقاء عليها") }
+                                androidx.compose.material3.TextButton(onClick = { viewModel.logout(discardUnsent = true) }) {
+                                    Text("حذفها والخروج", color = androidx.compose.ui.graphics.Color(0xFFB91C1C))
+                                }
+                            }
+                        },
+                        dismissButton = { androidx.compose.material3.TextButton(onClick = { viewModel.cancelLogout() }) { Text("إلغاء") } }
+                    )
+                }
+
+                // Another account left unsent work on this device: it is never sent as this user (MOB-01).
+                if (foreignUnsentWork) {
+                    androidx.compose.material3.AlertDialog(
+                        onDismissRequest = { viewModel.keepForeignUnsentWork() },
+                        title = { Text("تعديلات حساب آخر") },
+                        text = { Text("على هذا الجهاز تعديلات لم تُرسل من حساب آخر. لن تُرسل باسمك؛ تبقى حتى يدخل صاحبها، أو يمكنك حذفها.") },
+                        confirmButton = { androidx.compose.material3.TextButton(onClick = { viewModel.keepForeignUnsentWork() }) { Text("إبقاؤها") } },
+                        dismissButton = {
+                            androidx.compose.material3.TextButton(onClick = { viewModel.discardForeignUnsentWork() }) {
+                                Text("حذفها", color = androidx.compose.ui.graphics.Color(0xFFB91C1C))
+                            }
+                        }
+                    )
+                }
+
                 BackHandler(enabled = isLoggedIn && (selectedCommitteeId != null || currentScreen != AppNavScreen.HOME)) {
                     if (selectedCommitteeId != null) viewModel.closeCommitteeDetail()
                     else viewModel.navigateTo(AppNavScreen.HOME)
@@ -130,7 +171,8 @@ class MainActivity : ComponentActivity() {
                                 onSync = { viewModel.syncNow() },
                                 onNavigate = { screen -> viewModel.navigateTo(screen) },
                                 onMarkNotificationRead = { id -> viewModel.markNotificationRead(id) },
-                                onLogout = { viewModel.logout() }
+                                onLogout = { viewModel.requestLogout() },
+                                onChangePassword = { showChangePassword = true }
                             )
                         }
                     },
@@ -166,6 +208,23 @@ class MainActivity : ComponentActivity() {
                             },
                             onTrackRequest = { code, onResult -> viewModel.trackJoinRequest(code, onResult) },
                             isSubmitting = isSubmitting,
+                            unsentCount = unsentCount,
+                            modifier = Modifier.padding(innerPadding)
+                        )
+
+                        // After an admin reset nothing else opens until a new password is chosen (WEB-02, MOB-08).
+                        currentUser?.mustChangePassword == true || showChangePassword -> com.example.ui.screens.account.ChangePasswordScreen(
+                            forced = currentUser?.mustChangePassword == true,
+                            isSubmitting = isSubmitting,
+                            onSubmit = { current, next, onDone ->
+                                viewModel.changePassword(current, next) { ok ->
+                                    if (ok) showChangePassword = false
+                                    onDone(ok)
+                                }
+                            },
+                            onCancel = {
+                                if (currentUser?.mustChangePassword == true) viewModel.requestLogout() else showChangePassword = false
+                            },
                             modifier = Modifier.padding(innerPadding)
                         )
 
@@ -206,6 +265,7 @@ class MainActivity : ComponentActivity() {
                                     AppNavScreen.COMMITTEES -> CommitteesScreen(
                                         currentUser = currentUser,
                                         committees = filteredCommittees,
+                                        allCommittees = committees,
                                         activeCourses = courses,
                                         selectedStageFilter = selectedStageFilter,
                                         searchQuery = searchQuery,
@@ -225,6 +285,9 @@ class MainActivity : ComponentActivity() {
                                     AppNavScreen.SCHEDULE -> ScheduleScreen(
                                         currentUser = currentUser,
                                         tasks = tasks,
+                                        committees = committees,
+                                        assignableUsers = assignableUsers,
+                                        onLoadAssignableUsers = { viewModel.loadAssignableUsers() },
                                         onToggleTask = { viewModel.toggleTask(it) },
                                         onSaveTask = { viewModel.saveTask(it) },
                                         onDeleteTask = { viewModel.deleteTask(it) }
@@ -232,10 +295,9 @@ class MainActivity : ComponentActivity() {
                                     AppNavScreen.ASSISTANTS -> AssistantsScreen(
                                         currentUser = currentUser,
                                         users = users,
-                                        customPermissions = customPermissions,
+                                        committees = committees,
                                         onApproveUser = { user, comms, perms, role -> viewModel.approveUser(user, comms, perms, role) },
-                                        onRejectUser = { user -> viewModel.rejectUser(user) },
-                                        onCreateCustomPermission = { name, desc, _, _ -> viewModel.createCustomPermission(name, desc) }
+                                        onRejectUser = { user, reason -> viewModel.rejectUser(user, reason) }
                                     )
                                     AppNavScreen.DATABASE_INSPECTOR -> DatabaseInspectorScreen(
                                         databaseStatus = databaseStatus,
@@ -244,7 +306,9 @@ class MainActivity : ComponentActivity() {
                                         onRefresh = { viewModel.syncNow() },
                                         onLoadStatus = { viewModel.refreshDatabaseStatus() },
                                         onRetryFailed = { viewModel.retryFailedWrites() },
-                                        onDiscardFailed = { viewModel.discardFailedWrites() }
+                                        onDiscardFailed = { viewModel.discardFailedWrites() },
+                                        onRetryRefused = { viewModel.retryRefusedWrite(it) },
+                                        onDiscardRefused = { viewModel.discardRefusedWrite(it) }
                                     )
                                     AppNavScreen.STATISTICS -> StatisticsScreen(committees = committees)
                                 }
@@ -258,8 +322,9 @@ class MainActivity : ComponentActivity() {
                                         currentUser = currentUser,
                                         onClose = { viewModel.closeCommitteeDetail() },
                                         onToggleStage = { stageKey, curr -> viewModel.toggleStage(selectedCommittee.id, stageKey, curr) },
-                                        onAssistantReception = { phone -> viewModel.recordAssistantReception(selectedCommittee.id, phone) },
-                                        onApproveExam = { viewModel.approveExamReadiness(selectedCommittee.id) },
+                                        onAssistantReception = { phone, cancel -> viewModel.recordAssistantReception(selectedCommittee.id, phone, cancel) },
+                                        onApproveExam = { revoke -> viewModel.approveExamReadiness(selectedCommittee.id, revoke) },
+                                        onUpdateQuestion = { qId, done -> viewModel.updateQuestion(selectedCommittee.id, qId, done) },
                                         onUpdateScoring = { viewModel.updateScoring(selectedCommittee.id, it) },
                                         onUpdateAggregation = { viewModel.updateAggregation(selectedCommittee.id, it) },
                                         onUpdateCeremony = { viewModel.updateCeremony(selectedCommittee.id, it) }

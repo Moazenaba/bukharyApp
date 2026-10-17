@@ -3,7 +3,6 @@ package com.example.data.remote
 import android.content.Context
 import com.example.data.model.AppUser
 import com.example.data.model.UserRole
-import com.squareup.moshi.Types
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import retrofit2.Response
@@ -18,9 +17,7 @@ class AuthenticationService(
     private val sessionManager: SessionManager = SessionManager.get(context),
     private val apiService: ApiService = ApiClient.apiService
 ) {
-    private val actionsAdapter = ApiClient.moshi.adapter<Map<String, Boolean>>(
-        Types.newParameterizedType(Map::class.java, String::class.java, java.lang.Boolean::class.java)
-    )
+    private val permissionsAdapter = ApiClient.moshi.adapter(ServerPermissions::class.java)
 
     init {
         restorePermissions()
@@ -40,15 +37,16 @@ class AuthenticationService(
             val body = response.body()
             if (response.isSuccessful && body?.token != null && body.refreshToken != null && body.user != null) {
                 sessionManager.saveTokens(body.token, body.refreshToken)
-                val user = body.user.toDomain()
+                val user = body.user.toDomain().copy(mustChangePassword = body.mustChangePassword || body.user.mustChangePassword)
                 sessionManager.saveUserId(user.id)
                 // The server-evaluated permissions decide what the UI offers. All or nothing: if they
                 // cannot be loaded, no half-made session may be restored on the next launch.
-                if (refreshMe() == null) {
+                val me = refreshMe()
+                if (me == null) {
                     forgetSession()
                     return@withContext AuthResult.Error("تعذر تحميل صلاحيات الحساب، حاول مرة أخرى")
                 }
-                return@withContext AuthResult.Success(user)
+                return@withContext AuthResult.Success(me)
             }
             AuthResult.Error(serverMessage(response) ?: "بيانات الدخول غير صحيحة")
         } catch (e: Exception) {
@@ -56,40 +54,73 @@ class AuthenticationService(
         }
     }
 
-    /** Reloads the user and their permissions from the server. Null when offline or rejected. */
+    /**
+     * Reloads the user and their permissions from the server. Null when offline or rejected.
+     * An expired access token is refreshed for this call too (MOB-05).
+     */
     suspend fun refreshMe(): AppUser? = withContext(Dispatchers.IO) {
         try {
             val res = apiService.me()
             val body = res.body()
             if (!res.isSuccessful || body?.user == null) return@withContext null
-            val user = body.user.toDomain()
-            applyPermissions(user, body.permissions.actions)
-            sessionManager.savePermissionsJson(actionsAdapter.toJson(body.permissions.actions))
+            val must = body.mustChangePassword || body.permissions.mustChangePassword || body.user.mustChangePassword
+            val user = body.user.toDomain().copy(mustChangePassword = must)
+            applyPermissions(user, body.permissions)
+            sessionManager.savePermissionsJson(permissionsAdapter.toJson(body.permissions))
             user
         } catch (e: Exception) {
             null
         }
     }
 
-    private fun applyPermissions(user: AppUser, actions: Map<String, Boolean>) {
-        Permissions.actions = actions
+    private fun applyPermissions(user: AppUser, permissions: ServerPermissions) {
+        Permissions.actions = permissions.actions
         Permissions.role = user.role.roleKey
-        Permissions.assignedCommittees = user.assignedCommittees
+        Permissions.applyServerScope(permissions.committeeScope, permissions.exams)
     }
 
     /** Uses the last known permissions until the next successful /me (e.g. starting offline). */
     private fun restorePermissions() {
         val json = sessionManager.getPermissionsJson() ?: return
-        Permissions.actions = try {
-            actionsAdapter.fromJson(json) ?: emptyMap()
+        val saved = try {
+            permissionsAdapter.fromJson(json)
         } catch (e: Exception) {
-            emptyMap()
-        }
+            null
+        } ?: return
+        Permissions.actions = saved.actions
+        Permissions.applyServerScope(saved.committeeScope, saved.exams)
     }
 
     fun restoreUserPermissions(user: AppUser) {
         Permissions.role = user.role.roleKey
-        Permissions.assignedCommittees = user.assignedCommittees
+    }
+
+    /**
+     * Changes the own password (MOB-08). The server ends the other sessions and returns a new one,
+     * which replaces the current tokens.
+     */
+    suspend fun changePassword(current: String, next: String): Result<AppUser> = withContext(Dispatchers.IO) {
+        try {
+            val res = apiService.changePassword(ChangePasswordRequest(current, next))
+            val body = res.body()
+            if (!res.isSuccessful || body?.token == null || body.refreshToken == null) {
+                return@withContext Result.failure(Exception(serverMessage(res) ?: "تعذر تغيير كلمة المرور"))
+            }
+            sessionManager.saveTokens(body.token, body.refreshToken)
+            val me = refreshMe() ?: return@withContext Result.failure(Exception("تم تغيير كلمة المرور، لكن تعذر تحميل الحساب"))
+            Result.success(me)
+        } catch (e: Exception) {
+            Result.failure(Exception("تعذر الاتصال بالسيرفر"))
+        }
+    }
+
+    /** People the user may assign tasks to (id and name), limited by the server to their committees. */
+    suspend fun assignableUsers(): List<AssignableUserDto> = withContext(Dispatchers.IO) {
+        try {
+            apiService.getAssignableUsers().body()?.users ?: emptyList()
+        } catch (e: Exception) {
+            emptyList()
+        }
     }
 
     private fun serverMessage(response: Response<*>): String? = ApiClient.serverMessage(response.errorBody()?.string())
@@ -134,18 +165,19 @@ class AuthenticationService(
 
     fun getSavedUserId(): String? = sessionManager.getUserId()
 
-    /** Revokes the refresh token on the server (best effort) and forgets the session locally. */
+    /** Ends the session on the server (best effort; its access token stops working) and forgets it locally. */
     suspend fun logout() {
         val refresh = sessionManager.refreshToken
-        sessionManager.clear()
-        Permissions.clear()
-        if (refresh != null) withContext(Dispatchers.IO) {
+        withContext(Dispatchers.IO) {
             try {
-                apiService.logout(mapOf("refreshToken" to refresh))
+                // Sent while the access token is still stored, so the server ends this session.
+                if (refresh != null) apiService.logout(mapOf("refreshToken" to refresh))
             } catch (e: Exception) {
-                // offline: the token expires on its own
+                // offline: the refresh token expires on its own
             }
         }
+        sessionManager.clear()
+        Permissions.clear()
     }
 
     /** Local-only cleanup after the server already rejected the session. */

@@ -238,26 +238,56 @@ interface PendingOpDao {
     @Insert
     suspend fun insert(op: com.example.data.local.entities.PendingOpEntity): Long
 
-    @Query("SELECT * FROM pending_ops WHERE failed = 0 ORDER BY id ASC")
-    suspend fun getActive(): List<com.example.data.local.entities.PendingOpEntity>
+    /** Writes waiting to be sent for this user (or made before writes were tagged with a user). */
+    @Query("SELECT * FROM pending_ops WHERE failed = 0 AND rejected = 0 AND (userId IS NULL OR userId = :userId) ORDER BY id ASC")
+    suspend fun getActive(userId: String?): List<com.example.data.local.entities.PendingOpEntity>
+
+    @Query("SELECT * FROM pending_ops WHERE failed = 0 AND rejected = 0 ORDER BY id ASC")
+    suspend fun getAllActive(): List<com.example.data.local.entities.PendingOpEntity>
 
     @Query("SELECT * FROM pending_ops WHERE failed = 1 ORDER BY id ASC")
     suspend fun getFailed(): List<com.example.data.local.entities.PendingOpEntity>
 
-    @Query("SELECT COUNT(*) FROM pending_ops WHERE failed = 0")
-    suspend fun countActive(): Int
+    @Query("SELECT * FROM pending_ops WHERE rejected = 1 ORDER BY id ASC")
+    suspend fun getRejected(): List<com.example.data.local.entities.PendingOpEntity>
 
-    @Query("UPDATE pending_ops SET attempts = :attempts, failed = :failed, lastError = :error WHERE id = :id")
+    @Query("SELECT COUNT(*) FROM pending_ops WHERE failed = 0 AND rejected = 0 AND (userId IS NULL OR userId = :userId)")
+    suspend fun countActive(userId: String?): Int
+
+    /** Writes of any user that have not reached the server (shown before logout and sign-in). */
+    @Query("SELECT COUNT(*) FROM pending_ops WHERE rejected = 0")
+    suspend fun countUnsent(): Int
+
+    @Query("SELECT DISTINCT userId FROM pending_ops WHERE userId IS NOT NULL AND rejected = 0")
+    suspend fun unsentUserIds(): List<String>
+
+    /** Takes a write for sending; 0 rows means another flusher has it (MOB-04). */
+    @Query("UPDATE pending_ops SET claimedAt = :now WHERE id = :id AND (claimedAt IS NULL OR claimedAt < :staleBefore)")
+    suspend fun claim(id: Long, now: Long, staleBefore: Long): Int
+
+    @Query("UPDATE pending_ops SET claimedAt = NULL WHERE id = :id")
+    suspend fun release(id: Long)
+
+    @Query("UPDATE pending_ops SET attempts = :attempts, failed = :failed, lastError = :error, claimedAt = NULL WHERE id = :id")
     suspend fun recordFailure(id: Long, attempts: Int, failed: Boolean, error: String?)
+
+    @Query("UPDATE pending_ops SET rejected = 1, httpCode = :code, lastError = :error, claimedAt = NULL WHERE id = :id")
+    suspend fun markRejected(id: Long, code: Int, error: String?)
 
     @Query("UPDATE pending_ops SET failed = 0, attempts = 0, lastError = NULL WHERE failed = 1")
     suspend fun unparkAll()
+
+    @Query("UPDATE pending_ops SET rejected = 0, httpCode = NULL, lastError = NULL, attempts = 0 WHERE id = :id")
+    suspend fun unreject(id: Long)
 
     @Query("DELETE FROM pending_ops WHERE failed = 1")
     suspend fun deleteFailed()
 
     @Query("DELETE FROM pending_ops WHERE id = :id")
     suspend fun deleteById(id: Long)
+
+    @Query("DELETE FROM pending_ops WHERE userId IS NOT NULL AND userId <> :userId")
+    suspend fun deleteOtherUsers(userId: String)
 
     @Query("DELETE FROM pending_ops")
     suspend fun clearAll()

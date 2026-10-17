@@ -145,9 +145,11 @@ fun InteractiveStageStepper(
                         Row(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(
-                                text = stageSet?.emoji ?: "📌",
-                                fontSize = 13.sp
+                            Icon(
+                                imageVector = stageIcon(key),
+                                contentDescription = null,
+                                tint = if (stageItem.completed) stageSet?.dot ?: Color(0xFF64748B) else Color(0xFF94A3B8),
+                                modifier = Modifier.size(16.dp)
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
@@ -160,7 +162,7 @@ fun InteractiveStageStepper(
 
                         if (stageItem.completed && !stageItem.completedAt.isNullOrBlank()) {
                             Text(
-                                text = "تم الإنجاز في: ${stageItem.completedAt}",
+                                text = "تم الإنجاز في: ${Dates.displayTime(stageItem.completedAt)}",
                                 style = MaterialTheme.typography.bodySmall,
                                 fontSize = 12.sp,
                                 color = stageSet?.text?.copy(alpha = 0.8f) ?: Color(0xFF64748B)

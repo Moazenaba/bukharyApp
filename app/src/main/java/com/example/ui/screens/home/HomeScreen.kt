@@ -107,7 +107,7 @@ fun HomeScreen(
             .sortedBy { it.ceremonyDetails.date }
     }
 
-    val canAddCommittee = currentUser?.hasPermission(SystemPermissions.ADD_NEW_COMMITTEE) ?: false
+    val canAddCommittee = com.example.data.remote.Permissions.can("committees.create")
 
     LazyColumn(
         modifier = modifier

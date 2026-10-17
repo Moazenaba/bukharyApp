@@ -59,8 +59,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.model.AppUser
+import com.example.data.model.Committee
 import com.example.data.model.ScheduleTask
-import com.example.data.model.SystemPermissions
+import com.example.data.remote.AssignableUserDto
+import com.example.data.remote.Permissions
+import com.example.ui.components.DateField
+import com.example.ui.components.Dates
 import com.example.ui.theme.Primary100
 import com.example.ui.theme.Primary700
 import com.example.ui.theme.Primary800
@@ -83,12 +87,17 @@ fun ScheduleScreen(
     onToggleTask: (String) -> Unit,
     onSaveTask: (ScheduleTask) -> Unit,
     onDeleteTask: (String) -> Unit,
+    committees: List<Committee> = emptyList(),
+    assignableUsers: List<AssignableUserDto> = emptyList(),
+    onLoadAssignableUsers: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var selectedFilter by remember { mutableStateOf("all") } // all, pending, completed, urgent
     var showAddDialog by remember { mutableStateOf(false) }
 
-    val canManage = currentUser?.hasPermission(SystemPermissions.CALENDAR_SCHEDULE) ?: false
+    // Controls follow the server's evaluated actions (MOB-10).
+    val canManage = Permissions.can("tasks.write")
+    val canDelete = Permissions.can("tasks.delete")
 
     val filteredTasks = when (selectedFilter) {
         "pending" -> tasks.filter { !it.completed }
@@ -224,7 +233,7 @@ fun ScheduleScreen(
                             task = task,
                             onToggle = { onToggleTask(task.id) },
                             onDelete = { onDeleteTask(task.id) },
-                            canDelete = canManage
+                            canDelete = canDelete
                         )
                     }
                     item {
@@ -236,7 +245,11 @@ fun ScheduleScreen(
     }
 
     if (showAddDialog) {
+        androidx.compose.runtime.LaunchedEffect(Unit) { onLoadAssignableUsers() }
         AddTaskDialog(
+            committees = committees,
+            assignableUsers = assignableUsers,
+            currentUserId = currentUser?.id,
             onDismiss = { showAddDialog = false },
             onSave = {
                 onSaveTask(it)
@@ -406,18 +419,21 @@ fun ScheduleTaskCard(
 @Composable
 fun AddTaskDialog(
     onDismiss: () -> Unit,
-    onSave: (ScheduleTask) -> Unit
+    onSave: (ScheduleTask) -> Unit,
+    committees: List<Committee> = emptyList(),
+    assignableUsers: List<AssignableUserDto> = emptyList(),
+    currentUserId: String? = null
 ) {
-    val todayStr = remember { SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date()) }
-
     var title by remember { mutableStateOf("") }
-    var date by remember { mutableStateOf(todayStr) }
+    var date by remember { mutableStateOf(Dates.today()) }
     var time by remember { mutableStateOf("") }
-    var committeeNumber by remember { mutableStateOf("") }
-    var assistantName by remember { mutableStateOf("") }
+    // Committee and assignee are chosen by id, like on the web; the server fills number and name (MOB-06).
+    var committeeId by remember { mutableStateOf<String?>(null) }
+    var assigneeId by remember { mutableStateOf(currentUserId) }
     var deliverable by remember { mutableStateOf("") }
     var priority by remember { mutableStateOf("normal") }
     var type by remember { mutableStateOf("general") }
+    val committeeChoices = committees.filter { Permissions.inScope(it.id) }.sortedWith(compareBy({ it.courseName }, { it.committeeNumber }))
 
     val priorities = listOf("urgent" to "🔴 عاجل", "high" to "🟡 هام", "normal" to "🟢 عادي")
     val types = listOf(
@@ -459,11 +475,10 @@ fun AddTaskDialog(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    OutlinedTextField(
+                    DateField(
                         value = date,
                         onValueChange = { date = it },
-                        label = { Text("التاريخ (YYYY-MM-DD)") },
-                        singleLine = true,
+                        label = "التاريخ",
                         modifier = Modifier.weight(1f)
                     )
 
@@ -476,26 +491,20 @@ fun AddTaskDialog(
                     )
                 }
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    OutlinedTextField(
-                        value = committeeNumber,
-                        onValueChange = { committeeNumber = it },
-                        label = { Text("رقم اللجنة (اختياري)") },
-                        singleLine = true,
-                        modifier = Modifier.weight(1f)
-                    )
-
-                    OutlinedTextField(
-                        value = assistantName,
-                        onValueChange = { assistantName = it },
-                        label = { Text("المعاون المكلف") },
-                        singleLine = true,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
+                ChoiceField(
+                    label = "اللجنة (اختياري)",
+                    selected = committeeChoices.firstOrNull { it.id == committeeId }?.let { "#${it.committeeNumber} ${it.committeeName}" } ?: "بدون لجنة",
+                    options = listOf<Pair<String?, String>>(null to "بدون لجنة") + committeeChoices.map {
+                        it.id to "#${it.committeeNumber} ${it.committeeName}${if (it.courseName.isNotBlank()) " — ${it.courseName}" else ""}"
+                    },
+                    onSelect = { committeeId = it }
+                )
+                ChoiceField(
+                    label = "المكلف",
+                    selected = assignableUsers.firstOrNull { it.id == assigneeId }?.name ?: "بدون تكليف",
+                    options = listOf<Pair<String?, String>>(null to "بدون تكليف") + assignableUsers.map { it.id to it.name },
+                    onSelect = { assigneeId = it }
+                )
 
                 OutlinedTextField(
                     value = deliverable,
@@ -573,14 +582,14 @@ fun AddTaskDialog(
         confirmButton = {
             Button(
                 onClick = {
-                    if (title.isNotBlank()) {
+                    if (title.isNotBlank() && Dates.isRealDate(date)) {
                         val task = ScheduleTask(
-                            id = "task-${System.currentTimeMillis()}",
+                            id = "task-${java.util.UUID.randomUUID()}",
                             title = title,
                             date = date,
                             time = time,
-                            committeeNumber = committeeNumber.toIntOrNull(),
-                            assignedAssistantName = assistantName.ifBlank { null },
+                            committeeId = committeeId,
+                            assignedAssistantId = assigneeId,
                             deliverable = deliverable,
                             priority = priority,
                             type = type
@@ -597,4 +606,30 @@ fun AddTaskDialog(
             TextButton(onClick = onDismiss) { Text("إلغاء") }
         }
     )
+}
+
+
+/** A read-only field that opens a list of choices (committee, assignee). */
+@Composable
+private fun <T> ChoiceField(label: String, selected: String, options: List<Pair<T, String>>, onSelect: (T) -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    Box(modifier = Modifier.fillMaxWidth()) {
+        OutlinedTextField(
+            value = selected,
+            onValueChange = {},
+            readOnly = true,
+            label = { Text(label) },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+        Box(modifier = Modifier.matchParentSize().clickable { open = true })
+        androidx.compose.material3.DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            options.forEach { (value, text) ->
+                androidx.compose.material3.DropdownMenuItem(text = { Text(text) }, onClick = {
+                    onSelect(value)
+                    open = false
+                })
+            }
+        }
+    }
 }

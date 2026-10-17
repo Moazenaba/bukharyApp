@@ -363,31 +363,36 @@ fun TrackerRowCard(
                     label = "مستلم 📦",
                     checked = committee.stages.exam.completed,
                     onToggle = { onToggleStage(committee.id, "exam", committee.stages.exam.completed) },
-                    activeColor = Color(0xFF2563EB)
+                    activeColor = Color(0xFF2563EB),
+                    enabled = com.example.data.remote.Permissions.canOn("committees.reception", committee.id)
                 )
                 QuickSwitchItem(
                     label = "مصحح ✏️",
                     checked = committee.stages.scoring.completed,
                     onToggle = { onToggleStage(committee.id, "scoring", committee.stages.scoring.completed) },
-                    activeColor = Color(0xFFD97706)
+                    activeColor = Color(0xFFD97706),
+                    enabled = com.example.data.remote.Permissions.canOn("committees.scoring", committee.id)
                 )
                 QuickSwitchItem(
                     label = "مراجع 🔍",
                     checked = committee.stages.review.completed,
                     onToggle = { onToggleStage(committee.id, "review", committee.stages.review.completed) },
-                    activeColor = Color(0xFFCA8A04)
+                    activeColor = Color(0xFFCA8A04),
+                    enabled = com.example.data.remote.Permissions.canOn("committees.scoring", committee.id)
                 )
                 QuickSwitchItem(
                     label = "معلن 📢",
                     checked = committee.stages.announcement.completed,
                     onToggle = { onToggleStage(committee.id, "announcement", committee.stages.announcement.completed) },
-                    activeColor = Color(0xFF0891B2)
+                    activeColor = Color(0xFF0891B2),
+                    enabled = com.example.data.remote.Permissions.canOn("committees.finalize", committee.id)
                 )
                 QuickSwitchItem(
                     label = "حفل 🎓",
                     checked = committee.stages.ceremony.completed,
                     onToggle = { onToggleStage(committee.id, "ceremony", committee.stages.ceremony.completed) },
-                    activeColor = Color(0xFF16A34A)
+                    activeColor = Color(0xFF16A34A),
+                    enabled = com.example.data.remote.Permissions.canOn("committees.finalize", committee.id)
                 )
             }
         }
@@ -399,7 +404,9 @@ fun QuickSwitchItem(
     label: String,
     checked: Boolean,
     onToggle: () -> Unit,
-    activeColor: Color
+    activeColor: Color,
+    /** Offered only when the server would accept the change (MOB-10). */
+    enabled: Boolean = true
 ) {
     Box(
         modifier = Modifier
@@ -410,7 +417,7 @@ fun QuickSwitchItem(
                 if (checked) activeColor else Color(0xFFCBD5E1),
                 RoundedCornerShape(8.dp)
             )
-            .clickable(onClick = onToggle)
+            .clickable(enabled = enabled, onClick = onToggle)
             .padding(horizontal = 6.dp, vertical = 4.dp),
         contentAlignment = Alignment.Center
     ) {

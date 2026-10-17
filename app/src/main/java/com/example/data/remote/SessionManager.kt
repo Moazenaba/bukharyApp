@@ -46,8 +46,9 @@ class SessionManager private constructor(context: Context) : ApiClient.TokenStor
 
     fun saveUserId(id: String) = put(mapOf(KEY_USER to id))
     fun getUserId(): String? = get(KEY_USER)
+    override val sessionUserId: String? get() = getUserId()
 
-    /** JSON of the actions map from GET /api/auth/me, so permissions work offline after a restart. */
+    /** JSON of GET /api/auth/me's permissions (actions and scope), so they work offline after a restart. */
     fun savePermissionsJson(json: String) = put(mapOf(KEY_PERMISSIONS to json))
     fun getPermissionsJson(): String? = get(KEY_PERMISSIONS)
 

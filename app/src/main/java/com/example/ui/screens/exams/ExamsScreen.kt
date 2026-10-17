@@ -195,9 +195,9 @@ fun ExamsScreen(
                     items(filtered) { exam ->
                         ExamCard(
                             exam = exam,
-                            onPreview = { if (exam.hasFile && canDownload) onOpenFile(exam) else previewExam = exam },
+                            onPreview = { if (exam.hasFile && com.example.data.remote.Permissions.canOpenExam(exam.id)) onOpenFile(exam) else previewExam = exam },
                             onDelete = { onDeleteExam(exam.id) },
-                            canDelete = canManage
+                            canDelete = com.example.data.remote.Permissions.can("exams.delete")
                         )
                     }
                     item {
@@ -616,7 +616,7 @@ fun AddExamDialog(
                     if (title.isNotBlank()) {
                         val qList = questionsInput.split("\n").map { it.trim() }.filter { it.isNotBlank() }
                         val exam = Exam(
-                            id = "exam-${System.currentTimeMillis()}",
+                            id = "exam-${java.util.UUID.randomUUID()}",
                             title = title,
                             book = book,
                             branch = branch,

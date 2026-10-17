@@ -27,9 +27,15 @@ object ApiClient {
     interface TokenStore {
         val accessToken: String?
         val refreshToken: String?
+        /** The signed-in user; queued writes are tagged with it (MOB-01). */
+        val sessionUserId: String?
         fun saveTokens(access: String, refresh: String)
         fun clear()
     }
+
+    /** Records the server sent that could not be read and were skipped during sync (MOB-14). */
+    @Volatile
+    var skippedRecords: Int = 0
 
     @Volatile
     var tokenStore: TokenStore? = null
@@ -56,6 +62,14 @@ object ApiClient {
         chain.proceed(request)
     }
 
+    /** Lets the server tell an outdated app to update before it sends writes it would refuse. */
+    private val versionInterceptor = Interceptor { chain ->
+        chain.proceed(chain.request().newBuilder().header("X-App-Version-Code", BuildConfig.VERSION_CODE.toString()).build())
+    }
+
+    /** Calls that must never trigger a token refresh: they are themselves the session calls. */
+    private val NO_REFRESH_PATHS = setOf("/api/auth/login", "/api/auth/refresh", "/api/auth/logout", "/api/auth/register")
+
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
         level = if (BuildConfig.DEBUG) HttpLoggingInterceptor.Level.BASIC else HttpLoggingInterceptor.Level.NONE
         redactHeader("Authorization")
@@ -64,6 +78,7 @@ object ApiClient {
     private val plainClient = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
+        .addInterceptor(versionInterceptor)
         .addInterceptor(loggingInterceptor)
         .build()
 
@@ -71,12 +86,16 @@ object ApiClient {
 
     /**
      * On 401 the access token is refreshed once with the refresh token (rotated by the server)
-     * and the request retried. Login/refresh calls themselves are never retried.
+     * and the request retried. Only the session calls themselves are excluded; /api/auth/me is
+     * refreshed like any other request, so role and scope changes are picked up (MOB-05).
      */
     private val refreshAuthenticator = Authenticator { _, response ->
         val request = response.request
         val store = tokenStore ?: return@Authenticator null
-        if (request.url.encodedPath.contains("/api/auth/") || request.header(RETRIED) != null) return@Authenticator null
+        val path = request.url.encodedPath
+        if (NO_REFRESH_PATHS.any { path.endsWith(it) } || path.contains("/api/auth/join-status/") || request.header(RETRIED) != null) {
+            return@Authenticator null
+        }
         synchronized(this) {
             val sent = request.header("Authorization")?.removePrefix("Bearer ")
             val current = store.accessToken
@@ -110,10 +129,15 @@ object ApiClient {
 
     private data class ErrorBody(val message: String? = null)
 
-    /** Sends a JSON request to [path] (e.g. "api/committees"). Blocking; call off the main thread. */
-    fun send(method: String, path: String, bodyJson: String?): SendResult = try {
+    /**
+     * Sends a JSON request to [path] (e.g. "api/committees"). With [idempotencyKey], a repeat of the
+     * same write is answered by the server without applying it again. Blocking; call off the main thread.
+     */
+    fun send(method: String, path: String, bodyJson: String?, idempotencyKey: String? = null): SendResult = try {
         val body = (bodyJson ?: if (method == "DELETE") null else "{}")?.toRequestBody(jsonMediaType)
-        val request = Request.Builder().url(baseUrl + path).method(method, body).build()
+        val request = Request.Builder().url(baseUrl + path).method(method, body)
+            .apply { if (idempotencyKey != null) header("Idempotency-Key", idempotencyKey) }
+            .build()
         okHttpClient.newCall(request).execute().use { res ->
             val text = res.body?.string()
             val message = if (res.isSuccessful) null else serverMessage(text)
@@ -192,6 +216,7 @@ private object LenientListAdapterFactory : JsonAdapter.Factory {
                     try {
                         elementAdapter.fromJsonValue(it)
                     } catch (e: JsonDataException) {
+                        ApiClient.skippedRecords++
                         Log.w("ApiClient", "Skipped unreadable ${Types.getRawType(element).simpleName}: ${e.message}")
                         null
                     }
