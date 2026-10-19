@@ -56,6 +56,7 @@ class MainActivity : ComponentActivity() {
 
     private val viewModel: MainViewModel by viewModels()
 
+    // Trigger comment for platform redeploy.
     /** Opens a downloaded exam PDF in the user's PDF viewer. */
     private fun openPdf(file: File) {
         val uri = FileProvider.getUriForFile(this, "$packageName.files", file)
@@ -72,9 +73,11 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         setContent {
+            android.util.Log.d("MainActivity", "Composition started")
             BukhariTheme {
                 val isLoggedIn by viewModel.isLoggedIn.collectAsStateWithLifecycle()
                 val isRestoring by viewModel.isRestoringSession.collectAsStateWithLifecycle()
+                android.util.Log.d("MainActivity", "isLoggedIn=$isLoggedIn, isRestoring=$isRestoring")
                 val isSubmitting by viewModel.isSubmitting.collectAsStateWithLifecycle()
                 val currentUser by viewModel.currentUser.collectAsStateWithLifecycle()
                 val currentScreen by viewModel.currentNavScreen.collectAsStateWithLifecycle()
@@ -108,7 +111,7 @@ class MainActivity : ComponentActivity() {
                     else viewModel.showMessage("هذه الشاشة غير متاحة لدورك")
                 }
                 val snackbarHostState = remember { SnackbarHostState() }
-                val defaultCourse = courses.find { it.isDefault } ?: courses.find { it.status == "active" }
+                val defaultCourse = courses.find { it.isDefault } ?: courses.find { it.status == "active" } ?: courses.firstOrNull()
 
                 LaunchedEffect(snackbarMessage) {
                     snackbarMessage?.let { msg ->
@@ -259,6 +262,8 @@ class MainActivity : ComponentActivity() {
                                         committees = committees,
                                         sheetRows = sheetRows,
                                         onSelectCourse = { viewModel.setSelectedCourseId(it) },
+                                        onSaveCourse = { viewModel.saveCourse(it) },
+                                        onDeleteCourse = { viewModel.deleteCourse(it) },
                                         onToggleStage = { commId, stageKey, curr -> viewModel.toggleStage(commId, stageKey, curr) },
                                         onOpenCommitteeDetail = { viewModel.openCommitteeDetail(it) }
                                     )
@@ -273,7 +278,8 @@ class MainActivity : ComponentActivity() {
                                         onStageFilterChange = { viewModel.setSelectedStageFilter(it) },
                                         onOpenCommitteeDetail = { viewModel.openCommitteeDetail(it) },
                                         onSaveCommittee = { viewModel.saveCommittee(it) },
-                                        onDeleteCommittee = { viewModel.deleteCommittee(it) }
+                                        onDeleteCommittee = { viewModel.deleteCommittee(it) },
+                                        onSaveCourse = { viewModel.saveCourse(it) }
                                     )
                                     AppNavScreen.EXAMS -> ExamsScreen(
                                         currentUser = currentUser,

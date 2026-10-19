@@ -10,11 +10,11 @@ android {
 
   defaultConfig {
     applicationId = "org.bukhari.competition"
-    minSdk = 24
+    minSdk = 26
     targetSdk = 36
     // Raise on every release: the server can require a minimum versionCode (MIN_ANDROID_VERSION_CODE).
-    versionCode = 2
-    versionName = "1.1.0"
+    versionCode = 4
+    versionName = "1.2.1"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -103,6 +103,8 @@ dependencies {
   implementation(libs.okhttp)
   implementation(libs.retrofit)
   implementation(libs.androidx.security.crypto)
+  implementation(libs.postgresql)
+  implementation(libs.jbcrypt)
   testImplementation(libs.androidx.compose.ui.test.junit4)
   testImplementation(libs.androidx.core)
   testImplementation(libs.androidx.junit)

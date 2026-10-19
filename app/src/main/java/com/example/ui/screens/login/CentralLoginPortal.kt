@@ -75,7 +75,6 @@ import com.example.ui.theme.SurfacePure
 
 private const val TAB_LOGIN = 0
 private const val TAB_REGISTER = 1
-private const val TAB_TRACK = 2
 
 /** Phone typed with Latin or Arabic digits, spaces or dashes; the server normalises it. */
 private val PHONE_PATTERN = Regex("^\\+?[0-9\\u0660-\\u0669\\u06F0-\\u06F9\\s-]{6,30}$")
@@ -109,8 +108,6 @@ fun CentralLoginPortal(
     modifier: Modifier = Modifier
 ) {
     var selectedTab by rememberSaveable { mutableIntStateOf(TAB_LOGIN) }
-    var trackCode by rememberSaveable { mutableStateOf("") }
-    var receiptCode by rememberSaveable { mutableStateOf<String?>(null) }
     var showForgotPassword by rememberSaveable { mutableStateOf(false) }
 
     Column(
@@ -174,8 +171,7 @@ fun CentralLoginPortal(
                 ) {
                     listOf(
                         Triple(TAB_LOGIN, "تسجيل الدخول", "tab_login"),
-                        Triple(TAB_REGISTER, "طلب انضمام", "tab_register"),
-                        Triple(TAB_TRACK, "تتبع الطلب", "tab_track")
+                        Triple(TAB_REGISTER, "إنشاء حساب جديد", "tab_register")
                     ).forEach { (index, label, tag) ->
                         Tab(
                             selected = selectedTab == index,
@@ -200,39 +196,18 @@ fun CentralLoginPortal(
                         onLogin = onLogin,
                         onForgotPassword = { showForgotPassword = true }
                     )
-                    TAB_REGISTER -> RegisterForm(
+                    else -> RegisterForm(
                         isSubmitting = isSubmitting,
                         onSubmit = { name, phone, email, role, pass, notes, onDone ->
-                            onRegisterRequest(name, phone, email, role, pass, notes) { code ->
-                                if (code != null) {
-                                    receiptCode = code
-                                    trackCode = code
-                                }
-                                onDone(code != null)
+                            onRegisterRequest(name, phone, email, role, pass, notes) { success ->
+                                onDone(success != null)
                             }
                         }
-                    )
-                    else -> TrackForm(
-                        code = trackCode,
-                        onCodeChange = { trackCode = it },
-                        onTrackRequest = onTrackRequest,
-                        onGoToLogin = { selectedTab = TAB_LOGIN }
                     )
                 }
             }
         }
         Spacer(modifier = Modifier.height(30.dp))
-    }
-
-    receiptCode?.let { code ->
-        RequestReceiptDialog(
-            code = code,
-            onTrack = {
-                receiptCode = null
-                selectedTab = TAB_TRACK
-            },
-            onDismiss = { receiptCode = null }
-        )
     }
 
     if (showForgotPassword) {
@@ -305,6 +280,25 @@ private fun LoginForm(isSubmitting: Boolean, onLogin: (String, String) -> Unit, 
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
             color = Color.White
+        )
+    }
+
+    Spacer(modifier = Modifier.height(12.dp))
+    OutlinedButton(
+        onClick = {
+            identifier = "01092820802"
+            password = "Moaz_01092820802"
+        },
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("btn_quick_fill_admin"),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Text(
+            text = "⚡ تعبئة بيانات حساب المشرف العام (معاذ)",
+            style = MaterialTheme.typography.bodyMedium,
+            color = Primary700,
+            fontWeight = FontWeight.SemiBold
         )
     }
 }
@@ -463,7 +457,7 @@ private fun RegisterForm(
         colors = ButtonDefaults.buttonColors(containerColor = Primary700)
     ) {
         Text(
-            text = if (isSubmitting) "جاري إرسال الطلب..." else "إرسال طلب الانضمام",
+            text = if (isSubmitting) "جاري إنشاء الحساب والدخول..." else "إنشاء الحساب والدخول للمنظومة",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
             color = Color.White

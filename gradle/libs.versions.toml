@@ -66,6 +66,8 @@ logging-interceptor = { group = "com.squareup.okhttp3", name = "logging-intercep
 okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
 moshi-kotlin = { group = "com.squareup.moshi", name = "moshi-kotlin", version.ref = "moshiKotlin" }
 robolectric = { group = "org.robolectric", name = "robolectric", version.ref = "robolectric" }
+postgresql = { group = "org.postgresql", name = "postgresql", version = "42.7.14" }
+jbcrypt = { group = "org.mindrot", name = "jbcrypt", version = "0.4" }
 
 
 [plugins]
