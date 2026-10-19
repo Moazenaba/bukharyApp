@@ -126,7 +126,7 @@ class AuthenticationService(
     private fun serverMessage(response: Response<*>): String? = ApiClient.serverMessage(response.errorBody()?.string())
 
     /** Public join request; returns the server-issued request code. */
-    suspend fun register(name: String, phone: String, email: String, role: UserRole, pass: String, notes: String): Result<String> =
+    suspend fun register(name: String, phone: String, email: String, role: UserRole, pass: String, extras: JoinRequestExtras): Result<String> =
         withContext(Dispatchers.IO) {
             try {
                 val response = apiService.register(
@@ -136,7 +136,14 @@ class AuthenticationService(
                         email = email.trim(),
                         roleKey = role.roleKey,
                         password = pass,
-                        notes = notes.trim().ifBlank { null }
+                        notes = extras.notes.trim().ifBlank { null },
+                        whatsapp = extras.whatsapp.trim().ifBlank { null },
+                        nationalId = extras.nationalId.trim().ifBlank { null },
+                        quranLevel = extras.quranLevel.trim().ifBlank { null },
+                        qualification = extras.qualification.trim().ifBlank { null },
+                        experience = extras.experience.trim().ifBlank { null },
+                        availability = extras.availability.trim().ifBlank { null },
+                        preferredCommittees = extras.preferredCommittees.ifEmpty { null }
                     )
                 )
                 val code = response.body()?.requestCode

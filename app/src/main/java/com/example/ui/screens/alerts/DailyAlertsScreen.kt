@@ -279,7 +279,7 @@ fun DailyAlertsScreen(
 
 /** «إضافة وجدولة حفلة»: pick a committee, then the day, time, place, honourees and attending sheikhs. */
 @Composable
-private fun CeremonyQuickDialog(
+fun CeremonyQuickDialog(
     committees: List<Committee>,
     initialDate: String,
     onDismiss: () -> Unit,

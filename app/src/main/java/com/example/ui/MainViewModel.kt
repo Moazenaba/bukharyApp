@@ -233,6 +233,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
             val result = repository.syncWithRemoteApi()
             _lastSyncOk.value = result.online
+            if (result.online) {
+                // Lists that only the management screens use, loaded with the rest like on the web.
+                try { _books.value = OnlineApi.books() } catch (_: Exception) { }
+                if (com.example.data.remote.Permissions.can("users.read")) {
+                    try { _staffUsers.value = OnlineApi.users() } catch (_: Exception) { }
+                }
+            }
             val status = repository.getDatabaseStatus()
             _databaseStatus.value = status
             _unsentCount.value = repository.unsentCount()
@@ -313,7 +320,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     /** Calls [onDone] with the server's request code, or null when the request was refused. */
-    fun registerJoinRequest(name: String, phone: String, email: String, role: UserRole, pass: String, notes: String, onDone: (String?) -> Unit) {
+    fun registerJoinRequest(name: String, phone: String, email: String, role: UserRole, pass: String, notes: com.example.data.remote.JoinRequestExtras, onDone: (String?) -> Unit) {
         if (_isSubmitting.value) return
         viewModelScope.launch {
             _isSubmitting.value = true

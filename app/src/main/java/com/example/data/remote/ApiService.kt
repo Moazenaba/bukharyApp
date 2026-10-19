@@ -97,7 +97,26 @@ data class RegisterRequest(
     val email: String,
     val roleKey: String,
     val password: String,
-    val notes: String?
+    val notes: String?,
+    val whatsapp: String? = null,
+    val nationalId: String? = null,
+    val quranLevel: String? = null,
+    val qualification: String? = null,
+    val experience: String? = null,
+    val availability: String? = null,
+    val preferredCommittees: List<Int>? = null
+)
+
+/** The join request's dossier, the same fields as the web form. */
+data class JoinRequestExtras(
+    val notes: String = "",
+    val whatsapp: String = "",
+    val nationalId: String = "",
+    val quranLevel: String = "",
+    val qualification: String = "",
+    val experience: String = "",
+    val availability: String = "",
+    val preferredCommittees: List<Int> = emptyList()
 )
 
 // The server (Web/server.ts) wraps every list in an envelope: { success, <name>: [...] }.

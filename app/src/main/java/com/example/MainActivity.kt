@@ -324,6 +324,7 @@ class MainActivity : ComponentActivity() {
                                         onReceive = { id, cancel -> viewModel.recordAssistantReception(id, "", cancel) },
                                         onApproveReadiness = { id, revoke -> viewModel.approveExamReadiness(id, revoke) },
                                         openAddRequested = openAddCommittee,
+                                        onCreateCourse = if (com.example.data.remote.Permissions.can("courses.write")) ({ c -> viewModel.saveCourse(c) }) else null,
                                         onAddRequestConsumed = { openAddCommittee = false }
                                     )
                                     AppNavScreen.EXAMS -> ExamsScreen(
@@ -345,7 +346,9 @@ class MainActivity : ComponentActivity() {
                                         onLoadAssignableUsers = { viewModel.loadAssignableUsers() },
                                         onToggleTask = { viewModel.toggleTask(it) },
                                         onSaveTask = { viewModel.saveTask(it) },
-                                        onDeleteTask = { viewModel.deleteTask(it) }
+                                        onDeleteTask = { viewModel.deleteTask(it) },
+                                        onScheduleCeremony = { c, d -> viewModel.updateCeremony(c.id, d) },
+                                        onOpenCommittee = { viewModel.openCommitteeDetail(it) }
                                     )
                                     AppNavScreen.ASSISTANTS -> com.example.ui.screens.assistants.UsersManagementScreen(
                                         currentUser = currentUser,

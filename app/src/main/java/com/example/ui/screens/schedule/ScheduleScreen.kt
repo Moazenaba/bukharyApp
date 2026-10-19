@@ -90,20 +90,28 @@ fun ScheduleScreen(
     committees: List<Committee> = emptyList(),
     assignableUsers: List<AssignableUserDto> = emptyList(),
     onLoadAssignableUsers: () -> Unit = {},
+    onScheduleCeremony: ((Committee, com.example.data.model.CeremonyDetails) -> Unit)? = null,
+    onOpenCommittee: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    var selectedFilter by remember { mutableStateOf("all") } // all, pending, completed, urgent
+    var selectedFilter by remember { mutableStateOf("all") } // all, pending, completed, urgent, mine, deliverables
+    var selectedDate by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf<String?>(Dates.today()) }
+    var showCalendar by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(true) }
+    var addingCeremony by remember { mutableStateOf(false) }
     var showAddDialog by remember { mutableStateOf(false) }
 
     // Controls follow the server's evaluated actions (MOB-10).
     val canManage = Permissions.can("tasks.write")
     val canDelete = Permissions.can("tasks.delete")
 
+    val dayTasks = selectedDate?.let { d -> tasks.filter { it.date == d } } ?: tasks
     val filteredTasks = when (selectedFilter) {
-        "pending" -> tasks.filter { !it.completed }
-        "completed" -> tasks.filter { it.completed }
-        "urgent" -> tasks.filter { it.priority == "urgent" }
-        else -> tasks
+        "pending" -> dayTasks.filter { !it.completed }
+        "completed" -> dayTasks.filter { it.completed }
+        "urgent" -> dayTasks.filter { it.priority == "urgent" }
+        "mine" -> dayTasks.filter { it.assignedAssistantId == currentUser?.id }
+        "deliverables" -> dayTasks.filter { it.deliverable.isNotBlank() || it.type == "delivery" || it.type == "receive" }
+        else -> dayTasks
     }
 
     val pendingCount = tasks.count { !it.completed }
@@ -174,28 +182,49 @@ fun ScheduleScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                androidx.compose.material3.FilterChip(selected = showCalendar, onClick = { showCalendar = !showCalendar }, label = { Text(if (showCalendar) "إخفاء التقويم" else "عرض التقويم الشهري") })
+                androidx.compose.material3.FilterChip(selected = selectedDate == null, onClick = { selectedDate = if (selectedDate == null) Dates.today() else null }, label = { Text("كل التواريخ") })
+                if (onScheduleCeremony != null && Permissions.can("committees.finalize")) {
+                    androidx.compose.material3.FilterChip(selected = false, onClick = { addingCeremony = true }, label = { Text("🎉 جدولة حفل") })
+                }
+            }
+            if (showCalendar) {
+                Spacer(modifier = Modifier.height(6.dp))
+                MonthCalendar(tasks = tasks, selectedDate = selectedDate, onSelect = { selectedDate = it })
+            }
+            selectedDate?.let {
+                Text(
+                    "مهام يوم ${com.example.ui.components.arabicDayName(it)} ($it): ${dayTasks.size}",
+                    style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = Primary800,
+                    modifier = Modifier.padding(top = 6.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
 
             // Filter Tabs
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 listOf(
-                    "all" to "كافة المهام (${tasks.size})",
-                    "pending" to "قيد التنفيذ ($pendingCount)",
+                    "all" to "كافة المهام (${dayTasks.size})",
+                    "pending" to "قيد التنفيذ (${dayTasks.count { !it.completed }})",
                     "urgent" to "🔴 عاجل",
-                    "completed" to "المكتملة ($completedCount)"
+                    "mine" to "مهامي",
+                    "deliverables" to "التسليمات",
+                    "completed" to "المكتملة (${dayTasks.count { it.completed }})"
                 ).forEach { (key, label) ->
                     val isSel = selectedFilter == key
                     Box(
                         modifier = Modifier
-                            .weight(1f)
                             .clip(RoundedCornerShape(10.dp))
                             .background(if (isSel) Primary700 else SurfacePure)
                             .border(1.dp, if (isSel) Primary800 else Color(0xFFE2E8F0), RoundedCornerShape(10.dp))
                             .minimumInteractiveComponentSize().clickable { selectedFilter = key }
-                            .padding(vertical = 8.dp),
+                            .padding(vertical = 8.dp, horizontal = 12.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
@@ -228,13 +257,16 @@ fun ScheduleScreen(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    items(filteredTasks) { task ->
+                    items(filteredTasks, key = { it.id }) { task ->
                         ScheduleTaskCard(
                             task = task,
                             onToggle = { onToggleTask(task.id) },
                             onDelete = { onDeleteTask(task.id) },
                             canDelete = canDelete
                         )
+                        task.committeeId?.let { id ->
+                            if (committees.any { it.id == id }) TextButton(onClick = { onOpenCommittee(id) }) { Text("تفاصيل اللجنة المرتبطة ↗", style = MaterialTheme.typography.labelSmall) }
+                        }
                     }
                     item {
                         Spacer(modifier = Modifier.height(60.dp))
@@ -244,12 +276,22 @@ fun ScheduleScreen(
         }
     }
 
+    if (addingCeremony) {
+        com.example.ui.screens.alerts.CeremonyQuickDialog(
+            committees = committees.filter { Permissions.canOn("committees.finalize", it.id) },
+            initialDate = selectedDate ?: Dates.today(),
+            onDismiss = { addingCeremony = false },
+            onSave = { c, d -> onScheduleCeremony?.invoke(c, d); addingCeremony = false }
+        )
+    }
+
     if (showAddDialog) {
         androidx.compose.runtime.LaunchedEffect(Unit) { onLoadAssignableUsers() }
         AddTaskDialog(
             committees = committees,
             assignableUsers = assignableUsers,
             currentUserId = currentUser?.id,
+            initialDate = selectedDate ?: Dates.today(),
             onDismiss = { showAddDialog = false },
             onSave = {
                 onSaveTask(it)

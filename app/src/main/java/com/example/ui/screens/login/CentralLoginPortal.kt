@@ -101,7 +101,7 @@ internal fun joinRequestProblem(name: String, phone: String, email: String, pass
 @Composable
 fun CentralLoginPortal(
     onLogin: (String, String) -> Unit,
-    onRegisterRequest: (name: String, phone: String, email: String, role: UserRole, pass: String, notes: String, onDone: (String?) -> Unit) -> Unit,
+    onRegisterRequest: (name: String, phone: String, email: String, role: UserRole, pass: String, extras: com.example.data.remote.JoinRequestExtras, onDone: (String?) -> Unit) -> Unit,
     onTrackRequest: (code: String, onResult: (String) -> Unit) -> Unit,
     isSubmitting: Boolean,
     /** Writes saved on this device that have not reached the server yet (MOB-01). */
@@ -312,8 +312,15 @@ private fun LoginForm(isSubmitting: Boolean, onLogin: (String, String) -> Unit, 
 @Composable
 private fun RegisterForm(
     isSubmitting: Boolean,
-    onSubmit: (name: String, phone: String, email: String, role: UserRole, pass: String, notes: String, onDone: (Boolean) -> Unit) -> Unit
+    onSubmit: (name: String, phone: String, email: String, role: UserRole, pass: String, extras: com.example.data.remote.JoinRequestExtras, onDone: (Boolean) -> Unit) -> Unit
 ) {
+    var whatsapp by rememberSaveable { mutableStateOf("") }
+    var nationalId by rememberSaveable { mutableStateOf("") }
+    var quranLevel by rememberSaveable { mutableStateOf("") }
+    var qualification by rememberSaveable { mutableStateOf("") }
+    var experience by rememberSaveable { mutableStateOf("") }
+    var availability by rememberSaveable { mutableStateOf("") }
+    var preferred by rememberSaveable { mutableStateOf("") }
     var name by rememberSaveable { mutableStateOf("") }
     var phone by rememberSaveable { mutableStateOf("") }
     var email by rememberSaveable { mutableStateOf("") }
@@ -425,6 +432,22 @@ private fun RegisterForm(
         color = Color(0xFF64748B)
     )
     Spacer(modifier = Modifier.height(10.dp))
+    Text("بيانات اختيارية تساعد المشرف على المراجعة", style = MaterialTheme.typography.labelMedium, color = Color(0xFF64748B))
+    Spacer(modifier = Modifier.height(6.dp))
+    OutlinedTextField(whatsapp, { whatsapp = it.take(50) }, label = { Text("رقم الواتساب") }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
+    Spacer(modifier = Modifier.height(8.dp))
+    OutlinedTextField(nationalId, { nationalId = it.take(50) }, label = { Text("رقم الهوية الوطنية") }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
+    Spacer(modifier = Modifier.height(8.dp))
+    OutlinedTextField(quranLevel, { quranLevel = it.take(500) }, label = { Text("مستوى حفظ القرآن الكريم والإجازات") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
+    Spacer(modifier = Modifier.height(8.dp))
+    OutlinedTextField(qualification, { qualification = it.take(500) }, label = { Text("المؤهل العلمي والتخصص") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
+    Spacer(modifier = Modifier.height(8.dp))
+    OutlinedTextField(experience, { experience = it.take(2000) }, label = { Text("الخبرات السابقة") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
+    Spacer(modifier = Modifier.height(8.dp))
+    OutlinedTextField(availability, { availability = it.take(500) }, label = { Text("أوقات الفراغ والإتاحة") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
+    Spacer(modifier = Modifier.height(8.dp))
+    OutlinedTextField(preferred, { preferred = it.take(200) }, label = { Text("أرقام اللجان المفضلة (مثال: 3، 7، 12)") }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
+    Spacer(modifier = Modifier.height(8.dp))
     OutlinedTextField(
         value = notes,
         onValueChange = { notes = it.take(2000) },
@@ -442,7 +465,12 @@ private fun RegisterForm(
         onClick = {
             error = joinRequestProblem(name, phone, email, password)
             if (error == null) {
-                onSubmit(name.trim(), phone.trim(), email.trim(), role, password, notes.trim()) { ok ->
+                val extras = com.example.data.remote.JoinRequestExtras(
+                    notes = notes.trim(), whatsapp = whatsapp, nationalId = nationalId, quranLevel = quranLevel,
+                    qualification = qualification, experience = experience, availability = availability,
+                    preferredCommittees = preferred.split(',', '،', ' ').mapNotNull { it.trim().toIntOrNull() }.distinct()
+                )
+                onSubmit(name.trim(), phone.trim(), email.trim(), role, password, extras) { ok ->
                     if (ok) {
                         name = ""
                         phone = ""
