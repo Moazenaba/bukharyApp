@@ -1,5 +1,9 @@
 package com.example.ui.screens.login
 
+import androidx.compose.ui.semantics.liveRegion
+
+import androidx.compose.ui.semantics.LiveRegionMode
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -106,6 +110,7 @@ fun CentralLoginPortal(
     isSubmitting: Boolean,
     /** Writes saved on this device that have not reached the server yet (MOB-01). */
     unsentCount: Int = 0,
+    loginError: String? = null,
     modifier: Modifier = Modifier
 ) {
     var selectedTab by rememberSaveable { mutableIntStateOf(TAB_LOGIN) }
@@ -195,11 +200,26 @@ fun CentralLoginPortal(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 when (selectedTab) {
-                    TAB_LOGIN -> LoginForm(
-                        isSubmitting = isSubmitting,
-                        onLogin = onLogin,
-                        onForgotPassword = { showForgotPassword = true }
-                    )
+                    TAB_LOGIN -> {
+                        LoginForm(
+                            isSubmitting = isSubmitting,
+                            onLogin = onLogin,
+                            onForgotPassword = { showForgotPassword = true }
+                        )
+                        if (loginError != null && !isSubmitting) {
+                            Spacer(modifier = Modifier.height(10.dp))
+                            Text(
+                                text = loginError,
+                                color = Color(0xFFB91C1C),
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(Color(0xFFFEF2F2), RoundedCornerShape(10.dp))
+                                    .padding(12.dp)
+                                    .semantics { liveRegion = LiveRegionMode.Polite }
+                            )
+                        }
+                    }
                     TAB_REGISTER -> RegisterForm(
                         isSubmitting = isSubmitting,
                         onSubmit = { name, phone, email, role, pass, notes, onDone ->

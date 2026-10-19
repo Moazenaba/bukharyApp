@@ -69,7 +69,7 @@ fun MonthCalendar(tasks: List<ScheduleTask>, selectedDate: String?, onSelect: (S
                 modifier = Modifier.align(Alignment.CenterHorizontally)
             ) { Text("الذهاب لليوم الحالي") }
             Row(Modifier.fillMaxWidth()) {
-                (listOf(ARABIC_DAYS[6]) + ARABIC_DAYS.dropLast(1)).forEach { d -> Text(d.take(3), style = MaterialTheme.typography.labelSmall, color = Color(0xFF64748B), modifier = Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.Center) }
+                listOf("سبت", "أحد", "اثنين", "ثلاثاء", "أربعاء", "خميس", "جمعة").forEach { d -> Text(d, maxLines = 1, softWrap = false, style = MaterialTheme.typography.labelSmall, color = Color(0xFF64748B), modifier = Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.Center) }
             }
             val cells = offset + days
             val rows = (cells + 6) / 7

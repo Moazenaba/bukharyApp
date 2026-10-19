@@ -82,7 +82,7 @@ class MainActivity : ComponentActivity() {
         val openNotifications = intent?.getBooleanExtra(com.example.push.PushNotifications.EXTRA_OPEN_NOTIFICATIONS, false) == true
 
         setContent {
-            BukhariTheme {
+            BukhariTheme(lightBackgroundBehindStatusBar = !viewModel.isLoggedIn.collectAsStateWithLifecycle().value) {
                 val isLoggedIn by viewModel.isLoggedIn.collectAsStateWithLifecycle()
                 val isRestoring by viewModel.isRestoringSession.collectAsStateWithLifecycle()
                 val isSubmitting by viewModel.isSubmitting.collectAsStateWithLifecycle()
@@ -271,6 +271,7 @@ class MainActivity : ComponentActivity() {
                             onTrackRequest = { code, onResult -> viewModel.trackJoinRequest(code, onResult) },
                             isSubmitting = isSubmitting,
                             unsentCount = unsentCount,
+                            loginError = viewModel.loginError.collectAsStateWithLifecycle().value,
                             modifier = Modifier.padding(innerPadding)
                         )
 

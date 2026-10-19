@@ -321,7 +321,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun showMessage(message: String) { _snackBarMessage.value = message }
     fun clearMessage() { _snackBarMessage.value = null }
 
+    /** Why the last sign-in failed, shown under the login form. */
+    private val _loginError = MutableStateFlow<String?>(null)
+    val loginError: StateFlow<String?> = _loginError.asStateFlow()
+
     fun login(phoneOrEmail: String, pass: String) {
+        _loginError.value = null
         if (_isSubmitting.value) return
         if (phoneOrEmail.isBlank() || pass.isBlank()) {
             showMessage("يرجى إدخال رقم الهاتف أو البريد الإلكتروني وكلمة المرور")
@@ -342,7 +347,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     refreshFromServer()
                     com.example.push.PushNotifications.register(getApplication())
                 }
-                is AuthResult.Error -> showMessage(result.message)
+                is AuthResult.Error -> { _loginError.value = result.message; showMessage(result.message) }
             }
             _isSubmitting.value = false
         }
