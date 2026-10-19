@@ -4,6 +4,32 @@ plugins {
   alias(libs.plugins.google.devtools.ksp)
 }
 
+// Push notifications (Firebase Cloud Messaging). The values come from app/google-services.json
+// (downloaded from the Firebase console) or from FIREBASE_* Gradle properties / env vars. Without
+// them the app builds and runs as before, only without push notifications.
+val firebase: Map<String, String> = run {
+  fun prop(name: String) = (project.findProperty(name) as String?) ?: System.getenv(name) ?: ""
+  val fromProps = mapOf(
+    "APP_ID" to prop("FIREBASE_APP_ID"), "API_KEY" to prop("FIREBASE_API_KEY"),
+    "PROJECT_ID" to prop("FIREBASE_PROJECT_ID"), "SENDER_ID" to prop("FIREBASE_SENDER_ID")
+  )
+  val json = file("google-services.json")
+  if (fromProps.values.all { it.isNotBlank() } || !json.exists()) return@run fromProps
+  @Suppress("UNCHECKED_CAST")
+  val root = groovy.json.JsonSlurper().parse(json) as Map<String, Any?>
+  val info = root["project_info"] as Map<String, Any?>
+  val clients = root["client"] as List<Map<String, Any?>>
+  val client = clients.firstOrNull {
+    ((it["client_info"] as Map<String, Any?>)["android_client_info"] as Map<String, Any?>)["package_name"] == "org.bukhari.competition"
+  } ?: clients.first()
+  mapOf(
+    "APP_ID" to ((client["client_info"] as Map<String, Any?>)["mobilesdk_app_id"] as String),
+    "API_KEY" to ((client["api_key"] as List<Map<String, Any?>>).first()["current_key"] as String),
+    "PROJECT_ID" to (info["project_id"] as String),
+    "SENDER_ID" to (info["project_number"] as String)
+  )
+}
+
 android {
   namespace = "com.example"
   compileSdk { version = release(36) { minorApiLevel = 1 } }
@@ -17,6 +43,7 @@ android {
     versionName = "1.1.0"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    firebase.forEach { (k, v) -> buildConfigField("String", "FIREBASE_$k", "\"$v\"") }
 
   }
 
@@ -43,6 +70,7 @@ android {
   // Debug defaults to a server on the developer machine as seen from the emulator.
   // Release has no default: it must be an https URL, otherwise the build fails.
   val apiBaseUrl = (project.findProperty("API_BASE_URL") as String?) ?: System.getenv("API_BASE_URL")
+
 
   buildTypes {
     debug {
@@ -103,6 +131,8 @@ dependencies {
   implementation(libs.okhttp)
   implementation(libs.retrofit)
   implementation(libs.androidx.security.crypto)
+  implementation(platform(libs.firebase.bom))
+  implementation(libs.firebase.messaging)
   testImplementation(libs.androidx.compose.ui.test.junit4)
   testImplementation(libs.androidx.core)
   testImplementation(libs.androidx.junit)

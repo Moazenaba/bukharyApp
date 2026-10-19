@@ -189,6 +189,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     init {
+        // A push means something changed on the server: bring it in.
+        com.example.push.PushNotifications.onPushReceived = { viewModelScope.launch { if (_isLoggedIn.value) refreshFromServer() } }
         ApiClient.onUnauthorized = { viewModelScope.launch { endSession("انتهت صلاحية الجلسة، يرجى تسجيل الدخول مرة أخرى", revoke = false) } }
         viewModelScope.launch { _unsentCount.value = repository.unsentCount() }
         connectivity.registerNetworkCallback(
@@ -207,6 +209,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 _isLoggedIn.value = true
                 _isRestoringSession.value = false
                 refreshFromServer()
+                com.example.push.PushNotifications.register(getApplication())
             } else {
                 authService.forgetSession()
                 // Cached data goes; unsent work stays for its author's next sign-in (MOB-01).
@@ -218,6 +221,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     override fun onCleared() {
+        com.example.push.PushNotifications.onPushReceived = null
         connectivity.unregisterNetworkCallback(networkCallback)
         ApiClient.onUnauthorized = null
         super.onCleared()
@@ -312,6 +316,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     _isLoggedIn.value = true
                     showMessage("أهلاً وسهلاً، ${result.user.name}")
                     refreshFromServer()
+                    com.example.push.PushNotifications.register(getApplication())
                 }
                 is AuthResult.Error -> showMessage(result.message)
             }
@@ -414,7 +419,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _isLoggedIn.value = false
         _currentUser.value = null
         closeCommitteeDetail()
-        if (revoke) authService.logout() else authService.forgetSession()
+        if (revoke) authService.logout(com.example.push.PushNotifications.tokenForLogout(getApplication())) else authService.forgetSession()
+        com.example.push.PushNotifications.forget(getApplication())
         repository.clearAllData(keepQueue = !discardUnsent)
         deleteExamFiles()
         _databaseStatus.value = null

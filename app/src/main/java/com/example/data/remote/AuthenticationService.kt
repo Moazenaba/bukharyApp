@@ -173,12 +173,17 @@ class AuthenticationService(
     fun getSavedUserId(): String? = sessionManager.getUserId()
 
     /** Ends the session on the server (best effort; its access token stops working) and forgets it locally. */
-    suspend fun logout() {
+    suspend fun logout(deviceToken: String? = null) {
         val refresh = sessionManager.refreshToken
         withContext(Dispatchers.IO) {
             try {
-                // Sent while the access token is still stored, so the server ends this session.
-                if (refresh != null) apiService.logout(mapOf("refreshToken" to refresh))
+                // Sent while the access token is still stored, so the server ends this session
+                // and stops push notifications to this phone.
+                val body = buildMap {
+                    if (refresh != null) put("refreshToken", refresh)
+                    if (deviceToken != null) put("deviceToken", deviceToken)
+                }
+                if (body.isNotEmpty()) apiService.logout(body)
             } catch (e: Exception) {
                 // offline: the refresh token expires on its own
             }

@@ -66,9 +66,20 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private val askNotifications = registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) { }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        if (intent.getBooleanExtra(com.example.push.PushNotifications.EXTRA_OPEN_NOTIFICATIONS, false)) {
+            viewModel.navigateTo(com.example.ui.AppNavScreen.NOTIFICATIONS)
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        com.example.push.PushNotifications.init(this)
+        val openNotifications = intent?.getBooleanExtra(com.example.push.PushNotifications.EXTRA_OPEN_NOTIFICATIONS, false) == true
 
         setContent {
             BukhariTheme {
@@ -119,6 +130,16 @@ class MainActivity : ComponentActivity() {
                 }
                 val snackbarHostState = remember { SnackbarHostState() }
                 val defaultCourse = courses.find { it.isDefault } ?: courses.find { it.status == "active" }
+
+                // Once signed in: ask for notification permission (Android 13+) and honour a tapped push.
+                LaunchedEffect(isLoggedIn) {
+                    if (isLoggedIn) {
+                        if (com.example.push.PushNotifications.isConfigured && com.example.push.PushNotifications.needsPermission(this@MainActivity) &&
+                            android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU
+                        ) askNotifications.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                        if (openNotifications) viewModel.navigateTo(AppNavScreen.NOTIFICATIONS)
+                    }
+                }
 
                 LaunchedEffect(snackbarMessage) {
                     snackbarMessage?.let { msg ->
