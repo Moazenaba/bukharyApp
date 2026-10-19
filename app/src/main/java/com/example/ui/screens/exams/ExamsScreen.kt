@@ -1,6 +1,15 @@
 package com.example.ui.screens.exams
 
 import androidx.compose.material3.minimumInteractiveComponentSize
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
+import androidx.compose.runtime.saveable.rememberSaveable
+import com.example.data.remote.BookDto
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.background
@@ -72,36 +81,58 @@ import com.example.ui.theme.SurfacePure
 fun ExamsScreen(
     currentUser: AppUser?,
     exams: List<Exam>,
-    onSaveExam: (Exam) -> Unit,
+    onSaveExam: (Exam, Uri?) -> Unit,
     onDeleteExam: (String) -> Unit,
     onOpenFile: (Exam) -> Unit = {},
+    books: List<BookDto> = emptyList(),
+    onUploadFile: (String, Uri) -> Unit = { _, _ -> },
+    onAddBook: (String) -> Unit = {},
+    onDeleteBook: (BookDto) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var searchQuery by remember { mutableStateOf("") }
+    var bookFilter by remember { mutableStateOf("all") }
+    var tab by rememberSaveable { mutableIntStateOf(0) }
     var showAddDialog by remember { mutableStateOf(false) }
+    var showAddBook by remember { mutableStateOf(false) }
     var previewExam by remember { mutableStateOf<Exam?>(null) }
+    var confirmDeleteExam by remember { mutableStateOf<Exam?>(null) }
+    var confirmDeleteBook by remember { mutableStateOf<BookDto?>(null) }
+    var uploadFor by remember { mutableStateOf<String?>(null) }
+    val pickPdf = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        val examId = uploadFor
+        uploadFor = null
+        if (uri != null && examId != null) onUploadFile(examId, uri)
+    }
 
     // What the server accepts from this user (same rules as the web app).
     val canManage = com.example.data.remote.Permissions.can("exams.write")
-    val canDownload = com.example.data.remote.Permissions.can("exams.file")
+    val canEditBooks = com.example.data.remote.Permissions.can("books.write")
+    val examScope = com.example.data.remote.Permissions.examScope
+    val bookNames = (books.map { it.name } + exams.map { it.book }).filter { it.isNotBlank() }.distinct().sorted()
 
     val filtered = exams.filter { exam ->
-        searchQuery.isBlank() ||
+        (bookFilter == "all" || exam.book == bookFilter) && (
+            searchQuery.isBlank() ||
                 exam.title.contains(searchQuery, ignoreCase = true) ||
                 exam.book.contains(searchQuery, ignoreCase = true) ||
-                exam.branch.contains(searchQuery, ignoreCase = true)
+                exam.branch.contains(searchQuery, ignoreCase = true))
     }
 
     Scaffold(
         floatingActionButton = {
-            if (canManage) {
+            if (tab == 0 && canManage) {
                 FloatingActionButton(
                     onClick = { showAddDialog = true },
                     containerColor = Primary700,
                     contentColor = Color.White,
                     modifier = Modifier.testTag("fab_add_exam")
                 ) {
-                    Icon(Icons.Default.Add, contentDescription = "إضافة نموذج امتحان")
+                    Icon(Icons.Default.Add, contentDescription = "إضافة امتحان ورفع PDF")
+                }
+            } else if (tab == 1 && canEditBooks) {
+                FloatingActionButton(onClick = { showAddBook = true }, containerColor = Color(0xFFB45309), contentColor = Color.White) {
+                    Icon(Icons.Default.Add, contentDescription = "إضافة كتاب مقرر")
                 }
             }
         },
@@ -116,93 +147,109 @@ fun ExamsScreen(
         ) {
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Header Banner
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(containerColor = Primary800)
             ) {
-                Row(
-                    modifier = Modifier.padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+                Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                     Box(
-                        modifier = Modifier
-                            .size(44.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(Color.White.copy(alpha = 0.15f)),
+                        modifier = Modifier.size(44.dp).clip(RoundedCornerShape(12.dp)).background(Color.White.copy(alpha = 0.15f)),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.MenuBook,
-                            contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.size(24.dp)
-                        )
+                        Icon(imageVector = Icons.Default.MenuBook, contentDescription = null, tint = Color.White, modifier = Modifier.size(24.dp))
                     }
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
-                        Text(
-                            text = "📚 بنك الامتحانات والنماذج الورقية",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Black,
-                            color = Color.White
-                        )
-                        Text(
-                            text = "نماذج الاختبارات المعتمدة للدورة الصيفية مع ملفات الـ PDF",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Primary100
-                        )
+                        Text("📚 الامتحانات ونماذج PDF", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black, color = Color.White)
+                        Text("نماذج الاختبارات المعتمدة والكتب والمتون المقررة", style = MaterialTheme.typography.bodySmall, color = Primary100)
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(10.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                MiniStat("نماذج الامتحانات", "${exams.size}", Modifier.weight(1f))
+                MiniStat("الكتب المقررة", "${bookNames.size}", Modifier.weight(1f))
+                MiniStat("ملفات PDF", "${exams.count { it.hasFile }}", Modifier.weight(1f))
+            }
+            Spacer(modifier = Modifier.height(10.dp))
+            TabRow(selectedTabIndex = tab, containerColor = Color.White) {
+                Tab(selected = tab == 0, onClick = { tab = 0 }, text = { Text("نماذج الامتحانات وPDF") })
+                Tab(selected = tab == 1, onClick = { tab = 1 }, text = { Text("الكتب والمتون المقررة") })
+            }
+            Spacer(modifier = Modifier.height(10.dp))
 
-            // Search
+            if (examScope != null && tab == 0) {
+                Text(
+                    "نطاق الصلاحية المخصص: تفتح ملفات الامتحانات المصرح لك بها فقط (${examScope.size}).",
+                    style = MaterialTheme.typography.labelSmall, color = Color(0xFF92400E),
+                    modifier = Modifier.fillMaxWidth().background(Color(0xFFFEF3C7), RoundedCornerShape(8.dp)).padding(8.dp)
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
-                placeholder = { Text("بحث باسم الامتحان، الكتاب المقرر، أو الفرع...") },
+                placeholder = { Text(if (tab == 0) "بحث في الامتحانات بالاسم أو الكتاب أو الفرع..." else "بحث في الكتب والمتون المقررة...") },
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Primary700) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .testTag("input_exam_search"),
+                modifier = Modifier.fillMaxWidth().testTag("input_exam_search"),
                 singleLine = true,
                 shape = RoundedCornerShape(14.dp)
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
-
-            if (filtered.isEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "لا توجد نماذج امتحانات مطابقة للبحث",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color(0xFF64748B)
-                    )
+            if (tab == 0) {
+                Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    FilterChip(selected = bookFilter == "all", onClick = { bookFilter = "all" }, label = { Text("كافة الكتب (${exams.size})") })
+                    bookNames.forEach { b -> FilterChip(selected = bookFilter == b, onClick = { bookFilter = b }, label = { Text("$b (${exams.count { it.book == b }})") }) }
+                }
+                if (filtered.isEmpty()) {
+                    Box(modifier = Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
+                        Text("لا توجد امتحانات مطابقة للبحث", style = MaterialTheme.typography.bodyMedium, color = Color(0xFF64748B))
+                    }
+                } else {
+                    LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        items(filtered, key = { it.id }) { exam ->
+                            ExamCard(
+                                exam = exam,
+                                onPreview = { if (exam.hasFile && com.example.data.remote.Permissions.canOpenExam(exam.id)) onOpenFile(exam) else previewExam = exam },
+                                onDelete = { confirmDeleteExam = exam },
+                                canDelete = com.example.data.remote.Permissions.can("exams.delete"),
+                                onUpload = if (canManage) ({ uploadFor = exam.id; pickPdf.launch("application/pdf") }) else null
+                            )
+                        }
+                        item { Spacer(modifier = Modifier.height(72.dp)) }
+                    }
                 }
             } else {
-                LazyColumn(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    items(filtered) { exam ->
-                        ExamCard(
-                            exam = exam,
-                            onPreview = { if (exam.hasFile && com.example.data.remote.Permissions.canOpenExam(exam.id)) onOpenFile(exam) else previewExam = exam },
-                            onDelete = { onDeleteExam(exam.id) },
-                            canDelete = com.example.data.remote.Permissions.can("exams.delete")
-                        )
+                val shownBooks = bookNames.filter { searchQuery.isBlank() || it.contains(searchQuery, ignoreCase = true) }
+                LazyColumn(modifier = Modifier.weight(1f).padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    if (shownBooks.isEmpty()) item { Text("لا توجد كتب مقررة مطابقة", color = Color(0xFF64748B), modifier = Modifier.padding(16.dp)) }
+                    items(shownBooks, key = { it }) { name ->
+                        val dto = books.find { it.name == name }
+                        Card(
+                            shape = RoundedCornerShape(14.dp),
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFFFFFBEB)),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFDE68A))
+                        ) {
+                            Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.MenuBook, null, tint = Color(0xFFB45309))
+                                Spacer(Modifier.width(10.dp))
+                                Column(Modifier.weight(1f)) {
+                                    Text(name, fontWeight = FontWeight.Bold, color = Color(0xFF78350F))
+                                    Text("نماذج الامتحانات المرفوعة: ${exams.count { it.book == name }} • متون علمية معتمدة", style = MaterialTheme.typography.labelSmall, color = Color(0xFF92400E))
+                                }
+                                TextButton(onClick = { tab = 0; bookFilter = name; searchQuery = "" }) { Text("الامتحانات") }
+                                if (canEditBooks && dto != null) {
+                                    IconButton(onClick = { confirmDeleteBook = dto }) {
+                                        Icon(Icons.Default.Delete, contentDescription = "حذف هذا الكتاب", tint = Color(0xFFEF4444))
+                                    }
+                                }
+                            }
+                        }
                     }
-                    item {
-                        Spacer(modifier = Modifier.height(60.dp))
-                    }
+                    item { Spacer(modifier = Modifier.height(72.dp)) }
                 }
             }
         }
@@ -210,19 +257,57 @@ fun ExamsScreen(
 
     if (showAddDialog) {
         AddExamDialog(
+            bookSuggestions = bookNames,
             onDismiss = { showAddDialog = false },
-            onSave = {
-                onSaveExam(it)
+            onSave = { exam, pdf ->
+                onSaveExam(exam, pdf)
                 showAddDialog = false
             }
         )
     }
+    if (showAddBook) {
+        var name by remember { mutableStateOf("") }
+        AlertDialog(
+            onDismissRequest = { showAddBook = false },
+            title = { Text("إضافة كتاب مقرر جديد", fontWeight = FontWeight.Bold) },
+            text = {
+                OutlinedTextField(name, { name = it }, label = { Text("اسم الكتاب / المتن *") }, placeholder = { Text("مثال: كتاب الأصول الثلاثة") }, singleLine = true)
+            },
+            confirmButton = {
+                Button(onClick = { onAddBook(name.trim()); showAddBook = false }, enabled = name.isNotBlank()) { Text("حفظ الكتاب واعتماده") }
+            },
+            dismissButton = { TextButton(onClick = { showAddBook = false }) { Text("إلغاء") } }
+        )
+    }
+    confirmDeleteExam?.let { e ->
+        AlertDialog(
+            onDismissRequest = { confirmDeleteExam = null },
+            title = { Text("حذف الامتحان") },
+            text = { Text("هل تريد حذف «${e.title}» نهائياً؟") },
+            confirmButton = { TextButton(onClick = { confirmDeleteExam = null; onDeleteExam(e.id) }) { Text("حذف", color = Color(0xFFDC2626)) } },
+            dismissButton = { TextButton(onClick = { confirmDeleteExam = null }) { Text("إلغاء") } }
+        )
+    }
+    confirmDeleteBook?.let { b ->
+        AlertDialog(
+            onDismissRequest = { confirmDeleteBook = null },
+            title = { Text("حذف الكتاب") },
+            text = { Text("هل تريد حذف «${b.name}» من الكتب المقررة؟") },
+            confirmButton = { TextButton(onClick = { confirmDeleteBook = null; onDeleteBook(b) }) { Text("حذف", color = Color(0xFFDC2626)) } },
+            dismissButton = { TextButton(onClick = { confirmDeleteBook = null }) { Text("إلغاء") } }
+        )
+    }
 
     previewExam?.let { exam ->
-        ExamPreviewDialog(
-            exam = exam,
-            onDismiss = { previewExam = null }
-        )
+        ExamPreviewDialog(exam = exam, onDismiss = { previewExam = null })
+    }
+}
+
+@Composable
+private fun MiniStat(title: String, value: String, modifier: Modifier) {
+    Column(modifier.background(Color.White, RoundedCornerShape(12.dp)).border(1.dp, Color(0xFFE2E8F0), RoundedCornerShape(12.dp)).padding(8.dp)) {
+        Text(title, style = MaterialTheme.typography.labelSmall, color = Color(0xFF64748B))
+        Text(value, fontWeight = FontWeight.Bold, color = Primary700)
     }
 }
 
@@ -231,7 +316,8 @@ fun ExamCard(
     exam: Exam,
     onPreview: () -> Unit,
     onDelete: () -> Unit,
-    canDelete: Boolean
+    canDelete: Boolean,
+    onUpload: (() -> Unit)? = null
 ) {
     Card(
         modifier = Modifier
@@ -339,6 +425,12 @@ fun ExamCard(
                 }
             }
 
+            if (exam.branch.isNotBlank() || exam.notes.isNotBlank()) {
+                Spacer(modifier = Modifier.height(6.dp))
+                if (exam.branch.isNotBlank()) Text("الفرع: ${exam.branch}", style = MaterialTheme.typography.labelSmall, color = Color(0xFF475569))
+                if (exam.notes.isNotBlank()) Text("تعليمات: ${exam.notes}", style = MaterialTheme.typography.labelSmall, color = Color(0xFF475569))
+            }
+
             Spacer(modifier = Modifier.height(12.dp))
 
             Row(
@@ -346,12 +438,19 @@ fun ExamCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "📄 ${exam.pdfFileName.ifBlank { "نموذج_امتحان.pdf" }} (${exam.pdfFileSize})",
-                    style = MaterialTheme.typography.bodySmall,
-                    fontSize = 12.sp,
-                    color = Color(0xFF64748B)
-                )
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        text = if (exam.hasFile) "📄 ${exam.pdfFileName.ifBlank { "نموذج_امتحان.pdf" }} ${exam.pdfFileSize}" else "لا يوجد ملف PDF بعد",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontSize = 12.sp,
+                        color = Color(0xFF64748B)
+                    )
+                    if (onUpload != null) {
+                        TextButton(onClick = onUpload, contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
+                            Text(if (exam.hasFile) "استبدال ملف PDF" else "⬆ رفع ملف PDF", style = MaterialTheme.typography.labelSmall, color = Color(0xFF2563EB))
+                        }
+                    }
+                }
 
                 Button(
                     onClick = onPreview,
@@ -464,8 +563,12 @@ fun ExamPreviewDialog(
 @Composable
 fun AddExamDialog(
     onDismiss: () -> Unit,
-    onSave: (Exam) -> Unit
+    onSave: (Exam, Uri?) -> Unit,
+    bookSuggestions: List<String> = emptyList()
 ) {
+    var notes by remember { mutableStateOf("") }
+    var pdf by remember { mutableStateOf<Uri?>(null) }
+    val pickPdf = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri -> if (uri != null) pdf = uri }
     var title by remember { mutableStateOf("") }
     var book by remember { mutableStateOf("") }
     var branch by remember { mutableStateOf("") }
@@ -491,6 +594,7 @@ fun AddExamDialog(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
                     .padding(vertical = 6.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
@@ -506,9 +610,17 @@ fun AddExamDialog(
                     value = book,
                     onValueChange = { book = it },
                     label = { Text("الكتاب المقرر") },
+                    placeholder = { Text("اختر أو اكتب اسم الكتاب...") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
+                if (bookSuggestions.isNotEmpty()) {
+                    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        bookSuggestions.filter { book.isBlank() || it.contains(book) }.take(12).forEach { b ->
+                            FilterChip(selected = book == b, onClick = { book = b }, label = { Text(b) })
+                        }
+                    }
+                }
 
                 Text(
                     text = "الفرع المستهدف:",
@@ -564,42 +676,40 @@ fun AddExamDialog(
                     )
                 }
 
-                // Attach PDF file button
+                OutlinedTextField(
+                    value = if (questionsCount == 0) "" else questionsCount.toString(),
+                    onValueChange = { questionsCount = it.filter(Char::isDigit).toIntOrNull() ?: 0 },
+                    label = { Text("عدد الأسئلة") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                // The question PDF is uploaded right after the exam is saved, as on the web.
                 Surface(
                     shape = RoundedCornerShape(10.dp),
                     color = Color(0xFFEFF6FF),
                     border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFBFDBFE)),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(12.dp)
+                    modifier = Modifier.fillMaxWidth().clickable { pickPdf.launch("application/pdf") }
                 ) {
-                    Row(
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Default.PictureAsPdf,
-                                contentDescription = null,
-                                tint = Color(0xFF2563EB),
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "ملف الأسئلة (PDF) يُرفع من الموقع الإلكتروني",
-                                style = MaterialTheme.typography.bodySmall,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF1D4ED8)
-                            )
-                        }
+                    Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.PictureAsPdf, contentDescription = null, tint = Color(0xFF2563EB), modifier = Modifier.size(20.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "من الموقع",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = Color(0xFF1E40AF),
-                            fontWeight = FontWeight.Bold
+                            text = if (pdf != null) "تم اختيار ملف PDF ✓ (اضغط للتغيير)" else "اختيار ملف الأسئلة PDF (اختياري)",
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF1D4ED8)
                         )
                     }
                 }
+
+                OutlinedTextField(
+                    value = notes,
+                    onValueChange = { notes = it },
+                    label = { Text("تعليمات خاصة للمصححين أو توزيع الدرجات") },
+                    maxLines = 3,
+                    modifier = Modifier.fillMaxWidth()
+                )
 
                 OutlinedTextField(
                     value = questionsInput,
@@ -626,8 +736,9 @@ fun AddExamDialog(
                             sampleQuestions = qList,
                             hasFile = false,
                             uploadedAt = "",
+                            notes = notes.trim()
                         )
-                        onSave(exam)
+                        onSave(exam, pdf)
                     }
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = Primary700)

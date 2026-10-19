@@ -27,6 +27,11 @@ import com.example.data.remote.AssignableUserDto
 import com.example.data.remote.AuthResult
 import com.example.data.remote.AuthenticationService
 import com.example.data.remote.SheetRowDto
+import com.example.data.remote.AuditLogDto
+import com.example.data.remote.BookDto
+import com.example.data.remote.OnlineApi
+import com.example.data.remote.PermissionProfileDto
+import com.example.data.remote.StaffUserDto
 import com.example.data.repository.BukhariRepository
 import com.example.data.repository.WriteResult
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -47,7 +52,13 @@ enum class AppNavScreen(val route: String, val titleAr: String, val iconRes: Str
     SCHEDULE("schedule", "التقويم والمهام", "calendar"),
     ASSISTANTS("assistants", "المعاونون والصلاحيات", "badge"),
     DATABASE_INSPECTOR("database_inspector", "حالة البيانات والمزامنة", "database"),
-    STATISTICS("statistics", "الإحصائيات الشاملة", "bar_chart")
+    STATISTICS("statistics", "الإحصائيات الشاملة", "bar_chart"),
+    COURSES("courses", "إضافة وإدارة الدورات", "event_repeat"),
+    CEREMONIES("ceremonies", "الحفلات والتكريم", "celebration"),
+    DAILY_ALERTS("daily_alerts", "التنبيهات والمهام اليومية", "notifications_active"),
+    AUDIT("audit", "سجل التدقيق", "history"),
+    NOTIFICATIONS("notifications", "الإشعارات", "notifications"),
+    MENU("menu", "القائمة", "menu")
 }
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
@@ -128,20 +139,41 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         repository.allCustomPermissions.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
     val sheetRows: StateFlow<List<SheetRowDto>> = repository.sheetRows
 
-    val filteredCommittees: StateFlow<List<Committee>> = combine(
-        committees, _searchQuery, _selectedStageFilter, _selectedCourseId
-    ) { commList, query, stageFilter, courseId ->
-        commList.filter { committee ->
-            val matchesCourse = courseId == null || committee.courseId == courseId
-            val matchesQuery = query.isBlank() ||
-                committee.committeeName.contains(query, ignoreCase = true) ||
-                committee.sheikhName.contains(query, ignoreCase = true) ||
-                committee.competitionBook.contains(query, ignoreCase = true) ||
-                committee.committeeNumber.toString() == query.trim()
-            val matchesStage = stageFilter == "all" || committee.stages.getStage(stageFilter).completed
-            matchesCourse && matchesQuery && matchesStage
-        }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    private val _filterInputs = combine(_searchQuery, _selectedStageFilter, _selectedCourseId) { q, st, c -> Triple(q, st, c) }
+
+    /** Same filters and sorting as the web's committee list (search, stage, course, gender, mine, unscored, sort). */
+    val filteredCommittees: StateFlow<List<Committee>> by lazy {
+        combine(committees, _filterInputs, _committeeFilters) { commList, inputs, f ->
+            val (query, stageFilter, courseId) = inputs
+            val q = query.trim().lowercase()
+            commList.filter { c ->
+                val matchesCourse = courseId == null || c.courseId == courseId
+                val matchesQuery = q.isEmpty() ||
+                    c.committeeNumber.toString().contains(q) ||
+                    c.committeeName.lowercase().contains(q) ||
+                    c.competitionBook.lowercase().contains(q) ||
+                    c.branch.lowercase().contains(q) ||
+                    c.associationName.lowercase().contains(q) ||
+                    c.members.any { it.lowercase().contains(q) } ||
+                    c.sheikhName.lowercase().contains(q) ||
+                    c.sheikhPhone.lowercase().contains(q) ||
+                    c.sheikhCountry.lowercase().contains(q) ||
+                    c.generalNotes.lowercase().contains(q)
+                // Like the web: the stage filter shows committees whose current stage is that stage.
+                val matchesStage = stageFilter == "all" || com.example.ui.components.currentStageKey(c.stages) == stageFilter
+                val matchesGender = when (f.gender) { "women" -> c.isWomenCommittee; "men" -> !c.isWomenCommittee; else -> true }
+                val matchesMine = !f.mineOnly || com.example.data.remote.Permissions.inScope(c.id)
+                val matchesScoring = !f.needsScoring || c.scoringDetails.questions.any { !it.completed }
+                matchesCourse && matchesQuery && matchesStage && matchesGender && matchesMine && matchesScoring
+            }.let { list ->
+                when (f.sortBy) {
+                    "oldest", "committeeNumber" -> list.sortedBy { it.committeeNumber }
+                    "book" -> list.sortedBy { it.competitionBook }
+                    else -> list.sortedByDescending { it.committeeNumber }
+                }
+            }
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    }
 
     private val connectivity = application.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
@@ -546,4 +578,292 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             showMessage("تم حذف التعديل المرفوض واستعادة بيانات الخادم")
         }
     }
+
+    // ================================================================ management (online, like the web)
+
+    /** A question the screen must ask before going on (e.g. deleting a course with sheet rows). */
+    data class ConfirmRequest(val title: String, val message: String, val confirmLabel: String, val onConfirm: () -> Unit)
+
+    private val _confirmRequest = MutableStateFlow<ConfirmRequest?>(null)
+    val confirmRequest: StateFlow<ConfirmRequest?> = _confirmRequest.asStateFlow()
+    fun dismissConfirm() { _confirmRequest.value = null }
+
+    private val _books = MutableStateFlow<List<BookDto>>(emptyList())
+    val books: StateFlow<List<BookDto>> = _books.asStateFlow()
+
+    private val _staffUsers = MutableStateFlow<List<StaffUserDto>>(emptyList())
+    val staffUsers: StateFlow<List<StaffUserDto>> = _staffUsers.asStateFlow()
+
+    private val _profiles = MutableStateFlow<List<PermissionProfileDto>>(emptyList())
+    val profiles: StateFlow<List<PermissionProfileDto>> = _profiles.asStateFlow()
+
+    private val _staffLoading = MutableStateFlow(false)
+    val staffLoading: StateFlow<Boolean> = _staffLoading.asStateFlow()
+
+    private val _auditLogs = MutableStateFlow<List<AuditLogDto>>(emptyList())
+    val auditLogs: StateFlow<List<AuditLogDto>> = _auditLogs.asStateFlow()
+    private val _auditLoading = MutableStateFlow(false)
+    val auditLoading: StateFlow<Boolean> = _auditLoading.asStateFlow()
+    private val _auditHasMore = MutableStateFlow(true)
+    val auditHasMore: StateFlow<Boolean> = _auditHasMore.asStateFlow()
+
+    /** Committees list filters beyond search/stage (web: SearchAndFilters and the assistant bar). */
+    data class CommitteeFilters(
+        val sortBy: String = "newest",
+        val gender: String = "all",
+        val mineOnly: Boolean = false,
+        val needsScoring: Boolean = false
+    )
+    private val _committeeFilters = MutableStateFlow(CommitteeFilters())
+    val committeeFilters: StateFlow<CommitteeFilters> = _committeeFilters.asStateFlow()
+    fun setCommitteeFilters(f: CommitteeFilters) { _committeeFilters.value = f }
+
+    /**
+     * Runs a call the server must confirm before anything is shown as done (web: attempt()).
+     * Success reloads the data, so every screen shows what is really stored.
+     */
+    private fun online(success: String?, onDone: (Boolean) -> Unit = {}, reload: Boolean = true, block: suspend () -> Unit) {
+        viewModelScope.launch {
+            val ok = try {
+                block()
+                true
+            } catch (e: OnlineApi.ApiFailure) {
+                showMessage(e.message ?: "تعذر تنفيذ الطلب")
+                false
+            } catch (e: Exception) {
+                showMessage("تعذر تنفيذ الطلب: ${e.message ?: "خطأ غير متوقع"}")
+                false
+            }
+            if (ok) success?.let { showMessage(it) }
+            onDone(ok)
+            if (ok && reload) refreshFromServer()
+        }
+    }
+
+    // ---------------- courses
+
+    private fun courseBody(c: Course): Map<String, Any?> = mapOf(
+        "id" to c.id, "name" to c.name, "season" to c.season, "year" to c.year,
+        "startDate" to c.startDate.ifBlank { null }, "endDate" to c.endDate.ifBlank { null }, "status" to c.status,
+        "description" to c.description, "targetCommitteesCount" to c.targetCommitteesCount, "isDefault" to c.isDefault
+    )
+
+    fun saveCourse(course: Course, onDone: (Boolean) -> Unit = {}) =
+        online(if (courses.value.any { it.id == course.id }) "تم حفظ الدورة" else "تمت إضافة الدورة: ${course.name}", onDone) {
+            OnlineApi.saveCourse(courseBody(course))
+        }
+
+    fun setDefaultCourse(course: Course) = saveCourse(course.copy(isDefault = true, status = "active"))
+
+    /** A course with sheet rows is deleted only after the user confirms the rows go too (API-27). */
+    fun deleteCourse(course: Course) {
+        viewModelScope.launch {
+            try {
+                OnlineApi.deleteCourse(course.id)
+                showMessage("تم حذف الدورة")
+                if (_selectedCourseId.value == course.id) _selectedCourseId.value = null
+                refreshFromServer()
+            } catch (e: OnlineApi.ApiFailure) {
+                if (e.httpCode == 409 && e.message?.contains("كشف") == true) {
+                    _confirmRequest.value = ConfirmRequest("حذف الدورة مع كشفها", e.message ?: "", "حذف الدورة والكشف") {
+                        online("تم حذف الدورة") { OnlineApi.deleteCourse(course.id, deleteSheetRows = true) }
+                    }
+                } else showMessage(e.message ?: "تعذر حذف الدورة")
+            }
+        }
+    }
+
+    // ---------------- books & exam files
+
+    fun loadBooks() {
+        viewModelScope.launch { try { _books.value = OnlineApi.books() } catch (_: Exception) { } }
+    }
+
+    fun addBook(name: String) {
+        if (name.isBlank() || _books.value.any { it.name == name.trim() }) return
+        online("تمت إضافة الكتاب", reload = false) { OnlineApi.saveBook(name); _books.value = OnlineApi.books() }
+    }
+
+    fun deleteBook(book: BookDto) = online("تم حذف الكتاب", reload = false) { OnlineApi.deleteBook(book.id); _books.value = OnlineApi.books() }
+
+    private suspend fun readUri(uri: android.net.Uri): Pair<ByteArray, String> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+        val resolver = getApplication<Application>().contentResolver
+        val bytes = resolver.openInputStream(uri)?.use { it.readBytes() } ?: throw OnlineApi.ApiFailure("تعذر قراءة الملف المختار", null)
+        var name = "exam.pdf"
+        resolver.query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c ->
+            if (c.moveToFirst()) c.getString(0)?.let { name = it }
+        }
+        bytes to name
+    }
+
+    fun uploadExamFile(examId: String, uri: android.net.Uri) = online("تم رفع ملف الامتحان") {
+        val (bytes, name) = readUri(uri)
+        if (bytes.size > 20 * 1024 * 1024) throw OnlineApi.ApiFailure("حجم الملف كبير جداً", null)
+        OnlineApi.uploadExamFile(examId, bytes, name)
+    }
+
+    /** Saves the exam, then uploads its PDF; one outcome message, as on the web (WEB-24). */
+    fun saveExamWithFile(exam: Exam, pdf: android.net.Uri?) {
+        viewModelScope.launch {
+            val result = repository.saveExam(exam)
+            if (pdf == null) { report(result, "تم حفظ الامتحان ✓"); addBookIfNew(exam.book); return@launch }
+            when (result) {
+                WriteResult.Sent -> try {
+                    val (bytes, name) = readUri(pdf)
+                    OnlineApi.uploadExamFile(exam.id, bytes, name)
+                    showMessage("تم حفظ الامتحان ورفع الملف")
+                    refreshFromServer()
+                } catch (e: Exception) {
+                    showMessage("تم حفظ بيانات الامتحان، لكن تعذر رفع ملف PDF: ${e.message}. ارفعه من بطاقة الامتحان.")
+                }
+                WriteResult.Queued -> {
+                    report(result, "")
+                    showMessage("تم حفظ الامتحان على الجهاز؛ ارفع ملف PDF من بطاقة الامتحان بعد الاتصال")
+                }
+                is WriteResult.Rejected -> report(result, "")
+            }
+            addBookIfNew(exam.book)
+        }
+    }
+
+    private fun addBookIfNew(book: String) {
+        if (book.isNotBlank() && com.example.data.remote.Permissions.can("books.write") && _books.value.none { it.name == book.trim() }) addBook(book)
+    }
+
+    // ---------------- users & profiles
+
+    fun loadStaff() {
+        viewModelScope.launch {
+            _staffLoading.value = true
+            try {
+                if (com.example.data.remote.Permissions.can("users.read")) _staffUsers.value = OnlineApi.users()
+                if (com.example.data.remote.Permissions.can("profiles.read")) _profiles.value = OnlineApi.profiles()
+            } catch (e: OnlineApi.ApiFailure) {
+                showMessage(e.message ?: "تعذر تحميل المستخدمين")
+            } catch (_: Exception) {
+            }
+            _staffLoading.value = false
+        }
+    }
+
+    fun saveStaffUser(body: Map<String, Any?>, success: String, onDone: (Boolean) -> Unit) =
+        online(success, { ok -> onDone(ok); if (ok) loadStaff() }) { OnlineApi.saveUser(body) }
+
+    fun deleteStaffUser(u: StaffUserDto) = online("تم حذف المستخدم", { ok -> if (ok) loadStaff() }) { OnlineApi.deleteUser(u.id) }
+
+    fun resetStaffPassword(u: StaffUserDto, password: String, onDone: (Boolean) -> Unit) =
+        online("تمت إعادة تعيين كلمة مرور ${u.name}. أبلغه بكلمة المرور المؤقتة؛ سيُطلب منه تغييرها عند الدخول.", { ok -> onDone(ok); if (ok) loadStaff() }, reload = false) {
+            OnlineApi.resetPassword(u.id, password)
+        }
+
+    fun saveProfile(p: PermissionProfileDto, onDone: (Boolean) -> Unit) =
+        online("تم حفظ البروفايل", { ok -> onDone(ok); if (ok) loadStaff() }, reload = false) { OnlineApi.saveProfile(p) }
+
+    fun deleteProfile(p: PermissionProfileDto) = online("تم حذف البروفايل", { ok -> if (ok) loadStaff() }, reload = false) { OnlineApi.deleteProfile(p.id) }
+
+    // ---------------- notifications
+
+    fun markAllNotificationsRead() = online(null) { OnlineApi.markAllNotificationsRead() }
+
+    fun sendNotification(title: String, description: String, type: String, committeeId: String?, onDone: (Boolean) -> Unit) =
+        online("تم إرسال التنبيه", onDone) { OnlineApi.sendNotification(title, description, type, committeeId) }
+
+    // ---------------- audit log
+
+    fun loadAuditLogs(entity: String, reset: Boolean) {
+        if (_auditLoading.value) return
+        viewModelScope.launch {
+            _auditLoading.value = true
+            try {
+                val before = if (reset) null else _auditLogs.value.lastOrNull()?.timestamp
+                val page = OnlineApi.auditLogs(entity.ifBlank { null }, before, 50)
+                _auditLogs.value = if (reset) page else _auditLogs.value + page
+                _auditHasMore.value = page.size == 50
+            } catch (e: OnlineApi.ApiFailure) {
+                showMessage(e.message ?: "تعذر تحميل السجل")
+            } catch (_: Exception) {
+            }
+            _auditLoading.value = false
+        }
+    }
+
+    // ---------------- ceremony & stages from the ceremonies screens
+
+    fun toggleCeremonyDone(committee: Committee) = toggleStage(committee.id, "ceremony", committee.stages.ceremony.completed)
+
+    // ---------------- course sheet (web: SummerCourseTrackerView)
+
+    fun saveSheetRow(row: SheetRowDto, onDone: (Boolean) -> Unit) = online(null, onDone) {
+        val toSave = if (row.id.isBlank() || row.id.startsWith("committee:")) row.copy(id = "row-${java.util.UUID.randomUUID()}") else row
+        OnlineApi.saveSheetRow(toSave)
+    }
+
+    fun deleteSheetRow(row: SheetRowDto) = online("تم حذف الصف رقم ${row.number}") { OnlineApi.deleteSheetRow(row.id) }
+
+    /** Imports rows into a course; with [replace] the server deletes that course's old rows in the same transaction. */
+    fun importSheetRows(rows: List<SheetRowDto>, courseId: String, replace: Boolean, onDone: (Boolean) -> Unit) =
+        online(
+            when {
+                rows.isEmpty() && replace -> "تم تفريغ صفوف الكشف المحفوظة لهذه الدورة."
+                replace -> "تم استبدال كشف الدورة بالكامل (${rows.size} صفاً)."
+                else -> "تم إدراج ${rows.size} صفاً وحفظها في قاعدة البيانات."
+            }, onDone
+        ) { OnlineApi.saveSheetRowsBulk(rows.map { it.copy(courseId = courseId) }, if (replace) courseId else null) }
+
+    /** Reads a sheet from a photo on the server; every row is marked "needs checking", as on the web. */
+    fun extractTableFromImage(uri: android.net.Uri, onDone: (List<SheetRowDto>?) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val resolver = getApplication<Application>().contentResolver
+                val bytes = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { resolver.openInputStream(uri)?.use { it.readBytes() } }
+                    ?: throw OnlineApi.ApiFailure("تعذر قراءة الصورة", null)
+                val mime = resolver.getType(uri) ?: "image/jpeg"
+                val base64 = "data:$mime;base64," + android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
+                val extracted = OnlineApi.extractTable(base64, mime)
+                fun num(v: Any?) = (v as? Number)?.toInt() ?: v?.toString()?.toDoubleOrNull()?.toInt() ?: 0
+                fun bool(v: Any?) = v == true || v?.toString() == "true"
+                val rows = extracted.map { r ->
+                    SheetRowDto(
+                        id = "", number = num(r["number"]), sheikh_name = r["sheikh_name"]?.toString() ?: "",
+                        place = r["place"]?.toString() ?: "", book = r["book"]?.toString() ?: "", students_count = num(r["students_count"]),
+                        delivered = bool(r["delivered"]), corrected = bool(r["corrected"]), reviewed = bool(r["reviewed"]),
+                        announced = bool(r["announced"]), ceremony = bool(r["ceremony"]), uncertain = true, notes = r["notes"]?.toString() ?: ""
+                    )
+                }
+                if (rows.isEmpty()) showMessage("لم يتم العثور على صفوف في الصورة")
+                onDone(rows.ifEmpty { null })
+            } catch (e: OnlineApi.ApiFailure) {
+                showMessage(e.message ?: "تعذر استخراج الجدول"); onDone(null)
+            } catch (e: Exception) {
+                showMessage("تعذر استخراج الجدول: ${e.message}"); onDone(null)
+            }
+        }
+    }
+
+    /** Creates the committee for a sheet row and opens it (web: handleOpenRowDetails / add row). */
+    fun createCommitteeFromRow(committee: Committee) {
+        viewModelScope.launch {
+            val result = repository.saveCommittee(committee)
+            report(result, "تم تسجيل اللجنة رقم ${committee.committeeNumber}")
+            if (result !is WriteResult.Rejected) openCommitteeDetail(committee.id)
+        }
+    }
+
+    // ---------------- committee detail extras
+
+    fun updateQuestionDetails(committeeId: String, questionId: String, completed: Boolean, scorers: List<String>, score: Double?, notes: String?) =
+        write("تم حفظ بيانات السؤال ✓") { repository.updateQuestionDetails(committeeId, questionId, completed, scorers, score, notes) }
+
+    /** The imported grade sheet completes the sheet stage with a note; an empty student count is filled in (web). */
+    fun recordSheetImport(committee: Committee, notes: String, studentsCount: Int?) {
+        viewModelScope.launch {
+            if (studentsCount != null && com.example.data.remote.Permissions.canOn("committees.update", committee.id)) {
+                repository.saveCommittee(committee.copy(studentsCount = studentsCount))
+            }
+            report(repository.completeStageWithNotes(committee.id, "sheet", notes), "تم استيراد كشف الإكسيل بنجاح")
+        }
+    }
+
+    fun saveExcelUrl(committee: Committee, url: String) =
+        write("تم حفظ رابط ملف الإكسيل") { repository.saveCommitteeWithExcelUrl(committee, url) }
 }

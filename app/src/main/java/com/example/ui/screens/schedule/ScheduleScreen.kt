@@ -422,10 +422,11 @@ fun AddTaskDialog(
     onSave: (ScheduleTask) -> Unit,
     committees: List<Committee> = emptyList(),
     assignableUsers: List<AssignableUserDto> = emptyList(),
-    currentUserId: String? = null
+    currentUserId: String? = null,
+    initialDate: String = Dates.today()
 ) {
     var title by remember { mutableStateOf("") }
-    var date by remember { mutableStateOf(Dates.today()) }
+    var date by remember { mutableStateOf(initialDate) }
     var time by remember { mutableStateOf("") }
     // Committee and assignee are chosen by id, like on the web; the server fills number and name (MOB-06).
     var committeeId by remember { mutableStateOf<String?>(null) }

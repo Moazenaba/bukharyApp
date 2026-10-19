@@ -423,6 +423,42 @@ class BukhariRepository(
         )
     }
 
+    /** Saves base data together with the sheet stage's Excel link (the server keeps it on the sheet stage). */
+    suspend fun saveCommitteeWithExcelUrl(committee: Committee, excelUrl: String?): WriteResult = withContext(Dispatchers.IO) {
+        val entity = CommitteeEntity.fromDomain(committee)
+        db.committeeDao().insertCommittee(entity)
+        val json = ApiClient.moshi.adapter(CommitteeEntity::class.java).toJsonValue(entity) as? Map<*, *> ?: emptyMap<String, Any?>()
+        val body = json.entries.associate { (k, v) -> k.toString() to v }.toMutableMap()
+        body["excelUrl"] = excelUrl?.ifBlank { null } ?: ""
+        push("saveCommittee", "POST", "api/committees", body, versionOf = "committee:${entity.id}")
+    }
+
+    /** Completes a stage with a note (e.g. the imported grade sheet), through the workflow like the web. */
+    suspend fun completeStageWithNotes(committeeId: String, stageKey: String, notes: String): WriteResult = withContext(Dispatchers.IO) {
+        val entity = db.committeeDao().getCommitteeById(committeeId) ?: return@withContext WriteResult.Rejected("اللجنة غير موجودة")
+        val stage = entity.stages.getStage(stageKey).copy(completed = true, completedAt = now(), notes = notes)
+        val stages = entity.stages.updateStage(stageKey, true, stage.completedAt).let { updated ->
+            when (stageKey) { "sheet" -> updated.copy(sheet = stage); else -> updated }
+        }
+        db.committeeDao().updateCommittee(entity.copy(stages = stages))
+        committeeAction("completeStageNotes", committeeId, mapOf("type" to "completeStage", "stage" to stageKey, "notes" to notes))
+    }
+
+    /** One question's scorers, score and notes (web: updateQuestion intent with scorers). */
+    suspend fun updateQuestionDetails(
+        committeeId: String, questionId: String, completed: Boolean, scorers: List<String>, score: Double?, notes: String?
+    ): WriteResult = withContext(Dispatchers.IO) {
+        val entity = db.committeeDao().getCommitteeById(committeeId) ?: return@withContext WriteResult.Rejected("اللجنة غير موجودة")
+        val questions = entity.scoringDetails.questions.map {
+            if (it.id == questionId) it.copy(completed = completed, scorers = scorers, score = score, notes = notes) else it
+        }
+        db.committeeDao().updateCommittee(entity.copy(scoringDetails = entity.scoringDetails.copy(questions = questions)))
+        committeeAction(
+            "updateQuestionDetails", committeeId,
+            mapOf("type" to "updateQuestion", "questionId" to questionId, "completed" to completed, "scorers" to scorers, "score" to score, "notes" to notes)
+        )
+    }
+
     suspend fun deleteCommittee(committeeId: String): WriteResult = withContext(Dispatchers.IO) {
         db.committeeDao().deleteCommitteeById(committeeId)
         push("deleteCommittee", "DELETE", "api/committees/${enc(committeeId)}")

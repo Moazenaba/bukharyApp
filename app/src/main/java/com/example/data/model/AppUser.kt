@@ -73,14 +73,16 @@ data class AppUser(
         if (role == UserRole.SUPER_ADMIN) return true
         val p = com.example.data.remote.Permissions
         return when (screen) {
-            AppNavScreen.HOME -> true
+            AppNavScreen.HOME, AppNavScreen.CEREMONIES, AppNavScreen.DAILY_ALERTS, AppNavScreen.COMMITTEES -> true
             AppNavScreen.COURSE_TRACKER -> p.can("summerRows.write") || p.can("audit.read")
-            AppNavScreen.COMMITTEES -> true
             AppNavScreen.EXAMS -> p.can("exams.write") || p.can("exams.file")
             AppNavScreen.SCHEDULE -> p.can("tasks.write") || role == UserRole.ASSISTANT
             AppNavScreen.ASSISTANTS -> p.can("users.read")
-            AppNavScreen.DATABASE_INSPECTOR -> true // shows this device's own sync state; server details only for admins
             AppNavScreen.STATISTICS -> p.can("stats.read")
+            AppNavScreen.COURSES -> p.can("courses.write")
+            AppNavScreen.AUDIT -> p.can("audit.read")
+            // Device sync state, notifications and the menu are for everyone.
+            AppNavScreen.DATABASE_INSPECTOR, AppNavScreen.NOTIFICATIONS, AppNavScreen.MENU -> true
         }
     }
 }

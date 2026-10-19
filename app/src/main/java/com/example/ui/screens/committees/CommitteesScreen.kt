@@ -48,6 +48,7 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -95,16 +96,29 @@ fun CommitteesScreen(
     onSaveCommittee: (Committee) -> Unit,
     onDeleteCommittee: (String) -> Unit,
     allCommittees: List<Committee> = committees,
+    selectedCourseId: String? = null,
+    onCourseFilterChange: (String?) -> Unit = {},
+    filters: com.example.ui.MainViewModel.CommitteeFilters = com.example.ui.MainViewModel.CommitteeFilters(),
+    onFiltersChange: (com.example.ui.MainViewModel.CommitteeFilters) -> Unit = {},
+    onReceive: (String, Boolean) -> Unit = { _, _ -> },
+    onApproveReadiness: (String, Boolean) -> Unit = { _, _ -> },
+    openAddRequested: Boolean = false,
+    onAddRequestConsumed: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var showAddDialog by remember { mutableStateOf(false) }
+    androidx.compose.runtime.LaunchedEffect(openAddRequested) {
+        if (openAddRequested) { showAddDialog = true; onAddRequestConsumed() }
+    }
+    var page by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableIntStateOf(1) }
+    androidx.compose.runtime.LaunchedEffect(searchQuery, selectedStageFilter, selectedCourseId, filters) { page = 1 }
 
     // Controls follow the server's evaluated actions and committee scope (MOB-10).
     val canAdd = com.example.data.remote.Permissions.can("committees.create")
 
     // Only stages that have committees are offered as filters; keeps the row short and every chip meaningful.
-    val filterTabs = listOf("all" to "الكل (${committees.size})") + OrderedStageKeys.mapNotNull { (key, _) ->
-        val count = committees.count { it.stages.getStage(key).completed }
+    val filterTabs = listOf("all" to "الكل (${allCommittees.size})") + OrderedStageKeys.mapNotNull { (key, _) ->
+        val count = allCommittees.count { com.example.ui.components.currentStageKey(it.stages) == key }
         if (count == 0 && key != selectedStageFilter) null
         else key to "${StageColorMap[key]?.name ?: ""} ($count)"
     }
@@ -133,11 +147,37 @@ fun CommitteesScreen(
         ) {
             Spacer(modifier = Modifier.height(12.dp))
 
+            // Assistant bar (web): assigned committees, my committees only, unscored questions.
+            if (currentUser?.role == com.example.data.model.UserRole.ASSISTANT) {
+                Column(
+                    Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Color(0xFFECFDF5)).padding(10.dp)
+                ) {
+                    Text(
+                        "اللجان المسندة إليك: " + if (currentUser.allCommitteesAllowed) "كل اللجان"
+                        else currentUser.assignedCommittees.joinToString("، ") { "#$it" }.ifBlank { "لم تُسند إليك لجان بعد" },
+                        style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold, color = Color(0xFF065F46)
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        FilterChip(selected = filters.mineOnly, onClick = { onFiltersChange(filters.copy(mineOnly = !filters.mineOnly, needsScoring = false)) }, label = { Text("لجاني فقط") })
+                        FilterChip(selected = filters.needsScoring, onClick = { onFiltersChange(filters.copy(needsScoring = !filters.needsScoring, mineOnly = false)) }, label = { Text("أسئلة لم تُصحح") })
+                    }
+                }
+                Spacer(modifier = Modifier.height(10.dp))
+            }
+
+            // Hero stats (web: HeroStats)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                com.example.ui.components.StatTile("إجمالي اللجان", "${allCommittees.size}", Modifier.weight(1f))
+                com.example.ui.components.StatTile("لجان نشطة", "${allCommittees.count { !it.stages.ceremony.completed }}", Modifier.weight(1f), tint = Color(0xFF1D4ED8))
+                com.example.ui.components.StatTile("تم الحفل", "${allCommittees.count { it.stages.ceremony.completed }}", Modifier.weight(1f), tint = Color(0xFF047857))
+            }
+            Spacer(modifier = Modifier.height(10.dp))
+
             // Search Bar
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = onSearchChange,
-                placeholder = { Text("ابحث باسم اللجنة أو الشيخ أو الكتاب") },
+                placeholder = { Text("بحث برقم اللجنة، الاسم، الكتاب، الفرع، الشيخ...") },
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Primary700) },
                 modifier = Modifier
                     .fillMaxWidth()
@@ -165,7 +205,30 @@ fun CommitteesScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            // Course, gender and sort (web: SearchAndFilters)
+            Row(
+                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(top = 6.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                FilterChip(selected = selectedCourseId == null, onClick = { onCourseFilterChange(null) }, label = { Text("كل الدورات") })
+                activeCourses.forEach { c ->
+                    FilterChip(selected = selectedCourseId == c.id, onClick = { onCourseFilterChange(c.id) }, label = { Text(c.name) })
+                }
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                listOf("all" to "الكل", "men" to "رجال", "women" to "نسائية").forEach { (k, l) ->
+                    FilterChip(selected = filters.gender == k, onClick = { onFiltersChange(filters.copy(gender = k)) }, label = { Text(l) })
+                }
+                Text("|", color = Color(0xFFCBD5E1), modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp))
+                listOf("newest" to "الأحدث", "oldest" to "الأقدم", "committeeNumber" to "رقم اللجنة", "book" to "الكتاب").forEach { (k, l) ->
+                    FilterChip(selected = filters.sortBy == k, onClick = { onFiltersChange(filters.copy(sortBy = k)) }, label = { Text(l) })
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
 
             // Committees List
             if (committees.isEmpty()) {
@@ -201,15 +264,34 @@ fun CommitteesScreen(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(committees) { committee ->
+                    val pageSize = 6
+                    val pages = (committees.size + pageSize - 1) / pageSize
+                    val current = page.coerceIn(1, maxOf(1, pages))
+                    items(committees.drop((current - 1) * pageSize).take(pageSize), key = { it.id }) { committee ->
                         CommitteeCard(
                             committee = committee,
                             onOpenDetail = { onOpenCommitteeDetail(committee.id) },
                             onDelete = { onDeleteCommittee(committee.id) },
-                            canDelete = com.example.data.remote.Permissions.canOn("committees.delete", committee.id)
+                            canDelete = com.example.data.remote.Permissions.canOn("committees.delete", committee.id),
+                            onReceive = if (com.example.data.remote.Permissions.canOn("committees.reception", committee.id)) ({ onReceive(committee.id, committee.receivedByAssistant != null) }) else null,
+                            onApproveReadiness = if (com.example.data.remote.Permissions.canOn("committees.reception", committee.id)) ({ onApproveReadiness(committee.id, committee.examApprovedBy != null) }) else null
                         )
                     }
                     item {
+                        // Web: 6 per page with numbered pages.
+                        Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                "عرض ${if (committees.isEmpty()) 0 else (current - 1) * pageSize + 1} إلى ${minOf(current * pageSize, committees.size)} من إجمالي ${committees.size} لجنة مسجلة",
+                                style = MaterialTheme.typography.labelSmall, color = Color(0xFF64748B)
+                            )
+                            if (pages > 1) Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                TextButton(onClick = { page = current - 1 }, enabled = current > 1) { Text("السابق") }
+                                (1..pages).forEach { n ->
+                                    FilterChip(selected = n == current, onClick = { page = n }, label = { Text("$n") })
+                                }
+                                TextButton(onClick = { page = current + 1 }, enabled = current < pages) { Text("التالي") }
+                            }
+                        }
                         Spacer(modifier = Modifier.height(60.dp))
                     }
                 }
@@ -235,7 +317,9 @@ fun CommitteeCard(
     committee: Committee,
     onOpenDetail: () -> Unit,
     onDelete: () -> Unit,
-    canDelete: Boolean
+    canDelete: Boolean,
+    onReceive: (() -> Unit)? = null,
+    onApproveReadiness: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
     val activeStageKey = committee.stages.getCurrentActiveStage()
@@ -369,6 +453,24 @@ fun CommitteeCard(
             }
 
             Spacer(modifier = Modifier.height(8.dp))
+
+            // Web: reception and exam readiness, each with who and when, straight from the card.
+            if (onReceive != null || onApproveReadiness != null) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    if (onReceive != null) {
+                        OutlinedButton(onClick = onReceive, modifier = Modifier.weight(1f)) {
+                            Text(if (committee.receivedByAssistant != null) "إلغاء الاستلام" else "📥 توثيق الاستلام", style = MaterialTheme.typography.labelMedium)
+                        }
+                    }
+                    if (onApproveReadiness != null) {
+                        OutlinedButton(onClick = onApproveReadiness, modifier = Modifier.weight(1f)) {
+                            Text(if (committee.examApprovedBy != null) "إلغاء الجاهزية" else "✅ اعتماد الجاهزية", style = MaterialTheme.typography.labelMedium)
+                        }
+                    }
+                }
+                committee.receivedByAssistant?.let { Text("استلمها: ${it.receivedByName} — ${com.example.ui.components.Dates.displayTime(it.receivedAt)}", style = MaterialTheme.typography.labelSmall, color = Color(0xFF047857)) }
+                committee.examApprovedBy?.let { Text("اعتمد الجاهزية: ${it.approvedByName} — ${com.example.ui.components.Dates.displayTime(it.approvedAt)}", style = MaterialTheme.typography.labelSmall, color = Color(0xFF1D4ED8)) }
+            }
 
             Row(
                 modifier = Modifier.fillMaxWidth(),

@@ -134,7 +134,7 @@ object ApiClient {
      * same write is answered by the server without applying it again. Blocking; call off the main thread.
      */
     fun send(method: String, path: String, bodyJson: String?, idempotencyKey: String? = null): SendResult = try {
-        val body = (bodyJson ?: if (method == "DELETE") null else "{}")?.toRequestBody(jsonMediaType)
+        val body = (bodyJson ?: if (method == "DELETE" || method == "GET") null else "{}")?.toRequestBody(jsonMediaType)
         val request = Request.Builder().url(baseUrl + path).method(method, body)
             .apply { if (idempotencyKey != null) header("Idempotency-Key", idempotencyKey) }
             .build()
@@ -142,6 +142,19 @@ object ApiClient {
             val text = res.body?.string()
             val message = if (res.isSuccessful) null else serverMessage(text)
             SendResult(res.code, message, if (res.isSuccessful) text else null)
+        }
+    } catch (e: Exception) {
+        SendResult(null, null)
+    }
+
+    /** Uploads raw bytes (an exam PDF) with the session. Blocking; call off the main thread. */
+    fun sendBytes(method: String, path: String, bytes: ByteArray, contentType: String, headers: Map<String, String> = emptyMap()): SendResult = try {
+        val request = Request.Builder().url(baseUrl + path).method(method, bytes.toRequestBody(contentType.toMediaType()))
+            .apply { headers.forEach { (k, v) -> header(k, v) } }
+            .build()
+        okHttpClient.newCall(request).execute().use { res ->
+            val text = res.body?.string()
+            SendResult(res.code, if (res.isSuccessful) null else serverMessage(text), if (res.isSuccessful) text else null)
         }
     } catch (e: Exception) {
         SendResult(null, null)

@@ -5,7 +5,11 @@ import com.squareup.moshi.Json
 data class StageItem(
     val completed: Boolean = false,
     val completedAt: String? = null,
-    val notes: String? = null
+    val notes: String? = null,
+    /** Who completed it (set by the server). */
+    val completedBy: String? = null,
+    /** Link to the committee's Excel grade sheet (sheet stage). */
+    val excelUrl: String? = null
 )
 
 data class StagesMap(
