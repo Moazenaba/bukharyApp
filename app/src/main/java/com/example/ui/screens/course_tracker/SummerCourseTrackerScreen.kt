@@ -66,17 +66,12 @@ fun SummerCourseTrackerScreen(
     /** Saved sheet rows from the server; rows not linked to a committee are shown read-only. */
     sheetRows: List<com.example.data.remote.SheetRowDto> = emptyList(),
     onSelectCourse: (String?) -> Unit,
-    onSaveCourse: (Course) -> Unit = {},
-    onDeleteCourse: (String) -> Unit = {},
     onToggleStage: (committeeId: String, stageKey: String, currentStatus: Boolean) -> Unit,
     onOpenCommitteeDetail: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var courseMenuExpanded by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
-    var showCourseModal by remember { mutableStateOf(false) }
-    var courseToEdit by remember { mutableStateOf<Course?>(null) }
-    var courseToDeleteConfirm by remember { mutableStateOf<Course?>(null) }
 
     val activeCourse = courses.find { it.id == selectedCourseId } ?: courses.firstOrNull()
 
@@ -108,7 +103,7 @@ fun SummerCourseTrackerScreen(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        // Course Selector & CRUD Action Header
+        // Course Selector Header
         item {
             Card(
                 modifier = Modifier
@@ -118,34 +113,14 @@ fun SummerCourseTrackerScreen(
                 colors = CardDefaults.cardColors(containerColor = Primary800)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "إدارة ودورات المسابقة العلمية",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Black,
-                            color = Color.White
-                        )
-                        androidx.compose.material3.Button(
-                            onClick = {
-                                courseToEdit = null
-                                showCourseModal = true
-                            },
-                            shape = RoundedCornerShape(8.dp),
-                            colors = androidx.compose.material3.ButtonDefaults.buttonColors(
-                                containerColor = Primary100,
-                                contentColor = Primary900
-                            ),
-                            modifier = Modifier.testTag("btn_add_new_course")
-                        ) {
-                            Text("➕ دورة جديدة", fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                        }
-                    }
+                    Text(
+                        text = "كشف ومصفوفة متابعة الدورة الصيفية",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Black,
+                        color = Color.White
+                    )
 
-                    Spacer(modifier = Modifier.height(10.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
 
                     // Dropdown trigger
                     Surface(
@@ -160,22 +135,12 @@ fun SummerCourseTrackerScreen(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Column {
-                                Text(
-                                    text = activeCourse?.name ?: "كافة الدورات العلمية",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color.White
-                                )
-                                if (activeCourse != null) {
-                                    Text(
-                                        text = "الموسم: ${activeCourse.season} ${activeCourse.year} • اللجان المستهدفة: ${activeCourse.targetCommitteesCount}",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = Color.White.copy(alpha = 0.8f),
-                                        fontSize = 11.sp
-                                    )
-                                }
-                            }
+                            Text(
+                                text = activeCourse?.name ?: "كافة الدورات العلمية",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
                             Icon(
                                 imageVector = Icons.Default.ArrowDropDown,
                                 contentDescription = null,
@@ -187,81 +152,14 @@ fun SummerCourseTrackerScreen(
                             expanded = courseMenuExpanded,
                             onDismissRequest = { courseMenuExpanded = false }
                         ) {
-                            DropdownMenuItem(
-                                text = { Text("عرض كافة الدورات", fontWeight = FontWeight.Bold) },
-                                onClick = {
-                                    onSelectCourse(null)
-                                    courseMenuExpanded = false
-                                }
-                            )
                             courses.forEach { course ->
                                 DropdownMenuItem(
-                                    text = {
-                                        Text(
-                                            text = course.name + if (course.isDefault) " (افتراضية ⭐)" else "",
-                                            fontWeight = if (course.id == activeCourse?.id) FontWeight.Bold else FontWeight.Normal
-                                        )
-                                    },
+                                    text = { Text(course.name) },
                                     onClick = {
                                         onSelectCourse(course.id)
                                         courseMenuExpanded = false
                                     }
                                 )
-                            }
-                        }
-                    }
-
-                    if (activeCourse != null) {
-                        Spacer(modifier = Modifier.height(10.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            androidx.compose.material3.OutlinedButton(
-                                onClick = {
-                                    courseToEdit = activeCourse
-                                    showCourseModal = true
-                                },
-                                shape = RoundedCornerShape(8.dp),
-                                colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(
-                                    contentColor = Color.White
-                                ),
-                                border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.4f)),
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .testTag("btn_edit_current_course")
-                            ) {
-                                Text("✏️ تعديل الدورة", fontSize = 12.sp)
-                            }
-
-                            if (!activeCourse.isDefault) {
-                                androidx.compose.material3.OutlinedButton(
-                                    onClick = {
-                                        onSaveCourse(activeCourse.copy(isDefault = true))
-                                    },
-                                    shape = RoundedCornerShape(8.dp),
-                                    colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(
-                                        contentColor = Color.White
-                                    ),
-                                    border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.4f)),
-                                    modifier = Modifier.testTag("btn_set_default_course")
-                                ) {
-                                    Text("⭐ جعلها افتراضية", fontSize = 12.sp)
-                                }
-                            }
-
-                            androidx.compose.material3.OutlinedButton(
-                                onClick = {
-                                    courseToDeleteConfirm = activeCourse
-                                },
-                                shape = RoundedCornerShape(8.dp),
-                                colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(
-                                    contentColor = Color(0xFFFECDD3)
-                                ),
-                                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFECDD3).copy(alpha = 0.5f)),
-                                modifier = Modifier.testTag("btn_delete_current_course")
-                            ) {
-                                Text("🗑️ حذف", fontSize = 12.sp)
                             }
                         }
                     }
@@ -333,41 +231,6 @@ fun SummerCourseTrackerScreen(
         item {
             Spacer(modifier = Modifier.height(24.dp))
         }
-    }
-
-    if (showCourseModal) {
-        CourseFormModal(
-            course = courseToEdit,
-            onSave = { updatedCourse ->
-                onSaveCourse(updatedCourse)
-                showCourseModal = false
-            },
-            onDismiss = { showCourseModal = false }
-        )
-    }
-
-    courseToDeleteConfirm?.let { targetCourse ->
-        androidx.compose.material3.AlertDialog(
-            onDismissRequest = { courseToDeleteConfirm = null },
-            title = { Text("حذف الدورة العلمية", fontWeight = FontWeight.Bold) },
-            text = { Text("هل أنت تأكد من حذف الدورة العلمية '${targetCourse.name}'؟ سيؤدي ذلك لإلغاء ربطها من المنظومة.") },
-            confirmButton = {
-                androidx.compose.material3.Button(
-                    onClick = {
-                        onDeleteCourse(targetCourse.id)
-                        courseToDeleteConfirm = null
-                    },
-                    colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = Color(0xFFDC2626))
-                ) {
-                    Text("حذف الدورة", color = Color.White, fontWeight = FontWeight.Bold)
-                }
-            },
-            dismissButton = {
-                androidx.compose.material3.OutlinedButton(onClick = { courseToDeleteConfirm = null }) {
-                    Text("إلغاء")
-                }
-            }
-        )
     }
 }
 

@@ -31,17 +31,7 @@ class AuthenticationService(
         if (phoneOrEmail.isBlank() || pass.isBlank()) {
             return@withContext AuthResult.Error("يرجى إدخال رقم الهاتف أو البريد الإلكتروني وكلمة المرور")
         }
-        try {
-            val directUser = com.example.data.supabase.SupabaseDirectService.login(phoneOrEmail.trim(), pass)
-            if (directUser != null) {
-                sessionManager.saveUserId(directUser.id)
-                sessionManager.saveTokens("supabase_direct_token_" + directUser.id, "supabase_refresh_token")
-                return@withContext AuthResult.Success(directUser)
-            }
-        } catch (t: Throwable) {
-            android.util.Log.e("AuthenticationService", "Supabase direct login failed: ${t.message}", t)
-        }
-
+        if (!ApiClient.isConfigured) return@withContext AuthResult.Error("لم يتم ضبط عنوان الخادم في هذا الإصدار من التطبيق")
         try {
             val response = apiService.login(LoginRequest(identifier = phoneOrEmail.trim(), password = pass))
             val body = response.body()
@@ -49,6 +39,8 @@ class AuthenticationService(
                 sessionManager.saveTokens(body.token, body.refreshToken)
                 val user = body.user.toDomain().copy(mustChangePassword = body.mustChangePassword || body.user.mustChangePassword)
                 sessionManager.saveUserId(user.id)
+                // The server-evaluated permissions decide what the UI offers. All or nothing: if they
+                // cannot be loaded, no half-made session may be restored on the next launch.
                 val me = refreshMe()
                 if (me == null) {
                     forgetSession()
@@ -62,16 +54,11 @@ class AuthenticationService(
         }
     }
 
+    /**
+     * Reloads the user and their permissions from the server. Null when offline or rejected.
+     * An expired access token is refreshed for this call too (MOB-05).
+     */
     suspend fun refreshMe(): AppUser? = withContext(Dispatchers.IO) {
-        val savedId = sessionManager.getUserId()
-        if (savedId != null) {
-            try {
-                val directUser = com.example.data.supabase.SupabaseDirectService.getUserById(savedId)
-                if (directUser != null) return@withContext directUser
-            } catch (t: Throwable) {
-                android.util.Log.e("AuthenticationService", "Supabase direct getUserById failed: ${t.message}")
-            }
-        }
         try {
             val res = apiService.me()
             val body = res.body()
@@ -137,28 +124,6 @@ class AuthenticationService(
     }
 
     private fun serverMessage(response: Response<*>): String? = ApiClient.serverMessage(response.errorBody()?.string())
-
-    /** Directly creates an account in Supabase and logs in, with fallback to standard registration. */
-    suspend fun registerAndLogin(name: String, phone: String, email: String, role: UserRole, pass: String, notes: String): AuthResult =
-        withContext(Dispatchers.IO) {
-            try {
-                val directUser = com.example.data.supabase.SupabaseDirectService.registerUser(
-                    name = name,
-                    phone = phone,
-                    email = email.ifBlank { null },
-                    role = role,
-                    pass = pass
-                )
-                if (directUser != null) {
-                    sessionManager.saveUserId(directUser.id)
-                    sessionManager.saveTokens("supabase_direct_token_" + directUser.id, "supabase_refresh_token")
-                    return@withContext AuthResult.Success(directUser)
-                }
-            } catch (t: Throwable) {
-                android.util.Log.e("AuthenticationService", "Direct register failed: ${t.message}", t)
-            }
-            login(phone, pass)
-        }
 
     /** Public join request; returns the server-issued request code. */
     suspend fun register(name: String, phone: String, email: String, role: UserRole, pass: String, notes: String): Result<String> =

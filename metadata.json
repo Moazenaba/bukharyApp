@@ -1,8 +1,0 @@
-{
-  "name": "مسجد الإمام البخاري",
-  "description": "منظومة متقدمة لإدارة ومتابعة الدورات والمسابقات العلمية الشرعية واللجان الميدانية بمسجد الإمام البخاري",
-  "requestFramePermissions": [],
-  "majorCapabilities": [
-    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
-  ]
-}

@@ -249,17 +249,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun setSearchQuery(query: String) { _searchQuery.value = query }
     fun setSelectedStageFilter(filter: String) { _selectedStageFilter.value = filter }
     fun setSelectedCourseId(courseId: String?) { _selectedCourseId.value = courseId }
-
-    fun saveCourse(course: Course) {
-        write("تم حفظ بيانات الدورة العلمية بنجاح") { repository.saveCourse(course) }
-    }
-
-    fun deleteCourse(courseId: String) {
-        write("تم حذف الدورة العلمية بنجاح") { repository.deleteCourse(courseId) }
-        if (_selectedCourseId.value == courseId) {
-            _selectedCourseId.value = null
-        }
-    }
     fun openCommitteeDetail(committeeId: String) { _selectedCommitteeIdForDetail.value = committeeId }
     fun closeCommitteeDetail() { _selectedCommitteeIdForDetail.value = null }
     fun showMessage(message: String) { _snackBarMessage.value = message }
@@ -291,27 +280,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    /** Registers a new account directly and logs the user into the system immediately without requiring a request code. */
+    /** Calls [onDone] with the server's request code, or null when the request was refused. */
     fun registerJoinRequest(name: String, phone: String, email: String, role: UserRole, pass: String, notes: String, onDone: (String?) -> Unit) {
         if (_isSubmitting.value) return
         viewModelScope.launch {
             _isSubmitting.value = true
-            when (val res = authService.registerAndLogin(name, phone, email, role, pass, notes)) {
-                is AuthResult.Success -> {
-                    repository.clearAllData(keepQueue = true)
-                    repository.cacheUser(res.user)
-                    _currentUser.value = res.user
-                    _currentNavScreen.value = AppNavScreen.HOME
-                    _isLoggedIn.value = true
-                    showMessage("تم إنشاء الحساب بنجاح! أهلاً بك يا ${res.user.name}")
-                    refreshFromServer()
-                    onDone("SUCCESS")
-                }
-                is AuthResult.Error -> {
-                    showMessage(res.message)
+            authService.register(name, phone, email, role, pass, notes)
+                .onSuccess { code -> onDone(code) }
+                .onFailure {
+                    showMessage(it.message ?: "فشل تسجيل طلب الانضمام")
                     onDone(null)
                 }
-            }
             _isSubmitting.value = false
         }
     }

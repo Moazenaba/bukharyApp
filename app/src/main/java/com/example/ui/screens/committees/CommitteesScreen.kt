@@ -94,7 +94,6 @@ fun CommitteesScreen(
     onOpenCommitteeDetail: (String) -> Unit,
     onSaveCommittee: (Committee) -> Unit,
     onDeleteCommittee: (String) -> Unit,
-    onSaveCourse: (Course) -> Unit = {},
     allCommittees: List<Committee> = committees,
     modifier: Modifier = Modifier
 ) {
@@ -223,7 +222,6 @@ fun CommitteesScreen(
             activeCourses = activeCourses,
             allCommittees = allCommittees,
             onDismiss = { showAddDialog = false },
-            onSaveCourse = onSaveCourse,
             onSave = {
                 onSaveCommittee(it)
                 showAddDialog = false
@@ -425,7 +423,6 @@ fun AddCommitteeDialog(
     /** Every committee (not the filtered list), to suggest the next free number in the chosen course (MOB-11). */
     allCommittees: List<Committee>,
     onDismiss: () -> Unit,
-    onSaveCourse: (Course) -> Unit = {},
     onSave: (Committee) -> Unit
 ) {
     var number by remember { mutableIntStateOf(1) }
@@ -437,14 +434,6 @@ fun AddCommitteeDialog(
     var studentsCount by remember { mutableIntStateOf(0) }
     var isWomen by remember { mutableStateOf(false) }
     var courseId by remember { mutableStateOf(activeCourses.firstOrNull()?.id ?: "") }
-
-    // Auto update default courseId when courses list changes
-    androidx.compose.runtime.LaunchedEffect(activeCourses) {
-        if (courseId.isBlank() && activeCourses.isNotEmpty()) {
-            courseId = activeCourses.first().id
-        }
-    }
-
     // Next free number within the chosen course (numbers are unique per course).
     androidx.compose.runtime.LaunchedEffect(courseId) {
         number = (allCommittees.filter { it.courseId == courseId }.maxOfOrNull { it.committeeNumber } ?: 0) + 1
@@ -484,47 +473,16 @@ fun AddCommitteeDialog(
                 )
 
                 // The committee must belong to a course (same rule as the web app and the server).
-                Text("الدورة العلمية", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                Text("الدورة", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
                 if (activeCourses.isEmpty()) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(Color(0xFFFEF2F2))
-                            .padding(10.dp)
-                    ) {
-                        Text(
-                            "لا توجد دورات مسجلة حالياً.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color(0xFF991B1B),
-                            fontWeight = FontWeight.Bold
-                        )
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Button(
-                            onClick = {
-                                val newCourse = Course(
-                                    id = "course-" + java.util.UUID.randomUUID().toString(),
-                                    name = "الدورة العلمية الرئيسية 2026",
-                                    season = "صيف",
-                                    year = "2026",
-                                    status = "active",
-                                    isDefault = true,
-                                    targetCommitteesCount = 50
-                                )
-                                onSaveCourse(newCourse)
-                                courseId = newCourse.id
-                            },
-                            shape = RoundedCornerShape(8.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = Primary700)
-                        ) {
-                            Text("➕ إنشاء الدورة الرئيسية 2026 فوراً", fontSize = 12.sp)
-                        }
-                    }
+                    Text(
+                        "لا توجد دورات. أضف دورة من الويب أولاً.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = androidx.compose.ui.graphics.Color(0xFFB91C1C)
+                    )
                 } else {
                     Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .horizontalScroll(rememberScrollState()),
+                        modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         activeCourses.forEach { course ->

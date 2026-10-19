@@ -5,7 +5,6 @@ import androidx.room.withTransaction
 import com.example.data.local.AppDatabase
 import com.example.data.local.entities.AppUserEntity
 import com.example.data.local.entities.CommitteeEntity
-import com.example.data.local.entities.CourseEntity
 import com.example.data.local.entities.CustomPermissionEntity
 import com.example.data.local.entities.ExamEntity
 import com.example.data.local.entities.PendingOpEntity
@@ -105,19 +104,6 @@ class BukhariRepository(
      * the user may not read is left as it is.
      */
     suspend fun syncWithRemoteApi(): SyncResult = withContext(Dispatchers.IO) {
-        try {
-            val (supabaseOk, fetchedSheetRows) = com.example.data.supabase.SupabaseDirectService.syncAll(db)
-            if (supabaseOk) {
-                if (fetchedSheetRows.isNotEmpty()) {
-                    _sheetRows.value = fetchedSheetRows
-                }
-                lastSyncOnline = true
-                lastSyncAt = System.currentTimeMillis()
-                return@withContext SyncResult(true, "تم التحديث بنجاح من Supabase")
-            }
-        } catch (t: Throwable) {
-            Log.e(tag, "Supabase direct sync error: ${t.message}")
-        }
         if (!ApiClient.isConfigured) return@withContext SyncResult(false, "لم يتم ضبط عنوان الخادم")
         ApiClient.skippedRecords = 0
         val waiting = flushPendingOps().waiting
@@ -321,31 +307,6 @@ class BukhariRepository(
     private fun now(): String = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US)
         .apply { timeZone = java.util.TimeZone.getTimeZone("UTC") }
         .format(Date())
-
-    // ------------------------------------------------------------------ courses
-
-    /** Creates or updates a course in both Supabase and Room. */
-    suspend fun saveCourse(course: Course): WriteResult = withContext(Dispatchers.IO) {
-        val entity = CourseEntity.fromDomain(course)
-        db.courseDao().insertCourse(entity)
-        try {
-            com.example.data.supabase.SupabaseDirectService.saveCourse(course)
-        } catch (t: Throwable) {
-            Log.w(tag, "Supabase direct saveCourse error: ${t.message}")
-        }
-        push("saveCourse", "POST", "api/courses", entity, versionOf = "course:${entity.id}")
-    }
-
-    /** Deletes a course from both Supabase and Room. */
-    suspend fun deleteCourse(courseId: String): WriteResult = withContext(Dispatchers.IO) {
-        db.courseDao().deleteCourseById(courseId)
-        try {
-            com.example.data.supabase.SupabaseDirectService.deleteCourse(courseId)
-        } catch (t: Throwable) {
-            Log.w(tag, "Supabase direct deleteCourse error: ${t.message}")
-        }
-        push("deleteCourse", "DELETE", "api/courses/${enc(courseId)}")
-    }
 
     // ------------------------------------------------------------------ committees
 
