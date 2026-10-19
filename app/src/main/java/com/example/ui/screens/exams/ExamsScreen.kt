@@ -456,8 +456,7 @@ fun ExamCard(
                     onClick = onPreview,
                     shape = RoundedCornerShape(8.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Primary700),
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                    modifier = Modifier.height(32.dp)
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 8.dp)
                 ) {
                     Text("معاينة الأسئلة 👁️", style = MaterialTheme.typography.labelSmall, color = Color.White)
                 }

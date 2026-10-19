@@ -1,5 +1,7 @@
 package com.example.ui.components
 
+import androidx.compose.foundation.verticalScroll
+
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
@@ -131,6 +133,7 @@ fun BukhariNavigationRail(
         modifier = modifier.testTag("navigation_rail"),
         containerColor = Color.White
     ) {
+        androidx.compose.foundation.layout.Column(Modifier.verticalScroll(androidx.compose.foundation.rememberScrollState())) {
         accessibleItems.forEach { item ->
             val isSelected = currentScreen == item.screen
             NavigationRailItem(
@@ -152,6 +155,7 @@ fun BukhariNavigationRail(
                 ),
                 modifier = Modifier.testTag("rail_item_${item.screen.route}")
             )
+        }
         }
     }
 }

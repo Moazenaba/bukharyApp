@@ -3,6 +3,8 @@ package com.example.ui.screens.assistants
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -530,7 +532,8 @@ fun PermissionChecklist(selected: List<String>, onChange: (List<String>) -> Unit
     Column {
         SystemPermissions.ALL_PERMISSIONS.forEach { (id, label) ->
             Row(
-                Modifier.fillMaxWidth().clickable(enabled = enabled) { onChange(if (id in selected) selected - id else selected + id) },
+                Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                    .toggleable(value = id in selected, enabled = enabled, role = Role.Checkbox) { onChange(if (id in selected) selected - id else selected + id) },
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Checkbox(checked = id in selected, onCheckedChange = null, enabled = enabled)
@@ -560,7 +563,8 @@ fun CommitteeMultiPicker(
         Column(Modifier.heightIn(max = 220.dp).verticalScroll(rememberScrollState())) {
             options.forEach { c ->
                 Row(
-                    Modifier.fillMaxWidth().clickable { onChange(if (c.id in selectedIds) selectedIds - c.id else selectedIds + c.id) },
+                    Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                        .toggleable(value = c.id in selectedIds, role = Role.Checkbox) { onChange(if (c.id in selectedIds) selectedIds - c.id else selectedIds + c.id) },
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Checkbox(checked = c.id in selectedIds, onCheckedChange = null)
@@ -576,7 +580,7 @@ fun CommitteeMultiPicker(
 private fun ExamMultiPicker(exams: List<Exam>, selected: List<String>, onChange: (List<String>) -> Unit) {
     Column(Modifier.heightIn(max = 200.dp).verticalScroll(rememberScrollState())) {
         exams.forEach { e ->
-            Row(Modifier.fillMaxWidth().clickable { onChange(if (e.id in selected) selected - e.id else selected + e.id) }, verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).toggleable(value = e.id in selected, role = Role.Checkbox) { onChange(if (e.id in selected) selected - e.id else selected + e.id) }, verticalAlignment = Alignment.CenterVertically) {
                 Checkbox(checked = e.id in selected, onCheckedChange = null)
                 Spacer(Modifier.width(6.dp))
                 Text("${e.title} (${e.book})", style = MaterialTheme.typography.bodySmall)
@@ -676,16 +680,14 @@ private fun UserAccessDialog(
                         if (canGrant) {
                             Text("الصلاحيات", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
                             PermissionChecklist(perms, { perms = it })
-                            Row(Modifier.clickable { allCommittees = !allCommittees }, verticalAlignment = Alignment.CenterVertically) {
-                                Checkbox(allCommittees, null); Text("كل اللجان في كل الدورات")
+                            Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).toggleable(value = allCommittees, role = Role.Checkbox) { allCommittees = it }, verticalAlignment = Alignment.CenterVertically) { Checkbox(allCommittees, null); Text("كل اللجان في كل الدورات")
                             }
                         }
                         if (!allCommittees && role != "auditor") {
                             CommitteeMultiPicker("اللجان المسندة:", committees, committeeIds, canAssign) { committeeIds = it }
                         }
                         if (canGrant && role == "committee_head") {
-                            Row(Modifier.clickable { allExams = !allExams }, verticalAlignment = Alignment.CenterVertically) {
-                                Checkbox(allExams, null); Text("فتح كل ملفات الامتحانات")
+                            Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).toggleable(value = allExams, role = Role.Checkbox) { allExams = it }, verticalAlignment = Alignment.CenterVertically) { Checkbox(allExams, null); Text("فتح كل ملفات الامتحانات")
                             }
                             if (!allExams) ExamMultiPicker(exams, examIds) { examIds = it }
                         }
@@ -776,8 +778,7 @@ private fun ApproveDialog(
                     }
                     if (profileId.isBlank()) {
                         PermissionChecklist(perms, { perms = it })
-                        Row(Modifier.clickable { allCommittees = !allCommittees }, verticalAlignment = Alignment.CenterVertically) {
-                            Checkbox(allCommittees, null); Text("كل اللجان")
+                        Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).toggleable(value = allCommittees, role = Role.Checkbox) { allCommittees = it }, verticalAlignment = Alignment.CenterVertically) { Checkbox(allCommittees, null); Text("كل اللجان")
                         }
                     }
                 }
@@ -835,9 +836,9 @@ private fun ProfileDialog(
                 }
                 Text("الصلاحيات", fontWeight = FontWeight.Bold)
                 PermissionChecklist(perms, { perms = it })
-                Row(Modifier.clickable { allCommittees = !allCommittees }, verticalAlignment = Alignment.CenterVertically) { Checkbox(allCommittees, null); Text("كل اللجان") }
+                Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).toggleable(value = allCommittees, role = Role.Checkbox) { allCommittees = it }, verticalAlignment = Alignment.CenterVertically) { Checkbox(allCommittees, null); Text("كل اللجان") }
                 if (!allCommittees) CommitteeMultiPicker("اللجان المسموح بها:", committees, committeeIds, { true }) { committeeIds = it }
-                Row(Modifier.clickable { allExams = !allExams }, verticalAlignment = Alignment.CenterVertically) { Checkbox(allExams, null); Text("كل الامتحانات") }
+                Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).toggleable(value = allExams, role = Role.Checkbox) { allExams = it }, verticalAlignment = Alignment.CenterVertically) { Checkbox(allExams, null); Text("كل الامتحانات") }
                 if (!allExams) ExamMultiPicker(exams, examIds) { examIds = it }
             }
         },

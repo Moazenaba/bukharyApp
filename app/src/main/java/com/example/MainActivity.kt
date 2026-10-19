@@ -141,6 +141,14 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
+                val dialogError by viewModel.dialogError.collectAsStateWithLifecycle()
+                LaunchedEffect(dialogError) {
+                    dialogError?.let {
+                        android.widget.Toast.makeText(this@MainActivity, it, android.widget.Toast.LENGTH_LONG).show()
+                        viewModel.clearDialogError()
+                    }
+                }
+
                 LaunchedEffect(snackbarMessage) {
                     snackbarMessage?.let { msg ->
                         viewModel.clearMessage()
@@ -209,7 +217,7 @@ class MainActivity : ComponentActivity() {
 
                 BackHandler(enabled = isLoggedIn && (selectedCommitteeId != null || currentScreen != AppNavScreen.HOME)) {
                     if (selectedCommitteeId != null) viewModel.closeCommitteeDetail()
-                    else viewModel.navigateTo(AppNavScreen.HOME)
+                    else viewModel.navigateBack()
                 }
 
                 // One Scaffold for every state, so messages (e.g. login errors) are always visible.

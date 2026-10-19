@@ -1,5 +1,7 @@
 package com.example.ui.screens.committees
 
+import androidx.compose.foundation.selection.selectable
+
 import androidx.compose.material.icons.filled.Delete
 
 import androidx.compose.foundation.horizontalScroll
@@ -275,7 +277,8 @@ fun CommitteeDetailModal(
                         modifier = Modifier
                             .clip(RoundedCornerShape(8.dp))
                             .background(if (isSel) Primary700 else Color.Transparent)
-                            .minimumInteractiveComponentSize().clickable { activeTab = idx }
+                            .minimumInteractiveComponentSize()
+                            .selectable(selected = isSel, role = androidx.compose.ui.semantics.Role.Tab) { activeTab = idx }
                             .padding(vertical = 8.dp, horizontal = 10.dp),
                         contentAlignment = Alignment.Center
                     ) {

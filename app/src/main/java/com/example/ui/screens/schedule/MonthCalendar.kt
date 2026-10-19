@@ -14,8 +14,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.ChevronLeft
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -56,9 +56,9 @@ fun MonthCalendar(tasks: List<ScheduleTask>, selectedDate: String?, onSelect: (S
     Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
         Column(Modifier.padding(10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = { if (month == 0) { month = 11; year-- } else month-- }) { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, "الشهر السابق") }
+                IconButton(onClick = { if (month == 0) { month = 11; year-- } else month-- }) { Icon(Icons.Filled.ChevronRight, "الشهر السابق") }
                 Text("${MONTHS[month]} $year", fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
-                IconButton(onClick = { if (month == 11) { month = 0; year++ } else month++ }) { Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, "الشهر التالي") }
+                IconButton(onClick = { if (month == 11) { month = 0; year++ } else month++ }) { Icon(Icons.Filled.ChevronLeft, "الشهر التالي") }
             }
             androidx.compose.material3.TextButton(
                 onClick = {

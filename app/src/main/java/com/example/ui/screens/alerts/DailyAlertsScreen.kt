@@ -217,12 +217,13 @@ fun DailyAlertsScreen(
                 )
             ) {
                 Row(Modifier.padding(12.dp), verticalAlignment = Alignment.Top) {
-                    Icon(
-                        if (t.completed) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
-                        contentDescription = if (t.completed) "إلغاء التحديد" else "تحديد كمنجز الآن",
-                        tint = if (t.completed) Color(0xFF059669) else Color(0xFF94A3B8),
-                        modifier = Modifier.padding(top = 2.dp).clickable(enabled = canToggle) { onToggleTask(t.id) }
-                    )
+                    androidx.compose.material3.IconToggleButton(checked = t.completed, onCheckedChange = { onToggleTask(t.id) }, enabled = canToggle) {
+                        Icon(
+                            if (t.completed) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
+                            contentDescription = if (t.completed) "إلغاء تحديد «${t.title}» كمنجز" else "تحديد «${t.title}» كمنجز",
+                            tint = if (t.completed) Color(0xFF059669) else Color(0xFF94A3B8)
+                        )
+                    }
                     Spacer(Modifier.width(10.dp))
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {

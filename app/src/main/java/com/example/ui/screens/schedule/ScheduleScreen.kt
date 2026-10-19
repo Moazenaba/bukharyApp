@@ -1,5 +1,7 @@
 package com.example.ui.screens.schedule
 
+import androidx.compose.foundation.selection.selectable
+
 import androidx.compose.material3.minimumInteractiveComponentSize
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -226,7 +228,8 @@ fun ScheduleScreen(
                             .clip(RoundedCornerShape(10.dp))
                             .background(if (isSel) Primary700 else SurfacePure)
                             .border(1.dp, if (isSel) Primary800 else Color(0xFFE2E8F0), RoundedCornerShape(10.dp))
-                            .minimumInteractiveComponentSize().clickable { selectedFilter = key }
+                            .minimumInteractiveComponentSize()
+                            .selectable(selected = isSel, role = androidx.compose.ui.semantics.Role.Tab) { selectedFilter = key }
                             .padding(vertical = 8.dp, horizontal = 12.dp),
                         contentAlignment = Alignment.Center
                     ) {

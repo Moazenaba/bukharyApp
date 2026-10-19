@@ -284,9 +284,30 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch { report(block(), success) }
     }
 
+    /** Screens to return to with Back. Bottom-bar destinations start over, so Back from them goes Home. */
+    private val backStack = ArrayDeque<AppNavScreen>()
+    private val topLevel = setOf(AppNavScreen.HOME, AppNavScreen.COMMITTEES, AppNavScreen.COURSE_TRACKER, AppNavScreen.DAILY_ALERTS, AppNavScreen.MENU)
+
     fun navigateTo(screen: AppNavScreen) {
         val user = _currentUser.value ?: return
-        _currentNavScreen.value = if (user.canAccessScreen(screen)) screen else AppNavScreen.HOME
+        val target = if (user.canAccessScreen(screen)) screen else AppNavScreen.HOME
+        val current = _currentNavScreen.value
+        if (target == current) return
+        if (target in topLevel) backStack.clear() else {
+            backStack.addLast(current)
+            if (backStack.size > 20) backStack.removeFirst()
+        }
+        _currentNavScreen.value = target
+    }
+
+    /** Back: the previous screen, else Home. Returns false when already Home with nothing to go back to. */
+    fun navigateBack(): Boolean {
+        val previous = backStack.removeLastOrNull()
+        return when {
+            previous != null -> { _currentNavScreen.value = previous; true }
+            _currentNavScreen.value != AppNavScreen.HOME -> { _currentNavScreen.value = AppNavScreen.HOME; true }
+            else -> false
+        }
     }
 
     fun setSearchQuery(query: String) { _searchQuery.value = query }
@@ -641,16 +662,24 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 block()
                 true
             } catch (e: OnlineApi.ApiFailure) {
-                showMessage(e.message ?: "تعذر تنفيذ الطلب")
+                showError(e.message ?: "تعذر تنفيذ الطلب")
                 false
             } catch (e: Exception) {
-                showMessage("تعذر تنفيذ الطلب: ${e.message ?: "خطأ غير متوقع"}")
+                showError("تعذر تنفيذ الطلب: ${e.message ?: "خطأ غير متوقع"}")
                 false
             }
             if (ok) success?.let { showMessage(it) }
             onDone(ok)
             if (ok && reload) refreshFromServer()
         }
+    }
+
+    /** Errors of management calls: shown above any open form dialog (a snackbar would sit under its scrim). */
+    private val _dialogError = MutableStateFlow<String?>(null)
+    val dialogError: StateFlow<String?> = _dialogError.asStateFlow()
+    fun clearDialogError() { _dialogError.value = null }
+    private fun showError(message: String) {
+        _dialogError.value = message
     }
 
     // ---------------- courses
