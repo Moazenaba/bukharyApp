@@ -138,13 +138,16 @@ fun ExamsScreen(
         },
         modifier = modifier
     ) { innerPadding ->
-        Column(
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .background(Color(0xFFF8F9FD))
                 .padding(innerPadding)
-                .padding(horizontal = 16.dp)
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
+            item {
+            Column {
             Spacer(modifier = Modifier.height(12.dp))
 
             Card(
@@ -199,17 +202,23 @@ fun ExamsScreen(
                 shape = RoundedCornerShape(14.dp)
             )
 
+            }
+            }
             if (tab == 0) {
+                item {
                 Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     FilterChip(selected = bookFilter == "all", onClick = { bookFilter = "all" }, label = { Text("كافة الكتب (${exams.size})") })
                     bookNames.forEach { b -> FilterChip(selected = bookFilter == b, onClick = { bookFilter = b }, label = { Text("$b (${exams.count { it.book == b }})") }) }
                 }
+                }
                 if (filtered.isEmpty()) {
-                    Box(modifier = Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
+                    item {
+                    Box(modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp), contentAlignment = Alignment.Center) {
                         Text("لا توجد امتحانات مطابقة للبحث", style = MaterialTheme.typography.bodyMedium, color = Color(0xFF64748B))
                     }
+                    }
                 } else {
-                    LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    run {
                         items(filtered, key = { it.id }) { exam ->
                             ExamCard(
                                 exam = exam,
@@ -224,7 +233,7 @@ fun ExamsScreen(
                 }
             } else {
                 val shownBooks = bookNames.filter { searchQuery.isBlank() || it.contains(searchQuery, ignoreCase = true) }
-                LazyColumn(modifier = Modifier.weight(1f).padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                run {
                     if (shownBooks.isEmpty()) item { Text("لا توجد كتب مقررة مطابقة", color = Color(0xFF64748B), modifier = Modifier.padding(16.dp)) }
                     items(shownBooks, key = { it }) { name ->
                         val dto = books.find { it.name == name }

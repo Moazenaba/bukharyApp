@@ -137,13 +137,16 @@ fun ScheduleScreen(
         },
         modifier = modifier
     ) { innerPadding ->
-        Column(
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .background(Color(0xFFF8F9FD))
                 .padding(innerPadding)
-                .padding(horizontal = 16.dp)
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            item {
+            Column {
             Spacer(modifier = Modifier.height(12.dp))
 
             // Calendar Header Card
@@ -245,11 +248,14 @@ fun ScheduleScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
+            }
+            }
             if (filteredTasks.isEmpty()) {
+                item {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .weight(1f),
+                        .padding(vertical = 32.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
@@ -258,11 +264,8 @@ fun ScheduleScreen(
                         color = Color(0xFF64748B)
                     )
                 }
+            }
             } else {
-                LazyColumn(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
                     items(filteredTasks, key = { it.id }) { task ->
                         ScheduleTaskCard(
                             task = task,
@@ -277,7 +280,6 @@ fun ScheduleScreen(
                     item {
                         Spacer(modifier = Modifier.height(60.dp))
                     }
-                }
             }
         }
     }

@@ -64,7 +64,9 @@ enum class AppNavScreen(val route: String, val titleAr: String, val iconRes: Str
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository = BukhariRepository(AppDatabase.getInstance(application))
-    private val authService = AuthenticationService(application)
+    // The session store opens the Android Keystore, which can take seconds; it is created off the
+    // main thread at startup (see init) so the first frame is not held up.
+    private val authService by lazy { AuthenticationService(application) }
     private val syncMutex = Mutex()
 
     private val _currentUser = MutableStateFlow<AppUser?>(null)
@@ -201,6 +203,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
         viewModelScope.launch {
             // Restore the session before syncing so requests carry the saved token.
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { authService }
             val savedUserId = authService.getSavedUserId()
             val savedUser = if (authService.hasValidSession() && savedUserId != null) repository.getLocalUser(savedUserId) else null
             if (savedUser != null && savedUser.status == "approved") {

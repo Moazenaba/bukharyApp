@@ -14,6 +14,9 @@ import java.util.zip.ZipOutputStream
  * heavy spreadsheet library in the app.
  */
 object SimpleXlsx {
+    /** UTF-8 byte-order mark, so Excel reads Arabic CSV correctly. */
+    private val BOM = Char(0xFEFF).toString()
+
 
     /** Rows of the first sheet, each a list of cell texts (missing cells are ""). */
     fun read(bytes: ByteArray): List<List<String>> {
@@ -181,12 +184,12 @@ object SimpleXlsx {
             return if (safe.any { it == ',' || it == '"' || it == '\n' || it == '\r' }) "\"" + safe.replace("\"", "\"\"") + "\"" else safe
         }
         val text = (listOf(header) + rows).joinToString("\r\n") { r -> r.joinToString(",") { cell(it) } }
-        return ("﻿" + text).toByteArray(Charsets.UTF_8)
+        return (BOM + text).toByteArray(Charsets.UTF_8)
     }
 
     /** Parses CSV text (quotes, commas and new lines inside quotes). */
     fun parseCsv(bytes: ByteArray): List<List<String>> {
-        val text = String(bytes, Charsets.UTF_8).removePrefix("﻿")
+        val text = String(bytes, Charsets.UTF_8).removePrefix(BOM)
         val rows = mutableListOf<List<String>>()
         var row = mutableListOf<String>()
         val cell = StringBuilder()

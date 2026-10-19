@@ -91,7 +91,8 @@ fun HomeScreen(
     modifier: Modifier = Modifier
 ) {
     val totalCommittees = committees.size
-    val activeCommittees = committees.count { it.stages.exam.completed && !it.stages.ceremony.completed }
+    // Web: committees whose current stage is the exam or scoring.
+    val activeCommittees = committees.count { com.example.ui.components.currentStageKey(it.stages) in setOf("exam", "scoring") }
     val completedCommittees = committees.count { it.stages.ceremony.completed }
     val totalStudents = committees.sumOf { it.studentsCount }
 

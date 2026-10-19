@@ -133,6 +133,8 @@ dependencies {
   implementation(libs.androidx.security.crypto)
   implementation(platform(libs.firebase.bom))
   implementation(libs.firebase.messaging)
+  // Firebase brings an old Fragment; registerForActivityResult needs 1.3+.
+  implementation(libs.androidx.fragment.ktx)
   testImplementation(libs.androidx.compose.ui.test.junit4)
   testImplementation(libs.androidx.core)
   testImplementation(libs.androidx.junit)

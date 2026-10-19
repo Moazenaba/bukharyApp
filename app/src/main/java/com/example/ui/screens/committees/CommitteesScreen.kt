@@ -141,13 +141,16 @@ fun CommitteesScreen(
         },
         modifier = modifier
     ) { innerPadding ->
-        Column(
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .background(Color(0xFFF8F9FD))
                 .padding(innerPadding)
-                .padding(horizontal = 16.dp)
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            item {
+            Column {
             Spacer(modifier = Modifier.height(12.dp))
 
             // Assistant bar (web): assigned committees, my committees only, unscored questions.
@@ -180,7 +183,7 @@ fun CommitteesScreen(
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = onSearchChange,
-                placeholder = { Text("بحث برقم اللجنة، الاسم، الكتاب، الفرع، الشيخ...") },
+                placeholder = { Text("بحث برقم اللجنة أو الاسم أو الشيخ", maxLines = 1) },
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Primary700) },
                 modifier = Modifier
                     .fillMaxWidth()
@@ -233,12 +236,15 @@ fun CommitteesScreen(
 
             Spacer(modifier = Modifier.height(8.dp))
 
+            }
+            }
             // Committees List
             if (committees.isEmpty()) {
+                item {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .weight(1f),
+                        .padding(vertical = 32.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -262,11 +268,8 @@ fun CommitteesScreen(
                         }
                     }
                 }
+            }
             } else {
-                LazyColumn(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
                     val pageSize = 6
                     val pages = (committees.size + pageSize - 1) / pageSize
                     val current = page.coerceIn(1, maxOf(1, pages))
@@ -297,7 +300,6 @@ fun CommitteesScreen(
                         }
                         Spacer(modifier = Modifier.height(60.dp))
                     }
-                }
             }
         }
     }
