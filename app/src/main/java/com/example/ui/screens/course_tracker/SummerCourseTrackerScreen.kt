@@ -100,7 +100,7 @@ fun SummerCourseTrackerScreen(
     onSaveRow: (SheetRowDto, (Boolean) -> Unit) -> Unit = { _, _ -> },
     onDeleteRow: (SheetRowDto) -> Unit = {},
     onImportRows: (List<SheetRowDto>, String, Boolean, (Boolean) -> Unit) -> Unit = { _, _, _, _ -> },
-    onExtractFromImage: (Uri, (List<SheetRowDto>?) -> Unit) -> Unit = { _, _ -> },
+    onExtractFromImage: (ByteArray, (List<SheetRowDto>?) -> Unit) -> Unit = { _, _ -> },
     onAddCourse: (Course, (Boolean) -> Unit) -> Unit = { _, _ -> },
     onCreateCommitteeFromRow: (Committee) -> Unit = {},
     onExport: () -> Unit = {},
@@ -147,10 +147,14 @@ fun SummerCourseTrackerScreen(
             importError = "تعذر قراءة ملف الإكسيل. يرجى التأكد من صيغة الملف."
         }
     }
-    val pickImage = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-        if (uri == null) return@rememberLauncherForActivityResult
-        extracting = true
-        onExtractFromImage(uri) { result -> extracting = false; result?.let { handleExtracted(it) } }
+    var workbenchUri by remember { mutableStateOf<Uri?>(null) }
+    val pickImage = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri -> workbenchUri = uri }
+    workbenchUri?.let { uri ->
+        ImageWorkbenchDialog(uri, onDismiss = { workbenchUri = null }) { bytes ->
+            workbenchUri = null
+            extracting = true
+            onExtractFromImage(bytes) { result -> extracting = false; result?.let { handleExtracted(it) } }
+        }
     }
 
     val books = rows.map { it.row.book.trim() }.filter { it.isNotEmpty() }.distinct().sorted()

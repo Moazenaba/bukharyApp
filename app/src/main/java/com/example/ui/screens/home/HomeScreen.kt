@@ -86,6 +86,8 @@ fun HomeScreen(
     onOpenCommitteeDetail: (String) -> Unit,
     onToggleTask: (String) -> Unit,
     onOpenAddCommittee: () -> Unit,
+    /** Opens the committees list filtered by a stage ("all" for none), like the web's dashboard tiles. */
+    onNavigateCommittees: (String) -> Unit = { onNavigate(AppNavScreen.COMMITTEES) },
     modifier: Modifier = Modifier
 ) {
     val totalCommittees = committees.size
@@ -147,7 +149,7 @@ fun HomeScreen(
                         icon = Icons.Default.Groups,
                         color = Color(0xFF0F766E),
                         bgColor = Color(0xFFF0FDFA),
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f).clickable { onNavigateCommittees("all") }
                     )
                     KpiCard(
                         title = "قيد الاختبار/التصحيح",
@@ -156,7 +158,7 @@ fun HomeScreen(
                         icon = Icons.Default.School,
                         color = Color(0xFF2563EB),
                         bgColor = Color(0xFFEFF6FF),
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f).clickable { onNavigateCommittees("exam") }
                     )
                 }
                 Spacer(modifier = Modifier.height(10.dp))
@@ -171,7 +173,7 @@ fun HomeScreen(
                         icon = Icons.Default.WorkspacePremium,
                         color = Color(0xFF16A34A),
                         bgColor = Color(0xFFF0FDF4),
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f).clickable { onNavigateCommittees("ceremony") }
                     )
                     KpiCard(
                         title = "إجمالي الطلاب",
@@ -180,7 +182,7 @@ fun HomeScreen(
                         icon = Icons.Default.Person,
                         color = Color(0xFFD97706),
                         bgColor = Color(0xFFFFFBEB),
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f).clickable { onNavigateCommittees("all") }
                     )
                 }
             }

@@ -109,8 +109,11 @@ fun ScheduleScreen(
         "pending" -> dayTasks.filter { !it.completed }
         "completed" -> dayTasks.filter { it.completed }
         "urgent" -> dayTasks.filter { it.priority == "urgent" }
-        "mine" -> dayTasks.filter { it.assignedAssistantId == currentUser?.id }
-        "deliverables" -> dayTasks.filter { it.deliverable.isNotBlank() || it.type == "delivery" || it.type == "receive" }
+        // Web: assigned to me, or linked to a committee assigned to me.
+        "mine" -> dayTasks.filter { t ->
+            t.assignedAssistantId == currentUser?.id || (t.committeeId != null && Permissions.committeeScope?.contains(t.committeeId) == true)
+        }
+        "deliverables" -> dayTasks.filter { it.deliverable.isNotBlank() }
         else -> dayTasks
     }
 

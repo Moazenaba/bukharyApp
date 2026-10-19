@@ -1,5 +1,7 @@
 package com.example.ui.screens.committees
 
+import androidx.compose.material.icons.filled.Delete
+
 import androidx.compose.foundation.horizontalScroll
 
 import androidx.compose.material3.minimumInteractiveComponentSize
@@ -114,6 +116,7 @@ fun CommitteeDetailModal(
     // Aggregation state
     var aggregatorName by remember { mutableStateOf(committee.aggregationDetails.aggregatorName) }
     var aggReviewerName by remember { mutableStateOf(committee.aggregationDetails.reviewerName) }
+    var aggScoringReviewer by remember { mutableStateOf(committee.aggregationDetails.scoringReviewerName.ifBlank { committee.scoringDetails.reviewerName }) }
     var confirmedMatch by remember { mutableStateOf(committee.aggregationDetails.isConfirmedMatch) }
 
     val todayDateStr = remember { com.example.ui.components.Dates.today() }
@@ -513,11 +516,20 @@ fun CommitteeDetailModal(
                                         fontWeight = if (done) FontWeight.Bold else FontWeight.Normal
                                     )
                                 }
-                                Text(
-                                    text = if (done) "مصحح ✓" else "قيد التصحيح",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = if (done) Color(0xFFB45309) else Color(0xFF94A3B8)
-                                )
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        text = if (done) "مصحح ✓" else "قيد التصحيح",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = if (done) Color(0xFFB45309) else Color(0xFF94A3B8)
+                                    )
+                                    if (canScoring && questionsState.size > 1) {
+                                        IconButton(onClick = {
+                                            questionsState = questionsState.toMutableMap().apply { remove(qKey) }
+                                        }) {
+                                            Icon(Icons.Default.Delete, contentDescription = "حذف $qKey", tint = Color(0xFFEF4444))
+                                        }
+                                    }
+                                }
                             }
                         }
 
@@ -580,6 +592,15 @@ fun CommitteeDetailModal(
                         Spacer(modifier = Modifier.height(10.dp))
 
                         OutlinedTextField(
+                            value = aggScoringReviewer,
+                            onValueChange = { aggScoringReviewer = it },
+                            label = { Text("مراجع الدرجات في التصحيح") },
+                            singleLine = true,
+                            enabled = canScoring,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedTextField(
                             value = aggregatorName,
                             onValueChange = { aggregatorName = it },
                             label = { Text("اسم مجمع الدرجات") },
@@ -630,6 +651,7 @@ fun CommitteeDetailModal(
                                 onUpdateAggregation(
                                     committee.aggregationDetails.copy(
                                         aggregatorName = aggregatorName,
+                                        scoringReviewerName = aggScoringReviewer,
                                         reviewerName = aggReviewerName,
                                         isConfirmedMatch = confirmedMatch,
                                         date = todayDateStr

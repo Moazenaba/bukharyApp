@@ -305,6 +305,10 @@ class MainActivity : ComponentActivity() {
                                         onNavigate = { viewModel.navigateTo(it) },
                                         onOpenCommitteeDetail = { viewModel.openCommitteeDetail(it) },
                                         onToggleTask = { viewModel.toggleTask(it) },
+                                        onNavigateCommittees = { stage ->
+                                            viewModel.setSelectedStageFilter(stage)
+                                            viewModel.navigateTo(AppNavScreen.COMMITTEES)
+                                        },
                                         onOpenAddCommittee = {
                                             openAddCommittee = true
                                             viewModel.navigateTo(AppNavScreen.COMMITTEES)

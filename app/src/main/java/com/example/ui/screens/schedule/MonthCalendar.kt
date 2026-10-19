@@ -48,7 +48,8 @@ fun MonthCalendar(tasks: List<ScheduleTask>, selectedDate: String?, onSelect: (S
     var month by remember { mutableIntStateOf((selectedDate?.let { Dates.toMillis(it) }?.let { Calendar.getInstance().apply { timeInMillis = it } } ?: start).get(Calendar.MONTH)) }
     val today = Dates.today()
     val first = Calendar.getInstance().apply { clear(); set(year, month, 1) }
-    val offset = first.get(Calendar.DAY_OF_WEEK) - 1
+    // Weeks start on Saturday, as on the web.
+    val offset = first.get(Calendar.DAY_OF_WEEK) % 7
     val days = first.getActualMaximum(Calendar.DAY_OF_MONTH)
     val byDate = tasks.groupBy { it.date }
 
@@ -59,8 +60,16 @@ fun MonthCalendar(tasks: List<ScheduleTask>, selectedDate: String?, onSelect: (S
                 Text("${MONTHS[month]} $year", fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
                 IconButton(onClick = { if (month == 11) { month = 0; year++ } else month++ }) { Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, "الشهر التالي") }
             }
+            androidx.compose.material3.TextButton(
+                onClick = {
+                    val now = Calendar.getInstance()
+                    year = now.get(Calendar.YEAR); month = now.get(Calendar.MONTH)
+                    onSelect(today)
+                },
+                modifier = Modifier.align(Alignment.CenterHorizontally)
+            ) { Text("الذهاب لليوم الحالي") }
             Row(Modifier.fillMaxWidth()) {
-                ARABIC_DAYS.forEach { d -> Text(d.take(3), style = MaterialTheme.typography.labelSmall, color = Color(0xFF64748B), modifier = Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.Center) }
+                (listOf(ARABIC_DAYS[6]) + ARABIC_DAYS.dropLast(1)).forEach { d -> Text(d.take(3), style = MaterialTheme.typography.labelSmall, color = Color(0xFF64748B), modifier = Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.Center) }
             }
             val cells = offset + days
             val rows = (cells + 6) / 7

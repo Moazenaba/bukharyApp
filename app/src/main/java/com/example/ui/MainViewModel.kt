@@ -824,13 +824,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         ) { OnlineApi.saveSheetRowsBulk(rows.map { it.copy(courseId = courseId) }, if (replace) courseId else null) }
 
     /** Reads a sheet from a photo on the server; every row is marked "needs checking", as on the web. */
-    fun extractTableFromImage(uri: android.net.Uri, onDone: (List<SheetRowDto>?) -> Unit) {
+    fun extractTableFromImage(bytes: ByteArray, onDone: (List<SheetRowDto>?) -> Unit) {
         viewModelScope.launch {
             try {
-                val resolver = getApplication<Application>().contentResolver
-                val bytes = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { resolver.openInputStream(uri)?.use { it.readBytes() } }
-                    ?: throw OnlineApi.ApiFailure("تعذر قراءة الصورة", null)
-                val mime = resolver.getType(uri) ?: "image/jpeg"
+                val mime = "image/jpeg"
                 val base64 = "data:$mime;base64," + android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
                 val extracted = OnlineApi.extractTable(base64, mime)
                 fun num(v: Any?) = (v as? Number)?.toInt() ?: v?.toString()?.toDoubleOrNull()?.toInt() ?: 0
