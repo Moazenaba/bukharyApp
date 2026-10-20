@@ -46,6 +46,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.example.data.SimpleXlsx
 import com.example.data.model.CeremonyDetails
 import com.example.data.model.Committee
 import com.example.data.model.ScheduleTask
@@ -54,6 +55,9 @@ import com.example.ui.components.ARABIC_DAYS
 import com.example.ui.components.DateField
 import com.example.ui.components.Dates
 import com.example.ui.components.ScreenBanner
+import com.example.ui.components.XLSX_MIME
+import com.example.ui.components.shareFile
+import com.example.ui.screens.export.ReportSheets
 import com.example.ui.components.StatTile
 import com.example.ui.components.arabicDayName
 import com.example.ui.components.escapeHtml
@@ -134,6 +138,7 @@ fun CeremoniesScreen(
             }
         }
         item { MyCeremoniesSection(committees, tasks, currentUserId, onOpenCommittee) }
+        item { CeremoniesExportCard(committees, tasks) }
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 StatTile("إجمالي اللجان", "${committees.size}", Modifier.weight(1f))
@@ -307,5 +312,46 @@ fun CeremoniesScreen(
             },
             dismissButton = { TextButton(onClick = { honorRoll = null }) { Text("إغلاق") } }
         )
+    }
+}
+
+/** Web: the ceremonies sheet export — a daily, weekly or monthly Excel of every ceremony and its details. */
+@Composable
+private fun CeremoniesExportCard(committees: List<Committee>, tasks: List<ScheduleTask>) {
+    val context = LocalContext.current
+    var period by rememberSaveable { mutableStateOf("day") }
+    var anchor by rememberSaveable { mutableStateOf(Dates.today()) }
+    val rows = ReportSheets.ceremonyRows(committees, tasks, period, anchor)
+    val (from, to) = ReportSheets.periodRange(period, anchor)
+    Card(
+        shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = Color.White),
+        border = BorderStroke(1.dp, Color(0xFFA7F3D0))
+    ) {
+        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("تصدير كشف الحفلات (Excel)", fontWeight = FontWeight.Black)
+            Text(
+                "الموعد والمكان واسم الشيخ والبلد وعدد الطلاب المكرمين والمشايخ والمدعوين ومراقبي اللجنة — " +
+                    if (from == to) from else "من $from إلى $to",
+                style = MaterialTheme.typography.bodySmall, color = TextMuted
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                ReportSheets.PERIOD_LABELS.forEach { (k, l) -> FilterChip(selected = period == k, onClick = { period = k }, label = { Text(l) }) }
+            }
+            DateField(
+                anchor, { anchor = it },
+                when (period) { "day" -> "اليوم"; "week" -> "أي يوم في الأسبوع"; else -> "أي يوم في الشهر" }
+            )
+            Button(
+                onClick = {
+                    shareFile(
+                        context,
+                        SimpleXlsx.write("الحفلات (${ReportSheets.PERIOD_LABELS[period]})", ReportSheets.CEREMONY_HEADER, rows, ReportSheets.CEREMONY_WIDTHS),
+                        ReportSheets.ceremonyFileName(period, anchor), XLSX_MIME
+                    )
+                },
+                enabled = rows.isNotEmpty(),
+                modifier = Modifier.fillMaxWidth()
+            ) { Text(if (rows.isEmpty()) "لا توجد حفلات في هذه الفترة" else "تصدير (${rows.size} حفل)") }
+        }
     }
 }

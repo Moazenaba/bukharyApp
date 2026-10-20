@@ -211,6 +211,35 @@ fun CommitteesScreen(
                 }
             }
 
+            // Web: the «جاري الامتحان الآن» sheet (sheikh, country, students and proctors of each committee)
+            val examCount = com.example.ui.screens.export.ReportSheets.examInProgress(allCommittees).size
+            val context = androidx.compose.ui.platform.LocalContext.current
+            Row(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            OutlinedButton(
+                onClick = {
+                    com.example.ui.components.shareFile(
+                        context,
+                        com.example.data.SimpleXlsx.write(
+                            "جاري الامتحان الآن", com.example.ui.screens.export.ReportSheets.EXAM_HEADER,
+                            com.example.ui.screens.export.ReportSheets.examRows(allCommittees), com.example.ui.screens.export.ReportSheets.EXAM_WIDTHS
+                        ),
+                        "كشف_جاري_الامتحان_الآن_${com.example.ui.components.Dates.today()}.xlsx", com.example.ui.components.XLSX_MIME
+                    )
+                },
+                enabled = examCount > 0,
+                modifier = Modifier.weight(1f)
+            ) { Text("كشف «جاري الامتحان الآن» Excel ($examCount)") }
+            OutlinedButton(
+                onClick = {
+                    com.example.ui.components.printHtml(
+                        context, "كشف جاري الامتحان الآن",
+                        com.example.ui.screens.export.ReportSheets.examPrintBody(allCommittees, com.example.ui.components.Dates.today())
+                    )
+                },
+                enabled = examCount > 0
+            ) { Text("طباعة / PDF") }
+            }
+
             // Course, gender and sort (web: SearchAndFilters)
             Row(
                 modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(top = 6.dp),
