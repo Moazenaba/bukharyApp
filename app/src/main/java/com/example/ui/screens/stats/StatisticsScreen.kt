@@ -1,5 +1,8 @@
 package com.example.ui.screens.stats
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -262,6 +265,75 @@ fun StatisticsScreen(
 
         item {
             Spacer(modifier = Modifier.height(40.dp))
+        }
+
+        // Web: StatisticsView — progress by period, question scoring, current stage and books.
+        item { WebStatsSections(committees) }
+    }
+}
+
+@Composable
+private fun WebStatsSections(committees: List<Committee>) {
+    val total = committees.size
+    fun pct(n: Int) = if (total > 0) n * 100 / total else 0
+    var period by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf("week") }
+    val weekly = committees.count { it.stages.ceremony.completed || it.stages.announcement.completed || it.stages.review.completed }
+    val monthly = committees.count { it.stages.ceremony.completed || it.stages.announcement.completed }
+    val annual = committees.count { it.stages.ceremony.completed }
+    val (done, label) = when (period) {
+        "month" -> monthly to "اللجان التي أُعلنت نتيجتها"
+        "year" -> annual to "لجان أتمت الحفل بالكامل"
+        else -> weekly to "اللجان التي بلغت مرحلة المراجعة أو ما بعدها"
+    }
+    val rate = pct(done)
+    val level = when {
+        rate >= 90 -> "مستوى التقدم: استثنائي - تجاوز التوقعات"
+        rate >= 75 -> "مستوى التقدم: ممتاز - وفق الخطة المقررة"
+        rate >= 50 -> "مستوى التقدم: جيد - يتطلب متابعة دورية"
+        rate >= 25 -> "مستوى التقدم: مقبول - يتطلب تسريع الوتيرة"
+        else -> "مستوى التقدم: في البداية - بانتظار الاعتماد الميداني"
+    }
+    val questions = committees.sumOf { it.scoringDetails.questions.size }
+    val scored = committees.sumOf { c -> c.scoringDetails.questions.count { it.completed } }
+    val byStage = OrderedStageKeys.map { (k, n) -> n to committees.count { com.example.ui.components.currentStageKey(it.stages) == k } }
+    val byBook = committees.groupingBy { it.competitionBook.trim().ifBlank { "متون غير مصنفة" } }.eachCount().entries.sortedByDescending { it.value }
+
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = SurfacePure)) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("لوحة الإحصائيات ونسب الإنجاز الحية", fontWeight = FontWeight.Bold, color = Primary900)
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    listOf("week" to "أسبوعي", "month" to "شهري", "year" to "النسبة الإجمالية (الموسم)").forEach { (k, l) ->
+                        androidx.compose.material3.FilterChip(selected = period == k, onClick = { period = k }, label = { Text(l) })
+                    }
+                }
+                Text("$label: $done لجنة من إجمالي $total", style = MaterialTheme.typography.bodySmall)
+                LinearProgressIndicator(progress = { rate / 100f }, modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)), color = Primary700, trackColor = Primary100)
+                Text("$rate% — $level", style = MaterialTheme.typography.labelSmall, color = Primary800)
+            }
+        }
+        Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = SurfacePure)) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("تصحيح الأسئلة", fontWeight = FontWeight.Bold, color = Primary900)
+                Text("إجمالي الأسئلة المصححة: $scored من $questions", style = MaterialTheme.typography.bodySmall)
+                LinearProgressIndicator(progress = { if (questions > 0) scored.toFloat() / questions else 0f }, modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)), color = Color(0xFFD97706), trackColor = Color(0xFFFEF3C7))
+            }
+        }
+        Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = SurfacePure)) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text("توزيع اللجان حسب المرحلة الحالية", fontWeight = FontWeight.Bold, color = Primary900)
+                byStage.forEach { (name, n) ->
+                    Row { Text(name, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodySmall); Text("$n لجنة", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodySmall) }
+                }
+            }
+        }
+        Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = SurfacePure)) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text("اللجان حسب الكتاب المقرر", fontWeight = FontWeight.Bold, color = Primary900)
+                byBook.forEach { (book, n) ->
+                    Row { Text(book, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodySmall); Text("$n لجنة", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodySmall) }
+                }
+            }
         }
     }
 }

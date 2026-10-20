@@ -1,5 +1,11 @@
 package com.example.ui.screens.committees
 
+import androidx.compose.foundation.selection.selectable
+
+import androidx.compose.material.icons.filled.Delete
+
+import androidx.compose.foundation.horizontalScroll
+
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
@@ -87,6 +93,12 @@ fun CommitteeDetailModal(
     onUpdateScoring: (ScoringDetails) -> Unit,
     onUpdateAggregation: (AggregationDetails) -> Unit,
     onUpdateCeremony: (CeremonyDetails) -> Unit,
+    courses: List<com.example.data.model.Course> = emptyList(),
+    onSaveBase: (Committee) -> Unit = {},
+    onDelete: () -> Unit = {},
+    onUpdateQuestionDetails: (String, Boolean, List<String>, Double?, String?) -> Unit = { _, _, _, _, _ -> },
+    onSheetImported: (String, Int?) -> Unit = { _, _ -> },
+    onSaveExcelUrl: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var activeTab by remember { mutableIntStateOf(0) } // 0: Stepper, 1: Assistant & Exam, 2: Scoring & Aggregation, 3: Ceremony
@@ -106,6 +118,7 @@ fun CommitteeDetailModal(
     // Aggregation state
     var aggregatorName by remember { mutableStateOf(committee.aggregationDetails.aggregatorName) }
     var aggReviewerName by remember { mutableStateOf(committee.aggregationDetails.reviewerName) }
+    var aggScoringReviewer by remember { mutableStateOf(committee.aggregationDetails.scoringReviewerName.ifBlank { committee.scoringDetails.reviewerName }) }
     var confirmedMatch by remember { mutableStateOf(committee.aggregationDetails.isConfirmedMatch) }
 
     val todayDateStr = remember { com.example.ui.components.Dates.today() }
@@ -247,6 +260,7 @@ fun CommitteeDetailModal(
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(12.dp))
                     .background(Color(0xFFE2E8F0))
+                    .horizontalScroll(rememberScrollState())
                     .padding(4.dp),
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
@@ -254,16 +268,18 @@ fun CommitteeDetailModal(
                     0 to "المراحل التسع 📌",
                     1 to "الاستلام والجاهزية 🤝",
                     2 to "التصحيح والتجميع ✏️",
-                    3 to "حفل التكريم 🎓"
+                    5 to "كشف الدرجات 🟣",
+                    3 to "حفل التكريم 🎓",
+                    4 to "بيانات اللجنة ⚙️"
                 ).forEach { (idx, title) ->
                     val isSel = activeTab == idx
                     Box(
                         modifier = Modifier
-                            .weight(1f)
                             .clip(RoundedCornerShape(8.dp))
                             .background(if (isSel) Primary700 else Color.Transparent)
-                            .minimumInteractiveComponentSize().clickable { activeTab = idx }
-                            .padding(vertical = 8.dp),
+                            .minimumInteractiveComponentSize()
+                            .selectable(selected = isSel, role = androidx.compose.ui.semantics.Role.Tab) { activeTab = idx }
+                            .padding(vertical = 8.dp, horizontal = 10.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
@@ -278,6 +294,26 @@ fun CommitteeDetailModal(
             }
 
             Spacer(modifier = Modifier.height(14.dp))
+
+            if (activeTab == 4) {
+                CommitteeBaseDataTab(
+                    committee = committee,
+                    courses = courses,
+                    canEditBase = inScope && Permissions.can("committees.update"),
+                    canDelete = inScope && Permissions.can("committees.delete"),
+                    onSave = onSaveBase,
+                    onDelete = onDelete
+                )
+            }
+            if (activeTab == 5) {
+                CommitteeSheetTab(
+                    committee = committee,
+                    canFinalize = canFinalize,
+                    canEditBase = inScope && Permissions.can("committees.update"),
+                    onSheetImported = onSheetImported,
+                    onSaveExcelUrl = onSaveExcelUrl
+                )
+            }
 
             // Tab 0: Interactive 9 Stages Stepper
             if (activeTab == 0) {
@@ -483,11 +519,20 @@ fun CommitteeDetailModal(
                                         fontWeight = if (done) FontWeight.Bold else FontWeight.Normal
                                     )
                                 }
-                                Text(
-                                    text = if (done) "مصحح ✓" else "قيد التصحيح",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = if (done) Color(0xFFB45309) else Color(0xFF94A3B8)
-                                )
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        text = if (done) "مصحح ✓" else "قيد التصحيح",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = if (done) Color(0xFFB45309) else Color(0xFF94A3B8)
+                                    )
+                                    if (canScoring && questionsState.size > 1) {
+                                        IconButton(onClick = {
+                                            questionsState = questionsState.toMutableMap().apply { remove(qKey) }
+                                        }) {
+                                            Icon(Icons.Default.Delete, contentDescription = "حذف $qKey", tint = Color(0xFFEF4444))
+                                        }
+                                    }
+                                }
                             }
                         }
 
@@ -550,6 +595,15 @@ fun CommitteeDetailModal(
                         Spacer(modifier = Modifier.height(10.dp))
 
                         OutlinedTextField(
+                            value = aggScoringReviewer,
+                            onValueChange = { aggScoringReviewer = it },
+                            label = { Text("مراجع الدرجات في التصحيح") },
+                            singleLine = true,
+                            enabled = canScoring,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedTextField(
                             value = aggregatorName,
                             onValueChange = { aggregatorName = it },
                             label = { Text("اسم مجمع الدرجات") },
@@ -600,6 +654,7 @@ fun CommitteeDetailModal(
                                 onUpdateAggregation(
                                     committee.aggregationDetails.copy(
                                         aggregatorName = aggregatorName,
+                                        scoringReviewerName = aggScoringReviewer,
                                         reviewerName = aggReviewerName,
                                         isConfirmedMatch = confirmedMatch,
                                         date = todayDateStr
@@ -617,6 +672,11 @@ fun CommitteeDetailModal(
             }
 
             // Tab 3: Ceremony Details
+            if (activeTab == 2) {
+                Spacer(modifier = Modifier.height(12.dp))
+                QuestionScorersSection(committee = committee, canScore = canScoring, onUpdate = onUpdateQuestionDetails)
+            }
+
             if (activeTab == 3) {
                 Card(
                     modifier = Modifier.fillMaxWidth(),

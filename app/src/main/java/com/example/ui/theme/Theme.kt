@@ -68,6 +68,7 @@ val BukhariShapes = Shapes(
 @Composable
 fun BukhariTheme(
     darkTheme: Boolean = false,
+    lightBackgroundBehindStatusBar: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
@@ -75,7 +76,7 @@ fun BukhariTheme(
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = false
+            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = lightBackgroundBehindStatusBar
         }
     }
 

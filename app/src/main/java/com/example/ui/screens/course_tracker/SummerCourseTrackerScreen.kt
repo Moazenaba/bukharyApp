@@ -1,633 +1,511 @@
 package com.example.ui.screens.course_tracker
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.TableChart
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import com.example.data.ROW_STAGE
+import com.example.data.SheetRow
+import com.example.data.SheetRules
+import com.example.data.SimpleXlsx
 import com.example.data.model.Committee
 import com.example.data.model.Course
-import com.example.ui.theme.Primary100
+import com.example.data.model.StagesMap
+import com.example.data.remote.Permissions
+import com.example.data.remote.SheetRowDto
+import com.example.ui.components.Dates
+import com.example.ui.components.ScreenBanner
+import com.example.ui.components.StatTile
+import com.example.ui.screens.courses.CourseFormDialog
 import com.example.ui.theme.Primary700
 import com.example.ui.theme.Primary800
-import com.example.ui.theme.Primary900
-import com.example.ui.theme.SurfacePure
+import com.example.ui.theme.TextMuted
 
+private val FLAGS = listOf("delivered" to "الامتحان", "corrected" to "التصحيح", "reviewed" to "المراجعة", "announced" to "الإعلان", "ceremony" to "الحفل")
+
+private fun SheetRowDto.flag(key: String) = when (key) {
+    "delivered" -> delivered; "corrected" -> corrected; "reviewed" -> reviewed; "announced" -> announced; else -> ceremony
+}
+
+private fun SheetRowDto.withFlag(key: String, v: Boolean) = when (key) {
+    "delivered" -> copy(delivered = v); "corrected" -> copy(corrected = v); "reviewed" -> copy(reviewed = v)
+    "announced" -> copy(announced = v); else -> copy(ceremony = v)
+}
+
+/**
+ * Web: SummerCourseTrackerView. The course sheet merges saved rows with committees; managers edit
+ * rows, import Excel/CSV or a photo (OCR), export, add rows and courses. Linked rows follow the
+ * committee's stages, so ticking one changes the stage itself.
+ */
 @Composable
 fun SummerCourseTrackerScreen(
     courses: List<Course>,
     selectedCourseId: String?,
     committees: List<Committee>,
-    /** Saved sheet rows from the server; rows not linked to a committee are shown read-only. */
-    sheetRows: List<com.example.data.remote.SheetRowDto> = emptyList(),
+    sheetRows: List<SheetRowDto> = emptyList(),
     onSelectCourse: (String?) -> Unit,
-    onSaveCourse: (Course) -> Unit = {},
-    onDeleteCourse: (String) -> Unit = {},
     onToggleStage: (committeeId: String, stageKey: String, currentStatus: Boolean) -> Unit,
     onOpenCommitteeDetail: (String) -> Unit,
+    onSaveRow: (SheetRowDto, (Boolean) -> Unit) -> Unit = { _, _ -> },
+    onDeleteRow: (SheetRowDto) -> Unit = {},
+    onImportRows: (List<SheetRowDto>, String, Boolean, (Boolean) -> Unit) -> Unit = { _, _, _, _ -> },
+    onExtractFromImage: (ByteArray, (List<SheetRowDto>?) -> Unit) -> Unit = { _, _ -> },
+    onAddCourse: (Course, (Boolean) -> Unit) -> Unit = { _, _ -> },
+    onCreateCommitteeFromRow: (Committee) -> Unit = {},
+    onExport: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    var courseMenuExpanded by remember { mutableStateOf(false) }
-    var searchQuery by remember { mutableStateOf("") }
-    var showCourseModal by remember { mutableStateOf(false) }
-    var courseToEdit by remember { mutableStateOf<Course?>(null) }
-    var courseToDeleteConfirm by remember { mutableStateOf<Course?>(null) }
+    val context = LocalContext.current
+    val canEdit = Permissions.can("summerRows.write")
+    val canCreateCommittees = Permissions.can("committees.create")
+    val canWriteCourses = Permissions.can("courses.write")
+    val canOcr = Permissions.can("ocr.use")
+    val defaultCourse = courses.find { it.isDefault } ?: courses.find { it.status == "active" }
 
-    val activeCourse = courses.find { it.id == selectedCourseId } ?: courses.firstOrNull()
+    var query by rememberSaveable { mutableStateOf("") }
+    var status by rememberSaveable { mutableStateOf("all") }
+    var book by rememberSaveable { mutableStateOf("all") }
+    var place by rememberSaveable { mutableStateOf("all") }
+    var editing by remember { mutableStateOf<SheetRow?>(null) }
+    var deleting by remember { mutableStateOf<SheetRowDto?>(null) }
+    var addingRow by remember { mutableStateOf(false) }
+    var addingCourse by remember { mutableStateOf(false) }
+    var pendingImport by remember { mutableStateOf<List<SheetRowDto>?>(null) }
+    var confirmClear by remember { mutableStateOf(false) }
+    var extracting by remember { mutableStateOf(false) }
+    var importError by remember { mutableStateOf<String?>(null) }
 
-    val filteredList = committees.filter { comm ->
-        (selectedCourseId == null || comm.courseId == selectedCourseId) &&
-                (searchQuery.isBlank() ||
-                        comm.committeeName.contains(searchQuery, ignoreCase = true) ||
-                        comm.sheikhName.contains(searchQuery, ignoreCase = true) ||
-                        comm.committeeNumber.toString() == searchQuery.trim())
+    val rows = remember(sheetRows, committees) { SheetRules.merge(sheetRows, committees) }
+    val importCourseId = selectedCourseId ?: defaultCourse?.id
+
+    fun handleExtracted(extracted: List<SheetRowDto>) {
+        if (extracted.isEmpty()) { importError = "لم يتم العثور على أي صفوف"; return }
+        val courseId = importCourseId ?: run { importError = "اختر الدورة التي تريد استيراد الكشف إليها أولاً"; return }
+        if (sheetRows.isEmpty()) onImportRows(extracted.map { it.copy(id = "row-${java.util.UUID.randomUUID()}") }, courseId, false) {}
+        else pendingImport = extracted
     }
 
-    val unlinkedRows = sheetRows.filter { row ->
-        row.committeeId == null &&
-            (selectedCourseId == null || row.courseId == selectedCourseId) &&
-            (searchQuery.isBlank() || row.sheikh_name.contains(searchQuery, ignoreCase = true) || row.number.toString() == searchQuery.trim())
+    val pickFile = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        try {
+            val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() } ?: return@rememberLauncherForActivityResult
+            val isZip = bytes.size > 2 && bytes[0] == 'P'.code.toByte() && bytes[1] == 'K'.code.toByte()
+            val table = if (isZip) SimpleXlsx.read(bytes) else SimpleXlsx.parseCsv(bytes)
+            handleExtracted(SheetRules.parseImported(table))
+        } catch (e: Exception) {
+            importError = "تعذر قراءة ملف الإكسيل. يرجى التأكد من صيغة الملف."
+        }
+    }
+    var workbenchUri by remember { mutableStateOf<Uri?>(null) }
+    val pickImage = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri -> workbenchUri = uri }
+    workbenchUri?.let { uri ->
+        ImageWorkbenchDialog(uri, onDismiss = { workbenchUri = null }) { bytes ->
+            workbenchUri = null
+            extracting = true
+            onExtractFromImage(bytes) { result -> extracting = false; result?.let { handleExtracted(it) } }
+        }
     }
 
-    val totalStudents = filteredList.sumOf { it.studentsCount } + unlinkedRows.sumOf { it.students_count }
-    val deliveredCount = filteredList.count { it.stages.exam.completed }
-    val correctedCount = filteredList.count { it.stages.scoring.completed }
-    val reviewedCount = filteredList.count { it.stages.review.completed }
-    val announcedCount = filteredList.count { it.stages.announcement.completed }
-    val ceremonyCount = filteredList.count { it.stages.ceremony.completed }
+    val books = rows.map { it.row.book.trim() }.filter { it.isNotEmpty() }.distinct().sorted()
+    val places = rows.map { it.row.place.trim() }.filter { it.isNotEmpty() }.distinct().sorted()
+    val q = query.trim().lowercase()
+    val shown = rows.filter { sr ->
+        val r = sr.row
+        val matchesQuery = q.isEmpty() || r.sheikh_name.lowercase().contains(q) || r.place.lowercase().contains(q) ||
+            r.book.lowercase().contains(q) || r.notes.lowercase().contains(q) || r.number.toString().contains(q)
+        val matchesStatus = when (status) {
+            "not_delivered" -> !r.delivered; "delivered" -> r.delivered; "corrected" -> r.corrected; "reviewed" -> r.reviewed
+            "announced" -> r.announced; "ceremony" -> r.ceremony; "uncertain" -> r.uncertain; "struck_out" -> r.struck_out
+            else -> true
+        }
+        val matchesCourse = selectedCourseId == null || (r.courseId ?: defaultCourse?.id) == selectedCourseId
+        matchesQuery && matchesStatus && (book == "all" || r.book.trim() == book) && (place == "all" || r.place.trim() == place) && matchesCourse
+    }
+    val inCourse = rows.filter { selectedCourseId == null || (it.row.courseId ?: defaultCourse?.id) == selectedCourseId }.map { it.row }
 
     LazyColumn(
-        modifier = modifier
-            .fillMaxSize()
-            .background(Color(0xFFF8F9FD))
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
+        modifier.fillMaxSize().background(Color(0xFFF8F9FD)),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // Course Selector & CRUD Action Header
         item {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .testTag("course_selector_card"),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = Primary800)
+            ScreenBanner(
+                "كشف ومصفوفة متابعة الدورة",
+                "نظام المتابعة الإدارية للكشوفات ورصد درجات المتون العلمية، مربوط بلجان المسابقة.",
+                Icons.Default.TableChart, listOf(Color(0xFF003B36), Primary800)
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "إدارة ودورات المسابقة العلمية",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Black,
-                            color = Color.White
-                        )
-                        androidx.compose.material3.Button(
-                            onClick = {
-                                courseToEdit = null
-                                showCourseModal = true
-                            },
-                            shape = RoundedCornerShape(8.dp),
-                            colors = androidx.compose.material3.ButtonDefaults.buttonColors(
-                                containerColor = Primary100,
-                                contentColor = Primary900
-                            ),
-                            modifier = Modifier.testTag("btn_add_new_course")
-                        ) {
-                            Text("➕ دورة جديدة", fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    // Dropdown trigger
-                    Surface(
-                        shape = RoundedCornerShape(10.dp),
-                        color = Color.White.copy(alpha = 0.15f),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { courseMenuExpanded = true }
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column {
-                                Text(
-                                    text = activeCourse?.name ?: "كافة الدورات العلمية",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color.White
-                                )
-                                if (activeCourse != null) {
-                                    Text(
-                                        text = "الموسم: ${activeCourse.season} ${activeCourse.year} • اللجان المستهدفة: ${activeCourse.targetCommitteesCount}",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = Color.White.copy(alpha = 0.8f),
-                                        fontSize = 11.sp
-                                    )
-                                }
-                            }
-                            Icon(
-                                imageVector = Icons.Default.ArrowDropDown,
-                                contentDescription = null,
-                                tint = Color.White
-                            )
-                        }
-
-                        DropdownMenu(
-                            expanded = courseMenuExpanded,
-                            onDismissRequest = { courseMenuExpanded = false }
-                        ) {
-                            DropdownMenuItem(
-                                text = { Text("عرض كافة الدورات", fontWeight = FontWeight.Bold) },
-                                onClick = {
-                                    onSelectCourse(null)
-                                    courseMenuExpanded = false
-                                }
-                            )
-                            courses.forEach { course ->
-                                DropdownMenuItem(
-                                    text = {
-                                        Text(
-                                            text = course.name + if (course.isDefault) " (افتراضية ⭐)" else "",
-                                            fontWeight = if (course.id == activeCourse?.id) FontWeight.Bold else FontWeight.Normal
-                                        )
-                                    },
-                                    onClick = {
-                                        onSelectCourse(course.id)
-                                        courseMenuExpanded = false
-                                    }
-                                )
-                            }
-                        }
-                    }
-
-                    if (activeCourse != null) {
-                        Spacer(modifier = Modifier.height(10.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            androidx.compose.material3.OutlinedButton(
-                                onClick = {
-                                    courseToEdit = activeCourse
-                                    showCourseModal = true
-                                },
-                                shape = RoundedCornerShape(8.dp),
-                                colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(
-                                    contentColor = Color.White
-                                ),
-                                border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.4f)),
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .testTag("btn_edit_current_course")
-                            ) {
-                                Text("✏️ تعديل الدورة", fontSize = 12.sp)
-                            }
-
-                            if (!activeCourse.isDefault) {
-                                androidx.compose.material3.OutlinedButton(
-                                    onClick = {
-                                        onSaveCourse(activeCourse.copy(isDefault = true))
-                                    },
-                                    shape = RoundedCornerShape(8.dp),
-                                    colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(
-                                        contentColor = Color.White
-                                    ),
-                                    border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.4f)),
-                                    modifier = Modifier.testTag("btn_set_default_course")
-                                ) {
-                                    Text("⭐ جعلها افتراضية", fontSize = 12.sp)
-                                }
-                            }
-
-                            androidx.compose.material3.OutlinedButton(
-                                onClick = {
-                                    courseToDeleteConfirm = activeCourse
-                                },
-                                shape = RoundedCornerShape(8.dp),
-                                colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(
-                                    contentColor = Color(0xFFFECDD3)
-                                ),
-                                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFECDD3).copy(alpha = 0.5f)),
-                                modifier = Modifier.testTag("btn_delete_current_course")
-                            ) {
-                                Text("🗑️ حذف", fontSize = 12.sp)
-                            }
-                        }
-                    }
+                Row(Modifier.padding(top = 8.dp).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    if (canWriteCourses) OutlinedButton(onClick = { addingCourse = true }) { Text("+ دورة جديدة", color = Color.White) }
+                    if (canCreateCommittees) OutlinedButton(onClick = { addingRow = true }) { Text("+ إضافة صف ولجنة", color = Color.White) }
+                    if (canEdit) OutlinedButton(onClick = { pickFile.launch("*/*") }) { Text("استيراد Excel/CSV", color = Color.White) }
+                    if (canOcr) OutlinedButton(onClick = { pickImage.launch("image/*") }) { Text("استخراج من صورة", color = Color.White) }
+                    OutlinedButton(onClick = onExport) { Text("تصدير", color = Color.White) }
+                    if (canEdit && sheetRows.isNotEmpty()) OutlinedButton(onClick = { confirmClear = true }) { Text("تفريغ الكشف", color = Color(0xFFFECACA)) }
                 }
             }
         }
-
-        // Summary KPI Bar
+        if (extracting) item {
+            Row(verticalAlignment = Alignment.CenterVertically) { CircularProgressIndicator(); Spacer(Modifier.width(8.dp)); Text("جارٍ قراءة الجدول من الصورة...") }
+        }
         item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(14.dp),
-                colors = CardDefaults.cardColors(containerColor = SurfacePure),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0))
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(12.dp),
-                    horizontalArrangement = Arrangement.SpaceAround,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    SummaryPill(title = "اللجان", value = "${filteredList.size}", color = Primary700)
-                    SummaryPill(title = "الطلاب", value = "$totalStudents", color = Color(0xFFD97706))
-                    SummaryPill(title = "مستلم 📦", value = "$deliveredCount", color = Color(0xFF2563EB))
-                    SummaryPill(title = "مصحح ✏️", value = "$correctedCount", color = Color(0xFFF59E0B))
-                    SummaryPill(title = "مكتمل 🟢", value = "$ceremonyCount", color = Color(0xFF16A34A))
-                }
-            }
-        }
-
-        // Search in tracker
-        item {
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = { searchQuery = it },
-                placeholder = { Text("بحث برقم اللجنة، الشيخ، أو الكتاب المقرر...") },
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .testTag("tracker_search_input"),
-                singleLine = true,
-                shape = RoundedCornerShape(12.dp)
-            )
-        }
-
-        // Committee Matrix Rows
-        if (filteredList.isEmpty()) {
-            item {
-                Text(
-                    text = "لا توجد لجان مسجلة تطابق التصفية الحالية.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color(0xFF64748B),
-                    modifier = Modifier.padding(16.dp)
-                )
-            }
-        } else {
-            items(unlinkedRows, key = { "sheet-${it.id}" }) { row -> SheetRowCard(row) }
-
-            items(filteredList, key = { it.id }) { committee ->
-                TrackerRowCard(
-                    committee = committee,
-                    onToggleStage = onToggleStage,
-                    onOpenDetail = { onOpenCommitteeDetail(committee.id) }
-                )
-            }
-        }
-
-        item {
-            Spacer(modifier = Modifier.height(24.dp))
-        }
-    }
-
-    if (showCourseModal) {
-        CourseFormModal(
-            course = courseToEdit,
-            onSave = { updatedCourse ->
-                onSaveCourse(updatedCourse)
-                showCourseModal = false
-            },
-            onDismiss = { showCourseModal = false }
-        )
-    }
-
-    courseToDeleteConfirm?.let { targetCourse ->
-        androidx.compose.material3.AlertDialog(
-            onDismissRequest = { courseToDeleteConfirm = null },
-            title = { Text("حذف الدورة العلمية", fontWeight = FontWeight.Bold) },
-            text = { Text("هل أنت تأكد من حذف الدورة العلمية '${targetCourse.name}'؟ سيؤدي ذلك لإلغاء ربطها من المنظومة.") },
-            confirmButton = {
-                androidx.compose.material3.Button(
-                    onClick = {
-                        onDeleteCourse(targetCourse.id)
-                        courseToDeleteConfirm = null
-                    },
-                    colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = Color(0xFFDC2626))
-                ) {
-                    Text("حذف الدورة", color = Color.White, fontWeight = FontWeight.Bold)
-                }
-            },
-            dismissButton = {
-                androidx.compose.material3.OutlinedButton(onClick = { courseToDeleteConfirm = null }) {
-                    Text("إلغاء")
-                }
-            }
-        )
-    }
-}
-
-@Composable
-fun SummaryPill(title: String, value: String, color: Color) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(
-            text = value,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Black,
-            color = color
-        )
-        Text(
-            text = title,
-            style = MaterialTheme.typography.labelSmall,
-            fontSize = 12.sp,
-            color = Color(0xFF64748B)
-        )
-    }
-}
-
-@Composable
-fun TrackerRowCard(
-    committee: Committee,
-    onToggleStage: (committeeId: String, stageKey: String, currentStatus: Boolean) -> Unit,
-    onOpenDetail: () -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .testTag("tracker_row_${committee.id}"),
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = SurfacePure),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-    ) {
-        Column(modifier = Modifier.padding(14.dp)) {
-            // Header: #, Name, Students count, Info button
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .size(32.dp)
-                            .clip(CircleShape)
-                            .background(Primary100),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "${committee.committeeNumber}",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Black,
-                            color = Primary800
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Column {
-                        Text(
-                            text = committee.committeeName,
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = Primary900
-                        )
-                        Text(
-                            text = "الشيخ: ${committee.sheikhName}",
-                            style = MaterialTheme.typography.bodySmall,
-                            fontSize = 12.sp,
-                            color = Color(0xFF64748B)
-                        )
-                    }
-                }
-
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(Color(0xFFFEF3C7))
-                            .padding(horizontal = 6.dp, vertical = 2.dp)
-                    ) {
-                        Text(
-                            text = "${committee.studentsCount} طلاب",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFFB45309),
-                            fontSize = 12.sp
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.width(4.dp))
-
-                    IconButton(
-                        onClick = onOpenDetail,
-                        modifier = Modifier.size(32.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Info,
-                            contentDescription = "التفاصيل والمراحل",
-                            tint = Primary700,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(6.dp))
-
-            Text(
-                text = "📖 ${committee.competitionBook}",
-                style = MaterialTheme.typography.bodySmall,
-                color = Color(0xFF0F766E),
-                fontWeight = FontWeight.SemiBold
-            )
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            // Quick Stage Switches Row
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(Color(0xFFF8FAFC))
-                    .padding(8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                QuickSwitchItem(
-                    label = "مستلم 📦",
-                    checked = committee.stages.exam.completed,
-                    onToggle = { onToggleStage(committee.id, "exam", committee.stages.exam.completed) },
-                    activeColor = Color(0xFF2563EB),
-                    enabled = com.example.data.remote.Permissions.canOn("committees.reception", committee.id)
-                )
-                QuickSwitchItem(
-                    label = "مصحح ✏️",
-                    checked = committee.stages.scoring.completed,
-                    onToggle = { onToggleStage(committee.id, "scoring", committee.stages.scoring.completed) },
-                    activeColor = Color(0xFFD97706),
-                    enabled = com.example.data.remote.Permissions.canOn("committees.scoring", committee.id)
-                )
-                QuickSwitchItem(
-                    label = "مراجع 🔍",
-                    checked = committee.stages.review.completed,
-                    onToggle = { onToggleStage(committee.id, "review", committee.stages.review.completed) },
-                    activeColor = Color(0xFFCA8A04),
-                    enabled = com.example.data.remote.Permissions.canOn("committees.scoring", committee.id)
-                )
-                QuickSwitchItem(
-                    label = "معلن 📢",
-                    checked = committee.stages.announcement.completed,
-                    onToggle = { onToggleStage(committee.id, "announcement", committee.stages.announcement.completed) },
-                    activeColor = Color(0xFF0891B2),
-                    enabled = com.example.data.remote.Permissions.canOn("committees.finalize", committee.id)
-                )
-                QuickSwitchItem(
-                    label = "حفل 🎓",
-                    checked = committee.stages.ceremony.completed,
-                    onToggle = { onToggleStage(committee.id, "ceremony", committee.stages.ceremony.completed) },
-                    activeColor = Color(0xFF16A34A),
-                    enabled = com.example.data.remote.Permissions.canOn("committees.finalize", committee.id)
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun QuickSwitchItem(
-    label: String,
-    checked: Boolean,
-    onToggle: () -> Unit,
-    activeColor: Color,
-    /** Offered only when the server would accept the change (MOB-10). */
-    enabled: Boolean = true
-) {
-    Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(8.dp))
-            .background(if (checked) activeColor.copy(alpha = 0.15f) else Color.White)
-            .border(
-                1.dp,
-                if (checked) activeColor else Color(0xFFCBD5E1),
-                RoundedCornerShape(8.dp)
-            )
-            .clickable(enabled = enabled, onClick = onToggle)
-            .padding(horizontal = 6.dp, vertical = 4.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                modifier = Modifier
-                    .size(14.dp)
-                    .clip(CircleShape)
-                    .background(if (checked) activeColor else Color(0xFFE2E8F0)),
-                contentAlignment = Alignment.Center
-            ) {
-                if (checked) {
-                    Icon(
-                        imageVector = Icons.Default.Check,
-                        contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(10.dp)
+            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                FilterChip(selected = selectedCourseId == null, onClick = { onSelectCourse(null) }, label = { Text("كافة الدورات (${rows.size})") })
+                courses.forEach { c ->
+                    FilterChip(
+                        selected = selectedCourseId == c.id, onClick = { onSelectCourse(c.id) },
+                        label = { Text("${c.name}${if (c.isDefault) " ★" else ""} (${rows.count { (it.row.courseId ?: defaultCourse?.id) == c.id }})") }
                     )
                 }
             }
-            Spacer(modifier = Modifier.width(4.dp))
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelSmall,
-                fontSize = 12.sp,
-                fontWeight = if (checked) FontWeight.Bold else FontWeight.Medium,
-                color = if (checked) activeColor else Color(0xFF64748B)
-            )
         }
+        item {
+            val active = inCourse.count { !it.struck_out }
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    StatTile("إجمالي الصفوف", "${inCourse.size}", Modifier.weight(1f))
+                    StatTile("الفعّالة", "$active", Modifier.weight(1f))
+                    StatTile("الطلاب", "${inCourse.sumOf { it.students_count }}", Modifier.weight(1f))
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    StatTile("الامتحان", "${inCourse.count { it.delivered }}", Modifier.weight(1f), tint = Color(0xFF1D4ED8))
+                    StatTile("التصحيح", "${inCourse.count { it.corrected }}", Modifier.weight(1f), tint = Color(0xFFB45309))
+                    StatTile("المراجعة", "${inCourse.count { it.reviewed }}", Modifier.weight(1f), tint = Color(0xFF0F766E))
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    StatTile("الإعلان", "${inCourse.count { it.announced }}", Modifier.weight(1f), tint = Color(0xFF0E7490))
+                    StatTile("الحفل", "${inCourse.count { it.ceremony }}", Modifier.weight(1f), tint = Color(0xFF047857))
+                    StatTile("يحتاج تدقيق", "${inCourse.count { it.uncertain }}", Modifier.weight(1f), tint = Color(0xFFB91C1C))
+                }
+            }
+        }
+        item {
+            OutlinedTextField(
+                query, { query = it }, Modifier.fillMaxWidth(), singleLine = true, leadingIcon = { Icon(Icons.Default.Search, null) },
+                placeholder = { Text("بحث بالرقم، الشيخ، المكان، الكتاب، الملاحظات...") }, shape = RoundedCornerShape(14.dp)
+            )
+            Row(Modifier.padding(top = 6.dp).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                listOf(
+                    "all" to "الكل", "not_delivered" to "لم يمتحن", "delivered" to "تم الامتحان", "corrected" to "تم التصحيح",
+                    "reviewed" to "تمت المراجعة", "announced" to "تم الإعلان", "ceremony" to "تم الحفل", "uncertain" to "يحتاج تدقيق", "struck_out" to "مشطوب"
+                ).forEach { (k, l) -> FilterChip(selected = status == k, onClick = { status = k }, label = { Text(l) }) }
+            }
+            if (books.isNotEmpty()) Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                FilterChip(selected = book == "all", onClick = { book = "all" }, label = { Text("كل الكتب") })
+                books.forEach { b -> FilterChip(selected = book == b, onClick = { book = b }, label = { Text(b) }) }
+            }
+            if (places.isNotEmpty()) Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                FilterChip(selected = place == "all", onClick = { place = "all" }, label = { Text("كل الأماكن") })
+                places.forEach { p -> FilterChip(selected = place == p, onClick = { place = p }, label = { Text(p) }) }
+            }
+            Text("عرض ${shown.size} من ${rows.size} صف", style = MaterialTheme.typography.labelSmall, color = TextMuted)
+        }
+        if (rows.isEmpty()) item {
+            Column(Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("الكشف فارغ", fontWeight = FontWeight.Bold)
+                Text("أضف صفاً أو استورد ملف Excel لبدء المتابعة.", color = TextMuted, style = MaterialTheme.typography.bodySmall)
+            }
+        }
+        items(shown, key = { it.row.id }) { sr ->
+            val r = sr.row
+            val committee = r.committeeId?.let { id -> committees.find { it.id == id } }
+            val canToggle = if (committee != null) Permissions.can("committees.update") || Permissions.canOn("committees.reception", committee.id) ||
+                Permissions.canOn("committees.scoring", committee.id) || Permissions.canOn("committees.finalize", committee.id) else canEdit
+            Card(
+                shape = RoundedCornerShape(14.dp),
+                colors = CardDefaults.cardColors(containerColor = if (r.struck_out) Color(0xFFF1F5F9) else Color.White),
+                border = BorderStroke(1.dp, if (r.uncertain) Color(0xFFFCA5A5) else Color(0xFFE2E8F0))
+            ) {
+                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            "${r.number}", color = Color.White, fontWeight = FontWeight.Black,
+                            modifier = Modifier.background(if (sr.virtual) Color(0xFF64748B) else Primary700, RoundedCornerShape(8.dp)).padding(horizontal = 8.dp, vertical = 2.dp)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                r.sheikh_name.ifBlank { "—" }, fontWeight = FontWeight.Bold,
+                                textDecoration = if (r.struck_out) TextDecoration.LineThrough else null
+                            )
+                            Text(
+                                listOf(r.place, r.book, "${r.students_count} طالب", r.courseName ?: "").filter { it.isNotBlank() }.joinToString(" • "),
+                                style = MaterialTheme.typography.labelSmall, color = TextMuted
+                            )
+                        }
+                        if (canEdit && !sr.virtual) IconButton(onClick = { editing = sr }) { Icon(Icons.Default.Edit, "تعديل الصف", tint = Primary700) }
+                        if (canEdit && !sr.virtual) IconButton(onClick = { deleting = r }) { Icon(Icons.Default.Delete, "حذف الصف", tint = Color(0xFFEF4444)) }
+                    }
+                    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        FLAGS.forEach { (key, label) ->
+                            FilterChip(
+                                selected = r.flag(key), enabled = canToggle,
+                                onClick = {
+                                    val newValue = !r.flag(key)
+                                    if (committee != null) {
+                                        val stage = ROW_STAGE.getValue(key)
+                                        val stageDone = committee.stages.getStage(stage).completed
+                                        if (!newValue && !stageDone) {
+                                            importError = "هذه الخانة مكتملة لأن مرحلة لاحقة في اللجنة مكتملة؛ ألغِ المرحلة اللاحقة أولاً من تفاصيل اللجنة"
+                                        } else onToggleStage(committee.id, stage, !newValue)
+                                    } else onSaveRow(r.withFlag(key, newValue)) {}
+                                },
+                                label = { Text(label) }
+                            )
+                        }
+                    }
+                    if (r.uncertain) Text("⚠️ قراءة غير مؤكدة تحتاج تدقيق", style = MaterialTheme.typography.labelSmall, color = Color(0xFFB91C1C))
+                    if (r.notes.isNotBlank()) Text("💬 ${r.notes}", style = MaterialTheme.typography.labelSmall)
+                    Row {
+                        if (committee != null) TextButton(onClick = { onOpenCommitteeDetail(committee.id) }) { Text("تفاصيل اللجنة ↗") }
+                        else if (canCreateCommittees) TextButton(onClick = {
+                            val courseId = r.courseId ?: defaultCourse?.id
+                            if (courseId == null) importError = "حدد الدورة التي يتبعها هذا الصف قبل فتح تفاصيل اللجنة"
+                            else onCreateCommitteeFromRow(committeeFromRow(r, courseId, courses.find { it.id == courseId }?.name ?: ""))
+                        }) { Text("إنشاء لجنة من هذا الصف") }
+                    }
+                }
+            }
+        }
+        item { Spacer(Modifier.padding(24.dp)) }
+    }
+
+    editing?.let { sr ->
+        RowEditDialog(sr.row, courses, onDismiss = { editing = null }) { updated -> onSaveRow(updated) { ok -> if (ok) editing = null } }
+    }
+    deleting?.let { r ->
+        AlertDialog(
+            onDismissRequest = { deleting = null },
+            title = { Text("حذف الصف") },
+            text = { Text("هل أنت متأكد من حذف الصف رقم ${r.number}؟") },
+            confirmButton = { TextButton(onClick = { deleting = null; onDeleteRow(r) }) { Text("حذف", color = Color(0xFFDC2626)) } },
+            dismissButton = { TextButton(onClick = { deleting = null }) { Text("إلغاء") } }
+        )
+    }
+    if (addingCourse) {
+        CourseFormDialog(course = null, onDismiss = { addingCourse = false }) { c -> onAddCourse(c) { ok -> if (ok) { addingCourse = false; onSelectCourse(c.id) } } }
+    }
+    if (addingRow) {
+        AddRowDialog(
+            courses = courses, initialCourseId = importCourseId,
+            nextNumber = { courseId -> (committees.filter { it.courseId == courseId }.maxOfOrNull { it.committeeNumber } ?: 0) + 1 },
+            onDismiss = { addingRow = false },
+            onSave = { c -> onCreateCommitteeFromRow(c); addingRow = false }
+        )
+    }
+    pendingImport?.let { incoming ->
+        AlertDialog(
+            onDismissRequest = { pendingImport = null },
+            title = { Text("الكشف يحتوي على بيانات") },
+            text = { Text("تم العثور على ${incoming.size} صفاً. هل تريد دمجها مع الصفوف الحالية، أم استبدال كشف الدورة بالكامل؟") },
+            confirmButton = {
+                Column {
+                    TextButton(onClick = {
+                        val existing = rows.map { it.row.number }.toMutableSet()
+                        var next = (rows.maxOfOrNull { it.row.number } ?: 0) + 1
+                        val formatted = incoming.map { r ->
+                            var n = r.number
+                            if (n == 0 || n in existing) n = next++
+                            existing.add(n)
+                            r.copy(id = "row-${java.util.UUID.randomUUID()}", number = n)
+                        }
+                        importCourseId?.let { onImportRows(formatted, it, false) {} }
+                        pendingImport = null
+                    }) { Text("دمج مع الكشف الحالي") }
+                    TextButton(onClick = {
+                        var next = 1
+                        val formatted = incoming.map { r -> r.copy(id = "row-${java.util.UUID.randomUUID()}", number = if (r.number > 0) r.number else next++) }
+                        importCourseId?.let { onImportRows(formatted, it, true) {} }
+                        pendingImport = null
+                    }) { Text("استبدال كشف الدورة بالكامل", color = Color(0xFFB91C1C)) }
+                }
+            },
+            dismissButton = { TextButton(onClick = { pendingImport = null }) { Text("إلغاء") } }
+        )
+    }
+    if (confirmClear) {
+        AlertDialog(
+            onDismissRequest = { confirmClear = false },
+            title = { Text("تفريغ الكشف") },
+            text = { Text("سيتم حذف صفوف الكشف المحفوظة لهذه الدورة (اللجان نفسها لن تُحذف). هل أنت متأكد؟") },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmClear = false
+                    importCourseId?.let { onImportRows(emptyList(), it, true) {} } ?: run { importError = "اختر الدورة التي تريد تفريغ كشفها أولاً" }
+                }) { Text("تفريغ", color = Color(0xFFDC2626)) }
+            },
+            dismissButton = { TextButton(onClick = { confirmClear = false }) { Text("إلغاء") } }
+        )
+    }
+    importError?.let { msg ->
+        AlertDialog(onDismissRequest = { importError = null }, text = { Text(msg) }, confirmButton = { TextButton(onClick = { importError = null }) { Text("حسناً") } })
     }
 }
 
-/** A sheet row that is not linked to a committee: read-only, edited on the web app. */
+/** A new committee built from a sheet row (web: handleOpenRowDetails / add row). */
+private fun committeeFromRow(r: SheetRowDto, courseId: String, courseName: String): Committee {
+    val now = Dates.today()
+    return Committee(
+        id = r.committeeId ?: "comm-${java.util.UUID.randomUUID()}",
+        committeeNumber = r.number,
+        committeeName = if (r.sheikh_name.isNotBlank()) "لجنة ${r.sheikh_name}" else "لجنة #${r.number}",
+        sheikhName = r.sheikh_name, studentsCount = r.students_count, branch = r.place, competitionBook = r.book,
+        courseId = courseId, courseName = courseName, generalNotes = r.notes, stages = StagesMap(), createdDate = now
+    )
+}
+
 @Composable
-fun SheetRowCard(row: com.example.data.remote.SheetRowDto) {
-    Card(
-        modifier = Modifier.fillMaxWidth().testTag("sheet_row_${row.id}"),
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = SurfacePure),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-    ) {
-        Column(modifier = Modifier.padding(14.dp)) {
-            Text(
-                text = "#${row.number} • ${row.sheikh_name.ifBlank { "بدون اسم شيخ" }}",
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Bold,
-                color = Primary900
-            )
-            Text(
-                text = listOf(row.place, row.book).filter { it.isNotBlank() }.joinToString(" • ").ifBlank { "—" },
-                style = MaterialTheme.typography.bodySmall,
-                color = Color(0xFF64748B)
-            )
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(
-                text = "الطلاب: ${row.students_count}" +
-                    listOfNotNull(
-                        "امتحان ✓".takeIf { row.delivered },
-                        "تصحيح ✓".takeIf { row.corrected },
-                        "مراجعة ✓".takeIf { row.reviewed },
-                        "إعلان ✓".takeIf { row.announced },
-                        "حفل ✓".takeIf { row.ceremony }
-                    ).joinToString("") { "  $it" },
-                style = MaterialTheme.typography.bodySmall
-            )
-            if (row.uncertain) {
-                Text(
-                    text = "⚠ يحتاج مراجعة يدوية قبل الاعتماد",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = Color(0xFFB45309)
-                )
+private fun RowEditDialog(row: SheetRowDto, courses: List<Course>, onDismiss: () -> Unit, onSave: (SheetRowDto) -> Unit) {
+    var number by remember { mutableStateOf(row.number.toString()) }
+    var sheikh by remember { mutableStateOf(row.sheikh_name) }
+    var place by remember { mutableStateOf(row.place) }
+    var book by remember { mutableStateOf(row.book) }
+    var students by remember { mutableStateOf(row.students_count.toString()) }
+    var notes by remember { mutableStateOf(row.notes) }
+    var struck by remember { mutableStateOf(row.struck_out) }
+    var uncertain by remember { mutableStateOf(row.uncertain) }
+    var courseId by remember { mutableStateOf(row.courseId) }
+    val linked = row.committeeId != null
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("تعديل الصف رقم ${row.number}") },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                if (!linked) OutlinedTextField(number, { number = it.filter(Char::isDigit) }, label = { Text("م") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
+                OutlinedTextField(sheikh, { sheikh = it }, label = { Text("اسم الشيخ") }, singleLine = true)
+                OutlinedTextField(place, { place = it }, label = { Text("المكان") }, singleLine = true)
+                OutlinedTextField(book, { book = it }, label = { Text("الكتاب") }, singleLine = true)
+                OutlinedTextField(students, { students = it.filter(Char::isDigit) }, label = { Text("عدد الطلاب") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
+                OutlinedTextField(notes, { notes = it }, label = { Text("ملاحظات") })
+                Row(verticalAlignment = Alignment.CenterVertically) { Checkbox(struck, { struck = it }); Text("مشطوب (ملغي)") }
+                Row(verticalAlignment = Alignment.CenterVertically) { Checkbox(uncertain, { uncertain = it }); Text("قراءة غير مؤكدة تحتاج تدقيق") }
+                if (!linked) {
+                    Text("الدورة", fontWeight = FontWeight.Bold)
+                    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        courses.forEach { c -> FilterChip(selected = courseId == c.id, onClick = { courseId = c.id }, label = { Text(c.name) }) }
+                    }
+                } else Text("الصف مربوط بلجنة؛ رقمها ودورتها ومراحلها تُعدّل من تفاصيل اللجنة.", style = MaterialTheme.typography.labelSmall, color = TextMuted)
             }
-        }
-    }
+        },
+        confirmButton = {
+            Button(onClick = {
+                onSave(
+                    row.copy(
+                        number = if (linked) row.number else number.toIntOrNull() ?: row.number,
+                        sheikh_name = sheikh.trim(), place = place.trim(), book = book.trim(),
+                        students_count = students.toIntOrNull() ?: 0, notes = notes.trim(), struck_out = struck, uncertain = uncertain,
+                        courseId = courseId, courseName = courses.find { it.id == courseId }?.name ?: row.courseName
+                    )
+                )
+            }) { Text("حفظ") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("إلغاء") } }
+    )
+}
+
+@Composable
+private fun AddRowDialog(courses: List<Course>, initialCourseId: String?, nextNumber: (String) -> Int, onDismiss: () -> Unit, onSave: (Committee) -> Unit) {
+    var courseId by remember { mutableStateOf(initialCourseId ?: courses.firstOrNull()?.id ?: "") }
+    var number by remember(courseId) { mutableStateOf(if (courseId.isNotBlank()) nextNumber(courseId).toString() else "1") }
+    var sheikh by remember { mutableStateOf("") }
+    var place by remember { mutableStateOf("") }
+    var book by remember { mutableStateOf("") }
+    var students by remember { mutableStateOf("0") }
+    var notes by remember { mutableStateOf("") }
+    var flags by remember { mutableStateOf(setOf<String>()) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("إضافة صف ولجنة جديدة إلى الكشف") },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("الدورة *", fontWeight = FontWeight.Bold)
+                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    courses.forEach { c -> FilterChip(selected = courseId == c.id, onClick = { courseId = c.id }, label = { Text(c.name) }) }
+                }
+                OutlinedTextField(number, { number = it.filter(Char::isDigit) }, label = { Text("رقم اللجنة") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
+                OutlinedTextField(sheikh, { sheikh = it }, label = { Text("اسم الشيخ") }, singleLine = true)
+                OutlinedTextField(place, { place = it }, label = { Text("المكان / الفرع") }, singleLine = true)
+                OutlinedTextField(book, { book = it }, label = { Text("الكتاب") }, singleLine = true)
+                OutlinedTextField(students, { students = it.filter(Char::isDigit) }, label = { Text("عدد الطلاب") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
+                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    FLAGS.forEach { (k, l) -> FilterChip(selected = k in flags, onClick = { flags = if (k in flags) flags - k else flags + k }, label = { Text(l) }) }
+                }
+                OutlinedTextField(notes, { notes = it }, label = { Text("ملاحظات") })
+            }
+        },
+        confirmButton = {
+            Button(enabled = courseId.isNotBlank(), onClick = {
+                val n = number.toIntOrNull() ?: nextNumber(courseId)
+                val now = Dates.today()
+                fun st(k: String) = com.example.data.model.StageItem(completed = k in flags)
+                onSave(
+                    Committee(
+                        id = "comm-${java.util.UUID.randomUUID()}",
+                        committeeNumber = n,
+                        committeeName = if (sheikh.isNotBlank()) "لجنة ${sheikh.trim()}" else "لجنة #$n",
+                        sheikhName = sheikh.trim(), branch = place.trim(), competitionBook = book.trim(),
+                        studentsCount = students.toIntOrNull() ?: 0, courseId = courseId,
+                        courseName = courses.find { it.id == courseId }?.name ?: "", generalNotes = notes.trim(),
+                        stages = StagesMap(
+                            registration = com.example.data.model.StageItem(completed = true),
+                            exam = st("delivered"), scoring = st("corrected"), review = st("reviewed"),
+                            announcement = st("announced"), ceremony = st("ceremony")
+                        ),
+                        createdDate = now
+                    )
+                )
+            }, colors = ButtonDefaults.buttonColors(containerColor = Primary700)) { Text("إضافة") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("إلغاء") } }
+    )
 }

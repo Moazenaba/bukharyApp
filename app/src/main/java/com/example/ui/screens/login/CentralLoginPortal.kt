@@ -1,5 +1,9 @@
 package com.example.ui.screens.login
 
+import androidx.compose.ui.semantics.liveRegion
+
+import androidx.compose.ui.semantics.LiveRegionMode
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -75,6 +79,7 @@ import com.example.ui.theme.SurfacePure
 
 private const val TAB_LOGIN = 0
 private const val TAB_REGISTER = 1
+private const val TAB_TRACK = 2
 
 /** Phone typed with Latin or Arabic digits, spaces or dashes; the server normalises it. */
 private val PHONE_PATTERN = Regex("^\\+?[0-9\\u0660-\\u0669\\u06F0-\\u06F9\\s-]{6,30}$")
@@ -100,14 +105,17 @@ internal fun joinRequestProblem(name: String, phone: String, email: String, pass
 @Composable
 fun CentralLoginPortal(
     onLogin: (String, String) -> Unit,
-    onRegisterRequest: (name: String, phone: String, email: String, role: UserRole, pass: String, notes: String, onDone: (String?) -> Unit) -> Unit,
+    onRegisterRequest: (name: String, phone: String, email: String, role: UserRole, pass: String, extras: com.example.data.remote.JoinRequestExtras, onDone: (String?) -> Unit) -> Unit,
     onTrackRequest: (code: String, onResult: (String) -> Unit) -> Unit,
     isSubmitting: Boolean,
     /** Writes saved on this device that have not reached the server yet (MOB-01). */
     unsentCount: Int = 0,
+    loginError: String? = null,
     modifier: Modifier = Modifier
 ) {
     var selectedTab by rememberSaveable { mutableIntStateOf(TAB_LOGIN) }
+    var trackCode by rememberSaveable { mutableStateOf("") }
+    var receiptCode by rememberSaveable { mutableStateOf<String?>(null) }
     var showForgotPassword by rememberSaveable { mutableStateOf(false) }
 
     Column(
@@ -171,7 +179,8 @@ fun CentralLoginPortal(
                 ) {
                     listOf(
                         Triple(TAB_LOGIN, "تسجيل الدخول", "tab_login"),
-                        Triple(TAB_REGISTER, "إنشاء حساب جديد", "tab_register")
+                        Triple(TAB_REGISTER, "طلب انضمام", "tab_register"),
+                        Triple(TAB_TRACK, "تتبع الطلب", "tab_track")
                     ).forEach { (index, label, tag) ->
                         Tab(
                             selected = selectedTab == index,
@@ -191,23 +200,59 @@ fun CentralLoginPortal(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 when (selectedTab) {
-                    TAB_LOGIN -> LoginForm(
-                        isSubmitting = isSubmitting,
-                        onLogin = onLogin,
-                        onForgotPassword = { showForgotPassword = true }
-                    )
-                    else -> RegisterForm(
+                    TAB_LOGIN -> {
+                        LoginForm(
+                            isSubmitting = isSubmitting,
+                            onLogin = onLogin,
+                            onForgotPassword = { showForgotPassword = true }
+                        )
+                        if (loginError != null && !isSubmitting) {
+                            Spacer(modifier = Modifier.height(10.dp))
+                            Text(
+                                text = loginError,
+                                color = Color(0xFFB91C1C),
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(Color(0xFFFEF2F2), RoundedCornerShape(10.dp))
+                                    .padding(12.dp)
+                                    .semantics { liveRegion = LiveRegionMode.Polite }
+                            )
+                        }
+                    }
+                    TAB_REGISTER -> RegisterForm(
                         isSubmitting = isSubmitting,
                         onSubmit = { name, phone, email, role, pass, notes, onDone ->
-                            onRegisterRequest(name, phone, email, role, pass, notes) { success ->
-                                onDone(success != null)
+                            onRegisterRequest(name, phone, email, role, pass, notes) { code ->
+                                if (code != null) {
+                                    receiptCode = code
+                                    trackCode = code
+                                }
+                                onDone(code != null)
                             }
                         }
+                    )
+                    else -> TrackForm(
+                        code = trackCode,
+                        onCodeChange = { trackCode = it },
+                        onTrackRequest = onTrackRequest,
+                        onGoToLogin = { selectedTab = TAB_LOGIN }
                     )
                 }
             }
         }
         Spacer(modifier = Modifier.height(30.dp))
+    }
+
+    receiptCode?.let { code ->
+        RequestReceiptDialog(
+            code = code,
+            onTrack = {
+                receiptCode = null
+                selectedTab = TAB_TRACK
+            },
+            onDismiss = { receiptCode = null }
+        )
     }
 
     if (showForgotPassword) {
@@ -282,32 +327,20 @@ private fun LoginForm(isSubmitting: Boolean, onLogin: (String, String) -> Unit, 
             color = Color.White
         )
     }
-
-    Spacer(modifier = Modifier.height(12.dp))
-    OutlinedButton(
-        onClick = {
-            identifier = "01092820802"
-            password = "Moaz_01092820802"
-        },
-        modifier = Modifier
-            .fillMaxWidth()
-            .testTag("btn_quick_fill_admin"),
-        shape = RoundedCornerShape(12.dp)
-    ) {
-        Text(
-            text = "⚡ تعبئة بيانات حساب المشرف العام (معاذ)",
-            style = MaterialTheme.typography.bodyMedium,
-            color = Primary700,
-            fontWeight = FontWeight.SemiBold
-        )
-    }
 }
 
 @Composable
 private fun RegisterForm(
     isSubmitting: Boolean,
-    onSubmit: (name: String, phone: String, email: String, role: UserRole, pass: String, notes: String, onDone: (Boolean) -> Unit) -> Unit
+    onSubmit: (name: String, phone: String, email: String, role: UserRole, pass: String, extras: com.example.data.remote.JoinRequestExtras, onDone: (Boolean) -> Unit) -> Unit
 ) {
+    var whatsapp by rememberSaveable { mutableStateOf("") }
+    var nationalId by rememberSaveable { mutableStateOf("") }
+    var quranLevel by rememberSaveable { mutableStateOf("") }
+    var qualification by rememberSaveable { mutableStateOf("") }
+    var experience by rememberSaveable { mutableStateOf("") }
+    var availability by rememberSaveable { mutableStateOf("") }
+    var preferred by rememberSaveable { mutableStateOf("") }
     var name by rememberSaveable { mutableStateOf("") }
     var phone by rememberSaveable { mutableStateOf("") }
     var email by rememberSaveable { mutableStateOf("") }
@@ -419,6 +452,22 @@ private fun RegisterForm(
         color = Color(0xFF64748B)
     )
     Spacer(modifier = Modifier.height(10.dp))
+    Text("بيانات اختيارية تساعد المشرف على المراجعة", style = MaterialTheme.typography.labelMedium, color = Color(0xFF64748B))
+    Spacer(modifier = Modifier.height(6.dp))
+    OutlinedTextField(whatsapp, { whatsapp = it.take(50) }, label = { Text("رقم الواتساب") }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
+    Spacer(modifier = Modifier.height(8.dp))
+    OutlinedTextField(nationalId, { nationalId = it.take(50) }, label = { Text("رقم الهوية الوطنية") }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
+    Spacer(modifier = Modifier.height(8.dp))
+    OutlinedTextField(quranLevel, { quranLevel = it.take(500) }, label = { Text("مستوى حفظ القرآن الكريم والإجازات") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
+    Spacer(modifier = Modifier.height(8.dp))
+    OutlinedTextField(qualification, { qualification = it.take(500) }, label = { Text("المؤهل العلمي والتخصص") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
+    Spacer(modifier = Modifier.height(8.dp))
+    OutlinedTextField(experience, { experience = it.take(2000) }, label = { Text("الخبرات السابقة") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
+    Spacer(modifier = Modifier.height(8.dp))
+    OutlinedTextField(availability, { availability = it.take(500) }, label = { Text("أوقات الفراغ والإتاحة") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
+    Spacer(modifier = Modifier.height(8.dp))
+    OutlinedTextField(preferred, { preferred = it.take(200) }, label = { Text("أرقام اللجان المفضلة (مثال: 3، 7، 12)") }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
+    Spacer(modifier = Modifier.height(8.dp))
     OutlinedTextField(
         value = notes,
         onValueChange = { notes = it.take(2000) },
@@ -436,7 +485,12 @@ private fun RegisterForm(
         onClick = {
             error = joinRequestProblem(name, phone, email, password)
             if (error == null) {
-                onSubmit(name.trim(), phone.trim(), email.trim(), role, password, notes.trim()) { ok ->
+                val extras = com.example.data.remote.JoinRequestExtras(
+                    notes = notes.trim(), whatsapp = whatsapp, nationalId = nationalId, quranLevel = quranLevel,
+                    qualification = qualification, experience = experience, availability = availability,
+                    preferredCommittees = preferred.split(',', '،', ' ').mapNotNull { it.trim().toIntOrNull() }.distinct()
+                )
+                onSubmit(name.trim(), phone.trim(), email.trim(), role, password, extras) { ok ->
                     if (ok) {
                         name = ""
                         phone = ""
@@ -457,7 +511,7 @@ private fun RegisterForm(
         colors = ButtonDefaults.buttonColors(containerColor = Primary700)
     ) {
         Text(
-            text = if (isSubmitting) "جاري إنشاء الحساب والدخول..." else "إنشاء الحساب والدخول للمنظومة",
+            text = if (isSubmitting) "جاري إرسال الطلب..." else "إرسال طلب الانضمام",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
             color = Color.White

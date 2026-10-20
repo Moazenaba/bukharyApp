@@ -180,7 +180,7 @@ fun BukhariTopBar(
                 // Notifications Icon with Unread Badge
                 Box {
                     IconButton(
-                        onClick = { showNotifs = true },
+                        onClick = { onNavigate(AppNavScreen.NOTIFICATIONS) },
                         modifier = Modifier.testTag("btn_notifications")
                     ) {
                         BadgedBox(

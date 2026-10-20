@@ -39,7 +39,6 @@ import com.example.ui.AppNavScreen
 import com.example.ui.MainViewModel
 import com.example.ui.components.BukhariBottomNavBar
 import com.example.ui.components.BukhariTopBar
-import com.example.ui.screens.assistants.AssistantsScreen
 import com.example.ui.screens.committees.CommitteeDetailModal
 import com.example.ui.screens.committees.CommitteesScreen
 import com.example.ui.screens.course_tracker.SummerCourseTrackerScreen
@@ -56,7 +55,6 @@ class MainActivity : ComponentActivity() {
 
     private val viewModel: MainViewModel by viewModels()
 
-    // Trigger comment for platform redeploy.
     /** Opens a downloaded exam PDF in the user's PDF viewer. */
     private fun openPdf(file: File) {
         val uri = FileProvider.getUriForFile(this, "$packageName.files", file)
@@ -68,16 +66,25 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private val askNotifications = registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) { }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        if (intent.getBooleanExtra(com.example.push.PushNotifications.EXTRA_OPEN_NOTIFICATIONS, false)) {
+            viewModel.navigateTo(com.example.ui.AppNavScreen.NOTIFICATIONS)
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        com.example.push.PushNotifications.init(this)
+        val openNotifications = intent?.getBooleanExtra(com.example.push.PushNotifications.EXTRA_OPEN_NOTIFICATIONS, false) == true
 
         setContent {
-            android.util.Log.d("MainActivity", "Composition started")
-            BukhariTheme {
+            BukhariTheme(lightBackgroundBehindStatusBar = !viewModel.isLoggedIn.collectAsStateWithLifecycle().value) {
                 val isLoggedIn by viewModel.isLoggedIn.collectAsStateWithLifecycle()
                 val isRestoring by viewModel.isRestoringSession.collectAsStateWithLifecycle()
-                android.util.Log.d("MainActivity", "isLoggedIn=$isLoggedIn, isRestoring=$isRestoring")
                 val isSubmitting by viewModel.isSubmitting.collectAsStateWithLifecycle()
                 val currentUser by viewModel.currentUser.collectAsStateWithLifecycle()
                 val currentScreen by viewModel.currentNavScreen.collectAsStateWithLifecycle()
@@ -104,6 +111,17 @@ class MainActivity : ComponentActivity() {
                 val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
                 val selectedStageFilter by viewModel.selectedStageFilter.collectAsStateWithLifecycle()
                 val snackbarMessage by viewModel.snackBarMessage.collectAsStateWithLifecycle()
+                val books by viewModel.books.collectAsStateWithLifecycle()
+                val staffUsers by viewModel.staffUsers.collectAsStateWithLifecycle()
+                val profiles by viewModel.profiles.collectAsStateWithLifecycle()
+                val staffLoading by viewModel.staffLoading.collectAsStateWithLifecycle()
+                val auditLogs by viewModel.auditLogs.collectAsStateWithLifecycle()
+                val auditLoading by viewModel.auditLoading.collectAsStateWithLifecycle()
+                val auditHasMore by viewModel.auditHasMore.collectAsStateWithLifecycle()
+                val committeeFilters by viewModel.committeeFilters.collectAsStateWithLifecycle()
+                val confirmRequest by viewModel.confirmRequest.collectAsStateWithLifecycle()
+                var openAddCommittee by remember { androidx.compose.runtime.mutableStateOf(false) }
+                var showExport by remember { androidx.compose.runtime.mutableStateOf(false) }
 
                 val isWide = LocalConfiguration.current.screenWidthDp >= 600
                 val onScreenSelected: (AppNavScreen) -> Unit = { screen ->
@@ -111,7 +129,25 @@ class MainActivity : ComponentActivity() {
                     else viewModel.showMessage("هذه الشاشة غير متاحة لدورك")
                 }
                 val snackbarHostState = remember { SnackbarHostState() }
-                val defaultCourse = courses.find { it.isDefault } ?: courses.find { it.status == "active" } ?: courses.firstOrNull()
+                val defaultCourse = courses.find { it.isDefault } ?: courses.find { it.status == "active" }
+
+                // Once signed in: ask for notification permission (Android 13+) and honour a tapped push.
+                LaunchedEffect(isLoggedIn) {
+                    if (isLoggedIn) {
+                        if (com.example.push.PushNotifications.isConfigured && com.example.push.PushNotifications.needsPermission(this@MainActivity) &&
+                            android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU
+                        ) askNotifications.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                        if (openNotifications) viewModel.navigateTo(AppNavScreen.NOTIFICATIONS)
+                    }
+                }
+
+                val dialogError by viewModel.dialogError.collectAsStateWithLifecycle()
+                LaunchedEffect(dialogError) {
+                    dialogError?.let {
+                        android.widget.Toast.makeText(this@MainActivity, it, android.widget.Toast.LENGTH_LONG).show()
+                        viewModel.clearDialogError()
+                    }
+                }
 
                 LaunchedEffect(snackbarMessage) {
                     snackbarMessage?.let { msg ->
@@ -141,6 +177,29 @@ class MainActivity : ComponentActivity() {
                     )
                 }
 
+                confirmRequest?.let { req ->
+                    androidx.compose.material3.AlertDialog(
+                        onDismissRequest = { viewModel.dismissConfirm() },
+                        title = { Text(req.title) },
+                        text = { Text(req.message) },
+                        confirmButton = {
+                            androidx.compose.material3.TextButton(onClick = { viewModel.dismissConfirm(); req.onConfirm() }) {
+                                Text(req.confirmLabel, color = androidx.compose.ui.graphics.Color(0xFFB91C1C))
+                            }
+                        },
+                        dismissButton = { androidx.compose.material3.TextButton(onClick = { viewModel.dismissConfirm() }) { Text("إلغاء") } }
+                    )
+                }
+
+                if (showExport) {
+                    com.example.ui.screens.export.ExportDialog(
+                        committees = committees,
+                        courses = courses,
+                        sheetRows = sheetRows,
+                        onDismiss = { showExport = false }
+                    )
+                }
+
                 // Another account left unsent work on this device: it is never sent as this user (MOB-01).
                 if (foreignUnsentWork) {
                     androidx.compose.material3.AlertDialog(
@@ -158,7 +217,7 @@ class MainActivity : ComponentActivity() {
 
                 BackHandler(enabled = isLoggedIn && (selectedCommitteeId != null || currentScreen != AppNavScreen.HOME)) {
                     if (selectedCommitteeId != null) viewModel.closeCommitteeDetail()
-                    else viewModel.navigateTo(AppNavScreen.HOME)
+                    else viewModel.navigateBack()
                 }
 
                 // One Scaffold for every state, so messages (e.g. login errors) are always visible.
@@ -212,6 +271,7 @@ class MainActivity : ComponentActivity() {
                             onTrackRequest = { code, onResult -> viewModel.trackJoinRequest(code, onResult) },
                             isSubmitting = isSubmitting,
                             unsentCount = unsentCount,
+                            loginError = viewModel.loginError.collectAsStateWithLifecycle().value,
                             modifier = Modifier.padding(innerPadding)
                         )
 
@@ -254,7 +314,17 @@ class MainActivity : ComponentActivity() {
                                         onNavigate = { viewModel.navigateTo(it) },
                                         onOpenCommitteeDetail = { viewModel.openCommitteeDetail(it) },
                                         onToggleTask = { viewModel.toggleTask(it) },
-                                        onOpenAddCommittee = { viewModel.navigateTo(AppNavScreen.COMMITTEES) }
+                                        myCeremonies = {
+                                            com.example.ui.screens.ceremonies.MyCeremoniesSection(committees, tasks, currentUser?.id) { viewModel.openCommitteeDetail(it) }
+                                        },
+                                        onNavigateCommittees = { stage ->
+                                            viewModel.setSelectedStageFilter(stage)
+                                            viewModel.navigateTo(AppNavScreen.COMMITTEES)
+                                        },
+                                        onOpenAddCommittee = {
+                                            openAddCommittee = true
+                                            viewModel.navigateTo(AppNavScreen.COMMITTEES)
+                                        }
                                     )
                                     AppNavScreen.COURSE_TRACKER -> SummerCourseTrackerScreen(
                                         courses = courses,
@@ -262,8 +332,13 @@ class MainActivity : ComponentActivity() {
                                         committees = committees,
                                         sheetRows = sheetRows,
                                         onSelectCourse = { viewModel.setSelectedCourseId(it) },
-                                        onSaveCourse = { viewModel.saveCourse(it) },
-                                        onDeleteCourse = { viewModel.deleteCourse(it) },
+                                        onSaveRow = { row, done -> viewModel.saveSheetRow(row, done) },
+                                        onDeleteRow = { viewModel.deleteSheetRow(it) },
+                                        onImportRows = { rows, courseId, replace, done -> viewModel.importSheetRows(rows, courseId, replace, done) },
+                                        onExtractFromImage = { uri, done -> viewModel.extractTableFromImage(uri, done) },
+                                        onAddCourse = { course, done -> viewModel.saveCourse(course, done) },
+                                        onCreateCommitteeFromRow = { viewModel.createCommitteeFromRow(it) },
+                                        onExport = { showExport = true },
                                         onToggleStage = { commId, stageKey, curr -> viewModel.toggleStage(commId, stageKey, curr) },
                                         onOpenCommitteeDetail = { viewModel.openCommitteeDetail(it) }
                                     )
@@ -279,14 +354,26 @@ class MainActivity : ComponentActivity() {
                                         onOpenCommitteeDetail = { viewModel.openCommitteeDetail(it) },
                                         onSaveCommittee = { viewModel.saveCommittee(it) },
                                         onDeleteCommittee = { viewModel.deleteCommittee(it) },
-                                        onSaveCourse = { viewModel.saveCourse(it) }
+                                        selectedCourseId = selectedCourseId,
+                                        onCourseFilterChange = { viewModel.setSelectedCourseId(it) },
+                                        filters = committeeFilters,
+                                        onFiltersChange = { viewModel.setCommitteeFilters(it) },
+                                        onReceive = { id, cancel -> viewModel.recordAssistantReception(id, "", cancel) },
+                                        onApproveReadiness = { id, revoke -> viewModel.approveExamReadiness(id, revoke) },
+                                        openAddRequested = openAddCommittee,
+                                        onCreateCourse = if (com.example.data.remote.Permissions.can("courses.write")) ({ c -> viewModel.saveCourse(c) }) else null,
+                                        onAddRequestConsumed = { openAddCommittee = false }
                                     )
                                     AppNavScreen.EXAMS -> ExamsScreen(
                                         currentUser = currentUser,
                                         exams = exams,
-                                        onSaveExam = { viewModel.saveExam(it) },
+                                        onSaveExam = { exam, pdf -> viewModel.saveExamWithFile(exam, pdf) },
                                         onDeleteExam = { viewModel.deleteExam(it) },
-                                        onOpenFile = { exam -> viewModel.openExamFile(exam) { openPdf(it) } }
+                                        onOpenFile = { exam -> viewModel.openExamFile(exam) { openPdf(it) } },
+                                        books = books,
+                                        onUploadFile = { id, uri -> viewModel.uploadExamFile(id, uri) },
+                                        onAddBook = { viewModel.addBook(it) },
+                                        onDeleteBook = { viewModel.deleteBook(it) }
                                     )
                                     AppNavScreen.SCHEDULE -> ScheduleScreen(
                                         currentUser = currentUser,
@@ -296,14 +383,24 @@ class MainActivity : ComponentActivity() {
                                         onLoadAssignableUsers = { viewModel.loadAssignableUsers() },
                                         onToggleTask = { viewModel.toggleTask(it) },
                                         onSaveTask = { viewModel.saveTask(it) },
-                                        onDeleteTask = { viewModel.deleteTask(it) }
+                                        onDeleteTask = { viewModel.deleteTask(it) },
+                                        onScheduleCeremony = { c, d -> viewModel.updateCeremony(c.id, d) },
+                                        onOpenCommittee = { viewModel.openCommitteeDetail(it) }
                                     )
-                                    AppNavScreen.ASSISTANTS -> AssistantsScreen(
+                                    AppNavScreen.ASSISTANTS -> com.example.ui.screens.assistants.UsersManagementScreen(
                                         currentUser = currentUser,
-                                        users = users,
+                                        users = staffUsers,
+                                        profiles = profiles,
                                         committees = committees,
-                                        onApproveUser = { user, comms, perms, role -> viewModel.approveUser(user, comms, perms, role) },
-                                        onRejectUser = { user, reason -> viewModel.rejectUser(user, reason) }
+                                        exams = exams,
+                                        isLoading = staffLoading,
+                                        onReload = { viewModel.loadStaff() },
+                                        onSaveUser = { _, body, msg, done -> viewModel.saveStaffUser(body, msg, done) },
+                                        onDeleteUser = { viewModel.deleteStaffUser(it) },
+                                        onResetPassword = { u, pw, done -> viewModel.resetStaffPassword(u, pw, done) },
+                                        onSaveProfile = { p, done -> viewModel.saveProfile(p, done) },
+                                        onDeleteProfile = { viewModel.deleteProfile(it) },
+                                        onOpenCommittee = { viewModel.openCommitteeDetail(it) }
                                     )
                                     AppNavScreen.DATABASE_INSPECTOR -> DatabaseInspectorScreen(
                                         databaseStatus = databaseStatus,
@@ -317,6 +414,73 @@ class MainActivity : ComponentActivity() {
                                         onDiscardRefused = { viewModel.discardRefusedWrite(it) }
                                     )
                                     AppNavScreen.STATISTICS -> StatisticsScreen(committees = committees)
+                                    AppNavScreen.COURSES -> com.example.ui.screens.courses.CoursesScreen(
+                                        courses = courses,
+                                        committees = committees,
+                                        onSaveCourse = { c, done -> viewModel.saveCourse(c, done) },
+                                        onDeleteCourse = { viewModel.deleteCourse(it) },
+                                        onSetDefaultCourse = { viewModel.setDefaultCourse(it) },
+                                        onShowCourseCommittees = {
+                                            viewModel.setSelectedCourseId(it)
+                                            viewModel.navigateTo(AppNavScreen.COMMITTEES)
+                                        }
+                                    )
+                                    AppNavScreen.CEREMONIES -> com.example.ui.screens.ceremonies.CeremoniesScreen(
+                                        committees = committees,
+                                        tasks = tasks,
+                                        onScheduleCeremony = { c, d -> viewModel.updateCeremony(c.id, d) },
+                                        onToggleCeremonyDone = { viewModel.toggleCeremonyDone(it) },
+                                        onOpenCommittee = { viewModel.openCommitteeDetail(it) },
+                                        onNavigateDailyAlerts = { viewModel.navigateTo(AppNavScreen.DAILY_ALERTS) },
+                                        onNavigateCalendar = { viewModel.navigateTo(AppNavScreen.SCHEDULE) },
+                                        currentUserId = currentUser?.id,
+                                        ceremonyCandidates = viewModel.ceremonyCandidates.collectAsStateWithLifecycle().value,
+                                        onLoadCandidates = { viewModel.loadCeremonyCandidates() }
+                                    )
+                                    AppNavScreen.DAILY_ALERTS -> com.example.ui.screens.alerts.DailyAlertsScreen(
+                                        currentUser = currentUser,
+                                        tasks = tasks,
+                                        committees = committees,
+                                        assignableUsers = assignableUsers,
+                                        onLoadAssignableUsers = { viewModel.loadAssignableUsers() },
+                                        onToggleTask = { viewModel.toggleTask(it) },
+                                        onSaveTask = { viewModel.saveTask(it) },
+                                        onDeleteTask = { viewModel.deleteTask(it) },
+                                        onScheduleCeremony = { c, d -> viewModel.updateCeremony(c.id, d) },
+                                        onNavigateCalendar = { viewModel.navigateTo(AppNavScreen.SCHEDULE) },
+                                        onNavigateCeremonies = { viewModel.navigateTo(AppNavScreen.CEREMONIES) }
+                                    )
+                                    AppNavScreen.AUDIT -> com.example.ui.screens.audit.AuditLogScreen(
+                                        logs = auditLogs,
+                                        isLoading = auditLoading,
+                                        hasMore = auditHasMore,
+                                        onLoad = { entity, reset -> viewModel.loadAuditLogs(entity, reset) }
+                                    )
+                                    AppNavScreen.NOTIFICATIONS -> com.example.ui.screens.notifications.NotificationsScreen(
+                                        notifications = notifications,
+                                        committees = committees,
+                                        onMarkRead = { viewModel.markNotificationRead(it) },
+                                        onMarkAllRead = { viewModel.markAllNotificationsRead() },
+                                        onOpenCommittee = { viewModel.openCommitteeDetail(it) },
+                                        onSend = { t, d, type, cId, done -> viewModel.sendNotification(t, d, type, cId, done) }
+                                    )
+                                    AppNavScreen.MENU -> com.example.ui.screens.menu.MenuScreen(
+                                        currentUser = currentUser,
+                                        committees = committees,
+                                        exams = exams,
+                                        courses = courses,
+                                        tasks = tasks,
+                                        pendingRequests = staffUsers.count { it.status == "pending" },
+                                        unreadNotifications = notifications.count { !it.read },
+                                        onNavigate = { viewModel.navigateTo(it) },
+                                        onAddCommittee = {
+                                            openAddCommittee = true
+                                            viewModel.navigateTo(AppNavScreen.COMMITTEES)
+                                        },
+                                        onExport = { showExport = true },
+                                        onChangePassword = { showChangePassword = true },
+                                        onLogout = { viewModel.requestLogout() }
+                                    )
                                 }
                             }
 
@@ -333,7 +497,13 @@ class MainActivity : ComponentActivity() {
                                         onUpdateQuestion = { qId, done -> viewModel.updateQuestion(selectedCommittee.id, qId, done) },
                                         onUpdateScoring = { viewModel.updateScoring(selectedCommittee.id, it) },
                                         onUpdateAggregation = { viewModel.updateAggregation(selectedCommittee.id, it) },
-                                        onUpdateCeremony = { viewModel.updateCeremony(selectedCommittee.id, it) }
+                                        onUpdateCeremony = { viewModel.updateCeremony(selectedCommittee.id, it) },
+                                        courses = courses,
+                                        onSaveBase = { viewModel.saveCommittee(it) },
+                                        onDelete = { viewModel.deleteCommittee(selectedCommittee.id) },
+                                        onUpdateQuestionDetails = { qId, done, scorers, score, notes -> viewModel.updateQuestionDetails(selectedCommittee.id, qId, done, scorers, score, notes) },
+                                        onSheetImported = { notes, count -> viewModel.recordSheetImport(selectedCommittee, notes, count) },
+                                        onSaveExcelUrl = { url -> viewModel.saveExcelUrl(selectedCommittee, url) }
                                     ) }
                                 }
                             }

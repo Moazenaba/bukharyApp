@@ -5,7 +5,11 @@ import com.squareup.moshi.Json
 data class StageItem(
     val completed: Boolean = false,
     val completedAt: String? = null,
-    val notes: String? = null
+    val notes: String? = null,
+    /** Who completed it (set by the server). */
+    val completedBy: String? = null,
+    /** Link to the committee's Excel grade sheet (sheet stage). */
+    val excelUrl: String? = null
 )
 
 data class StagesMap(
@@ -140,8 +144,12 @@ data class CeremonyDetails(
     @Json(name = "ceremonyPlace") val venue: String = "",
     @Json(name = "honoredStudentsCount") val honoreesCount: Int = 0,
     val attendingSheikhs: List<String> = emptyList(),
-    val notes: String = ""
+    val notes: String = "",
+    /** Accounts invited to the ceremony (the server notifies each one). */
+    val attendees: List<CeremonyAttendee> = emptyList()
 )
+
+data class CeremonyAttendee(val id: String = "", val name: String = "")
 
 data class AssistantReception(
     val assistantId: String = "",

@@ -1,5 +1,7 @@
 package com.example.ui.components
 
+import androidx.compose.foundation.verticalScroll
+
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
@@ -7,6 +9,12 @@ import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.TableChart
+import androidx.compose.material.icons.filled.Celebration
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.NotificationsActive
+import androidx.compose.material.icons.outlined.Celebration
+import androidx.compose.material.icons.outlined.Menu
+import androidx.compose.material.icons.outlined.NotificationsActive
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Groups
 import androidx.compose.material.icons.outlined.Home
@@ -43,10 +51,22 @@ data class BottomNavItem(
 
 val BottomNavItems = listOf(
     BottomNavItem(AppNavScreen.HOME, "الرئيسية", Icons.Filled.Home, Icons.Outlined.Home),
-    BottomNavItem(AppNavScreen.COURSE_TRACKER, "كشف الدورات", Icons.Filled.TableChart, Icons.Outlined.TableChart),
-    BottomNavItem(AppNavScreen.COMMITTEES, "اللجان والمراحل", Icons.Filled.Groups, Icons.Outlined.Groups),
+    BottomNavItem(AppNavScreen.COMMITTEES, "اللجان", Icons.Filled.Groups, Icons.Outlined.Groups),
+    BottomNavItem(AppNavScreen.COURSE_TRACKER, "الكشوفات", Icons.Filled.TableChart, Icons.Outlined.TableChart),
+    BottomNavItem(AppNavScreen.DAILY_ALERTS, "التنبيهات", Icons.Filled.NotificationsActive, Icons.Outlined.NotificationsActive),
+    BottomNavItem(AppNavScreen.MENU, "القائمة", Icons.Filled.Menu, Icons.Outlined.Menu)
+)
+
+/** The rail on wide screens has room for every screen, in the web sidebar's order. */
+val RailItems = listOf(
+    BottomNavItem(AppNavScreen.HOME, "الرئيسية", Icons.Filled.Home, Icons.Outlined.Home),
+    BottomNavItem(AppNavScreen.COURSE_TRACKER, "الكشوفات", Icons.Filled.TableChart, Icons.Outlined.TableChart),
+    BottomNavItem(AppNavScreen.COMMITTEES, "اللجان", Icons.Filled.Groups, Icons.Outlined.Groups),
     BottomNavItem(AppNavScreen.EXAMS, "الامتحانات", Icons.Filled.MenuBook, Icons.Outlined.MenuBook),
-    BottomNavItem(AppNavScreen.SCHEDULE, "التقويم والمهام", Icons.Filled.CalendarMonth, Icons.Outlined.CalendarMonth)
+    BottomNavItem(AppNavScreen.CEREMONIES, "الحفلات", Icons.Filled.Celebration, Icons.Outlined.Celebration),
+    BottomNavItem(AppNavScreen.SCHEDULE, "التقويم", Icons.Filled.CalendarMonth, Icons.Outlined.CalendarMonth),
+    BottomNavItem(AppNavScreen.DAILY_ALERTS, "التنبيهات", Icons.Filled.NotificationsActive, Icons.Outlined.NotificationsActive),
+    BottomNavItem(AppNavScreen.MENU, "القائمة", Icons.Filled.Menu, Icons.Outlined.Menu)
 )
 
 @Composable
@@ -106,13 +126,14 @@ fun BukhariNavigationRail(
     modifier: Modifier = Modifier
 ) {
     val accessibleItems = remember(currentUser) {
-        BottomNavItems.filter { item -> currentUser?.canAccessScreen(item.screen) != false }
+        RailItems.filter { item -> currentUser?.canAccessScreen(item.screen) != false }
     }
 
     NavigationRail(
         modifier = modifier.testTag("navigation_rail"),
         containerColor = Color.White
     ) {
+        androidx.compose.foundation.layout.Column(Modifier.verticalScroll(androidx.compose.foundation.rememberScrollState())) {
         accessibleItems.forEach { item ->
             val isSelected = currentScreen == item.screen
             NavigationRailItem(
@@ -134,6 +155,7 @@ fun BukhariNavigationRail(
                 ),
                 modifier = Modifier.testTag("rail_item_${item.screen.route}")
             )
+        }
         }
     }
 }

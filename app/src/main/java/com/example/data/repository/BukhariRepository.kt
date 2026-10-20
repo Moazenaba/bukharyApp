@@ -5,7 +5,6 @@ import androidx.room.withTransaction
 import com.example.data.local.AppDatabase
 import com.example.data.local.entities.AppUserEntity
 import com.example.data.local.entities.CommitteeEntity
-import com.example.data.local.entities.CourseEntity
 import com.example.data.local.entities.CustomPermissionEntity
 import com.example.data.local.entities.ExamEntity
 import com.example.data.local.entities.PendingOpEntity
@@ -105,19 +104,6 @@ class BukhariRepository(
      * the user may not read is left as it is.
      */
     suspend fun syncWithRemoteApi(): SyncResult = withContext(Dispatchers.IO) {
-        try {
-            val (supabaseOk, fetchedSheetRows) = com.example.data.supabase.SupabaseDirectService.syncAll(db)
-            if (supabaseOk) {
-                if (fetchedSheetRows.isNotEmpty()) {
-                    _sheetRows.value = fetchedSheetRows
-                }
-                lastSyncOnline = true
-                lastSyncAt = System.currentTimeMillis()
-                return@withContext SyncResult(true, "تم التحديث بنجاح من Supabase")
-            }
-        } catch (t: Throwable) {
-            Log.e(tag, "Supabase direct sync error: ${t.message}")
-        }
         if (!ApiClient.isConfigured) return@withContext SyncResult(false, "لم يتم ضبط عنوان الخادم")
         ApiClient.skippedRecords = 0
         val waiting = flushPendingOps().waiting
@@ -322,31 +308,6 @@ class BukhariRepository(
         .apply { timeZone = java.util.TimeZone.getTimeZone("UTC") }
         .format(Date())
 
-    // ------------------------------------------------------------------ courses
-
-    /** Creates or updates a course in both Supabase and Room. */
-    suspend fun saveCourse(course: Course): WriteResult = withContext(Dispatchers.IO) {
-        val entity = CourseEntity.fromDomain(course)
-        db.courseDao().insertCourse(entity)
-        try {
-            com.example.data.supabase.SupabaseDirectService.saveCourse(course)
-        } catch (t: Throwable) {
-            Log.w(tag, "Supabase direct saveCourse error: ${t.message}")
-        }
-        push("saveCourse", "POST", "api/courses", entity, versionOf = "course:${entity.id}")
-    }
-
-    /** Deletes a course from both Supabase and Room. */
-    suspend fun deleteCourse(courseId: String): WriteResult = withContext(Dispatchers.IO) {
-        db.courseDao().deleteCourseById(courseId)
-        try {
-            com.example.data.supabase.SupabaseDirectService.deleteCourse(courseId)
-        } catch (t: Throwable) {
-            Log.w(tag, "Supabase direct deleteCourse error: ${t.message}")
-        }
-        push("deleteCourse", "DELETE", "api/courses/${enc(courseId)}")
-    }
-
     // ------------------------------------------------------------------ committees
 
     /** Creates a committee or saves its base data (the server keeps stages and documents it already has). */
@@ -448,6 +409,7 @@ class BukhariRepository(
     suspend fun updateCeremony(committeeId: String, ceremony: CeremonyDetails): WriteResult = withContext(Dispatchers.IO) {
         val entity = db.committeeDao().getCommitteeById(committeeId) ?: return@withContext WriteResult.Rejected("اللجنة غير موجودة")
         db.committeeDao().updateCommittee(entity.copy(ceremonyDetails = ceremony))
+        val attendeesChanged = ceremony.attendees.map { it.id } != entity.ceremonyDetails.attendees.map { it.id }
         committeeAction(
             "updateCeremony", committeeId,
             mapOf(
@@ -457,8 +419,45 @@ class BukhariRepository(
                 "ceremonyPlace" to ceremony.venue.ifBlank { null },
                 "honoredStudentsCount" to ceremony.honoreesCount,
                 "attendingSheikhs" to ceremony.attendingSheikhs,
-                "notes" to ceremony.notes.ifBlank { null }
+                "notes" to ceremony.notes.ifBlank { null },
+                "attendeeUserIds" to if (attendeesChanged) ceremony.attendees.map { it.id } else null
             )
+        )
+    }
+
+    /** Saves base data together with the sheet stage's Excel link (the server keeps it on the sheet stage). */
+    suspend fun saveCommitteeWithExcelUrl(committee: Committee, excelUrl: String?): WriteResult = withContext(Dispatchers.IO) {
+        val entity = CommitteeEntity.fromDomain(committee)
+        db.committeeDao().insertCommittee(entity)
+        val json = ApiClient.moshi.adapter(CommitteeEntity::class.java).toJsonValue(entity) as? Map<*, *> ?: emptyMap<String, Any?>()
+        val body = json.entries.associate { (k, v) -> k.toString() to v }.toMutableMap()
+        body["excelUrl"] = excelUrl?.ifBlank { null } ?: ""
+        push("saveCommittee", "POST", "api/committees", body, versionOf = "committee:${entity.id}")
+    }
+
+    /** Completes a stage with a note (e.g. the imported grade sheet), through the workflow like the web. */
+    suspend fun completeStageWithNotes(committeeId: String, stageKey: String, notes: String): WriteResult = withContext(Dispatchers.IO) {
+        val entity = db.committeeDao().getCommitteeById(committeeId) ?: return@withContext WriteResult.Rejected("اللجنة غير موجودة")
+        val stage = entity.stages.getStage(stageKey).copy(completed = true, completedAt = now(), notes = notes)
+        val stages = entity.stages.updateStage(stageKey, true, stage.completedAt).let { updated ->
+            when (stageKey) { "sheet" -> updated.copy(sheet = stage); else -> updated }
+        }
+        db.committeeDao().updateCommittee(entity.copy(stages = stages))
+        committeeAction("completeStageNotes", committeeId, mapOf("type" to "completeStage", "stage" to stageKey, "notes" to notes))
+    }
+
+    /** One question's scorers, score and notes (web: updateQuestion intent with scorers). */
+    suspend fun updateQuestionDetails(
+        committeeId: String, questionId: String, completed: Boolean, scorers: List<String>, score: Double?, notes: String?
+    ): WriteResult = withContext(Dispatchers.IO) {
+        val entity = db.committeeDao().getCommitteeById(committeeId) ?: return@withContext WriteResult.Rejected("اللجنة غير موجودة")
+        val questions = entity.scoringDetails.questions.map {
+            if (it.id == questionId) it.copy(completed = completed, scorers = scorers, score = score, notes = notes) else it
+        }
+        db.committeeDao().updateCommittee(entity.copy(scoringDetails = entity.scoringDetails.copy(questions = questions)))
+        committeeAction(
+            "updateQuestionDetails", committeeId,
+            mapOf("type" to "updateQuestion", "questionId" to questionId, "completed" to completed, "scorers" to scorers, "score" to score, "notes" to notes)
         )
     }
 

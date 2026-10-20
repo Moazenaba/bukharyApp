@@ -1,5 +1,7 @@
 package com.example.ui.screens.committees
 
+import androidx.compose.foundation.verticalScroll
+
 import androidx.compose.material3.minimumInteractiveComponentSize
 import android.content.Intent
 import androidx.compose.ui.semantics.semantics
@@ -48,6 +50,7 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -94,18 +97,31 @@ fun CommitteesScreen(
     onOpenCommitteeDetail: (String) -> Unit,
     onSaveCommittee: (Committee) -> Unit,
     onDeleteCommittee: (String) -> Unit,
-    onSaveCourse: (Course) -> Unit = {},
     allCommittees: List<Committee> = committees,
+    selectedCourseId: String? = null,
+    onCourseFilterChange: (String?) -> Unit = {},
+    filters: com.example.ui.MainViewModel.CommitteeFilters = com.example.ui.MainViewModel.CommitteeFilters(),
+    onFiltersChange: (com.example.ui.MainViewModel.CommitteeFilters) -> Unit = {},
+    onReceive: (String, Boolean) -> Unit = { _, _ -> },
+    onApproveReadiness: (String, Boolean) -> Unit = { _, _ -> },
+    openAddRequested: Boolean = false,
+    onAddRequestConsumed: () -> Unit = {},
+    onCreateCourse: ((Course) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     var showAddDialog by remember { mutableStateOf(false) }
+    androidx.compose.runtime.LaunchedEffect(openAddRequested) {
+        if (openAddRequested) { showAddDialog = true; onAddRequestConsumed() }
+    }
+    var page by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableIntStateOf(1) }
+    androidx.compose.runtime.LaunchedEffect(searchQuery, selectedStageFilter, selectedCourseId, filters) { page = 1 }
 
     // Controls follow the server's evaluated actions and committee scope (MOB-10).
     val canAdd = com.example.data.remote.Permissions.can("committees.create")
 
     // Only stages that have committees are offered as filters; keeps the row short and every chip meaningful.
-    val filterTabs = listOf("all" to "الكل (${committees.size})") + OrderedStageKeys.mapNotNull { (key, _) ->
-        val count = committees.count { it.stages.getStage(key).completed }
+    val filterTabs = listOf("all" to "الكل (${allCommittees.size})") + OrderedStageKeys.mapNotNull { (key, _) ->
+        val count = allCommittees.count { com.example.ui.components.currentStageKey(it.stages) == key }
         if (count == 0 && key != selectedStageFilter) null
         else key to "${StageColorMap[key]?.name ?: ""} ($count)"
     }
@@ -125,20 +141,49 @@ fun CommitteesScreen(
         },
         modifier = modifier
     ) { innerPadding ->
-        Column(
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .background(Color(0xFFF8F9FD))
                 .padding(innerPadding)
-                .padding(horizontal = 16.dp)
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            item {
+            Column {
             Spacer(modifier = Modifier.height(12.dp))
+
+            // Assistant bar (web): assigned committees, my committees only, unscored questions.
+            if (currentUser?.role == com.example.data.model.UserRole.ASSISTANT) {
+                Column(
+                    Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Color(0xFFECFDF5)).padding(10.dp)
+                ) {
+                    Text(
+                        "اللجان المسندة إليك: " + if (currentUser.allCommitteesAllowed) "كل اللجان"
+                        else currentUser.assignedCommittees.joinToString("، ") { "#$it" }.ifBlank { "لم تُسند إليك لجان بعد" },
+                        style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold, color = Color(0xFF065F46)
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        FilterChip(selected = filters.mineOnly, onClick = { onFiltersChange(filters.copy(mineOnly = !filters.mineOnly, needsScoring = false)) }, label = { Text("لجاني فقط") })
+                        FilterChip(selected = filters.needsScoring, onClick = { onFiltersChange(filters.copy(needsScoring = !filters.needsScoring, mineOnly = false)) }, label = { Text("أسئلة لم تُصحح") })
+                    }
+                }
+                Spacer(modifier = Modifier.height(10.dp))
+            }
+
+            // Hero stats (web: HeroStats)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                com.example.ui.components.StatTile("إجمالي اللجان", "${allCommittees.size}", Modifier.weight(1f))
+                com.example.ui.components.StatTile("لجان نشطة", "${allCommittees.count { !it.stages.ceremony.completed }}", Modifier.weight(1f), tint = Color(0xFF1D4ED8))
+                com.example.ui.components.StatTile("تم الحفل", "${allCommittees.count { it.stages.ceremony.completed }}", Modifier.weight(1f), tint = Color(0xFF047857))
+            }
+            Spacer(modifier = Modifier.height(10.dp))
 
             // Search Bar
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = onSearchChange,
-                placeholder = { Text("ابحث باسم اللجنة أو الشيخ أو الكتاب") },
+                placeholder = { Text("بحث برقم اللجنة أو الاسم أو الشيخ", maxLines = 1) },
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Primary700) },
                 modifier = Modifier
                     .fillMaxWidth()
@@ -166,14 +211,40 @@ fun CommitteesScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            // Course, gender and sort (web: SearchAndFilters)
+            Row(
+                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(top = 6.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                FilterChip(selected = selectedCourseId == null, onClick = { onCourseFilterChange(null) }, label = { Text("كل الدورات") })
+                activeCourses.forEach { c ->
+                    FilterChip(selected = selectedCourseId == c.id, onClick = { onCourseFilterChange(c.id) }, label = { Text(c.name) })
+                }
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                listOf("all" to "الكل", "men" to "رجال", "women" to "نسائية").forEach { (k, l) ->
+                    FilterChip(selected = filters.gender == k, onClick = { onFiltersChange(filters.copy(gender = k)) }, label = { Text(l) })
+                }
+                Text("|", color = Color(0xFFCBD5E1), modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp))
+                listOf("newest" to "الأحدث", "oldest" to "الأقدم", "committeeNumber" to "رقم اللجنة", "book" to "الكتاب").forEach { (k, l) ->
+                    FilterChip(selected = filters.sortBy == k, onClick = { onFiltersChange(filters.copy(sortBy = k)) }, label = { Text(l) })
+                }
+            }
 
+            Spacer(modifier = Modifier.height(8.dp))
+
+            }
+            }
             // Committees List
             if (committees.isEmpty()) {
+                item {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .weight(1f),
+                        .padding(vertical = 32.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -197,23 +268,38 @@ fun CommitteesScreen(
                         }
                     }
                 }
+            }
             } else {
-                LazyColumn(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    items(committees) { committee ->
+                    val pageSize = 6
+                    val pages = (committees.size + pageSize - 1) / pageSize
+                    val current = page.coerceIn(1, maxOf(1, pages))
+                    items(committees.drop((current - 1) * pageSize).take(pageSize), key = { it.id }) { committee ->
                         CommitteeCard(
                             committee = committee,
                             onOpenDetail = { onOpenCommitteeDetail(committee.id) },
                             onDelete = { onDeleteCommittee(committee.id) },
-                            canDelete = com.example.data.remote.Permissions.canOn("committees.delete", committee.id)
+                            canDelete = com.example.data.remote.Permissions.canOn("committees.delete", committee.id),
+                            onReceive = if (com.example.data.remote.Permissions.canOn("committees.reception", committee.id)) ({ onReceive(committee.id, committee.receivedByAssistant != null) }) else null,
+                            onApproveReadiness = if (com.example.data.remote.Permissions.canOn("committees.reception", committee.id)) ({ onApproveReadiness(committee.id, committee.examApprovedBy != null) }) else null
                         )
                     }
                     item {
+                        // Web: 6 per page with numbered pages.
+                        Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                "عرض ${if (committees.isEmpty()) 0 else (current - 1) * pageSize + 1} إلى ${minOf(current * pageSize, committees.size)} من إجمالي ${committees.size} لجنة مسجلة",
+                                style = MaterialTheme.typography.labelSmall, color = Color(0xFF64748B)
+                            )
+                            if (pages > 1) Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                TextButton(onClick = { page = current - 1 }, enabled = current > 1) { Text("السابق") }
+                                (1..pages).forEach { n ->
+                                    FilterChip(selected = n == current, onClick = { page = n }, label = { Text("$n") })
+                                }
+                                TextButton(onClick = { page = current + 1 }, enabled = current < pages) { Text("التالي") }
+                            }
+                        }
                         Spacer(modifier = Modifier.height(60.dp))
                     }
-                }
             }
         }
     }
@@ -223,7 +309,7 @@ fun CommitteesScreen(
             activeCourses = activeCourses,
             allCommittees = allCommittees,
             onDismiss = { showAddDialog = false },
-            onSaveCourse = onSaveCourse,
+            onCreateCourse = onCreateCourse,
             onSave = {
                 onSaveCommittee(it)
                 showAddDialog = false
@@ -237,7 +323,9 @@ fun CommitteeCard(
     committee: Committee,
     onOpenDetail: () -> Unit,
     onDelete: () -> Unit,
-    canDelete: Boolean
+    canDelete: Boolean,
+    onReceive: (() -> Unit)? = null,
+    onApproveReadiness: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
     val activeStageKey = committee.stages.getCurrentActiveStage()
@@ -372,6 +460,24 @@ fun CommitteeCard(
 
             Spacer(modifier = Modifier.height(8.dp))
 
+            // Web: reception and exam readiness, each with who and when, straight from the card.
+            if (onReceive != null || onApproveReadiness != null) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    if (onReceive != null) {
+                        OutlinedButton(onClick = onReceive, modifier = Modifier.weight(1f)) {
+                            Text(if (committee.receivedByAssistant != null) "إلغاء الاستلام" else "📥 توثيق الاستلام", style = MaterialTheme.typography.labelMedium)
+                        }
+                    }
+                    if (onApproveReadiness != null) {
+                        OutlinedButton(onClick = onApproveReadiness, modifier = Modifier.weight(1f)) {
+                            Text(if (committee.examApprovedBy != null) "إلغاء الجاهزية" else "✅ اعتماد الجاهزية", style = MaterialTheme.typography.labelMedium)
+                        }
+                    }
+                }
+                committee.receivedByAssistant?.let { Text("استلمها: ${it.receivedByName} — ${com.example.ui.components.Dates.displayTime(it.receivedAt)}", style = MaterialTheme.typography.labelSmall, color = Color(0xFF047857)) }
+                committee.examApprovedBy?.let { Text("اعتمد الجاهزية: ${it.approvedByName} — ${com.example.ui.components.Dates.displayTime(it.approvedAt)}", style = MaterialTheme.typography.labelSmall, color = Color(0xFF1D4ED8)) }
+            }
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -425,212 +531,163 @@ fun AddCommitteeDialog(
     /** Every committee (not the filtered list), to suggest the next free number in the chosen course (MOB-11). */
     allCommittees: List<Committee>,
     onDismiss: () -> Unit,
-    onSaveCourse: (Course) -> Unit = {},
-    onSave: (Committee) -> Unit
+    onSave: (Committee) -> Unit,
+    /** Creates a course from inside the form (web: «➕ إضافة دورة جديدة»). */
+    onCreateCourse: ((Course) -> Unit)? = null
 ) {
     var number by remember { mutableIntStateOf(1) }
     var name by remember { mutableStateOf("") }
+    var association by remember { mutableStateOf("") }
     var branch by remember { mutableStateOf("") }
     var book by remember { mutableStateOf("") }
     var sheikhName by remember { mutableStateOf("") }
     var sheikhPhone by remember { mutableStateOf("") }
-    var studentsCount by remember { mutableIntStateOf(0) }
+    var sheikhCountry by remember { mutableStateOf("") }
+    var studentsCount by remember { mutableStateOf("") }
+    var questionsCount by remember { mutableIntStateOf(5) }
     var isWomen by remember { mutableStateOf(false) }
-    var courseId by remember { mutableStateOf(activeCourses.firstOrNull()?.id ?: "") }
-
-    // Auto update default courseId when courses list changes
-    androidx.compose.runtime.LaunchedEffect(activeCourses) {
-        if (courseId.isBlank() && activeCourses.isNotEmpty()) {
-            courseId = activeCourses.first().id
-        }
+    var notes by remember { mutableStateOf("") }
+    var members by remember { mutableStateOf(listOf("")) }
+    var initialStage by remember { mutableStateOf("exam") }
+    var newCourseName by remember { mutableStateOf("") }
+    var courseId by remember {
+        mutableStateOf(activeCourses.find { it.isDefault }?.id ?: activeCourses.find { it.status == "active" }?.id ?: activeCourses.firstOrNull()?.id ?: "")
     }
-
+    androidx.compose.runtime.LaunchedEffect(activeCourses) {
+        if (courseId.isBlank() || activeCourses.none { it.id == courseId }) courseId = activeCourses.find { it.isDefault }?.id ?: activeCourses.firstOrNull()?.id ?: ""
+    }
     // Next free number within the chosen course (numbers are unique per course).
     androidx.compose.runtime.LaunchedEffect(courseId) {
         number = (allCommittees.filter { it.courseId == courseId }.maxOfOrNull { it.committeeNumber } ?: 0) + 1
     }
+    val initialStages = listOf(
+        "exam" to "🟦 جاري الامتحان الآن", "scoring" to "🟠 في التصحيح", "aggregation" to "🔵 في التجميع",
+        "sheet" to "🟣 كتابة الكشف", "review" to "🟡 في المراجعة", "announcement" to "📢 إعلان النتيجة", "ceremony" to "🟢 تم الحفل"
+    )
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = {
-            Text(
-                text = "إضافة لجنة جديدة",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = Primary900
-            )
-        },
+        title = { Text("إضافة لجنة جديدة", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = Primary900) },
         text = {
             Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 6.dp),
+                modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(vertical = 6.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text("اسم اللجنة") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                OutlinedTextField(
-                    value = book,
-                    onValueChange = { book = it },
-                    label = { Text("الكتاب المقرر") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
                 // The committee must belong to a course (same rule as the web app and the server).
-                Text("الدورة العلمية", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
-                if (activeCourses.isEmpty()) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(Color(0xFFFEF2F2))
-                            .padding(10.dp)
-                    ) {
-                        Text(
-                            "لا توجد دورات مسجلة حالياً.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color(0xFF991B1B),
-                            fontWeight = FontWeight.Bold
-                        )
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Button(
-                            onClick = {
-                                val newCourse = Course(
-                                    id = "course-" + java.util.UUID.randomUUID().toString(),
-                                    name = "الدورة العلمية الرئيسية 2026",
-                                    season = "صيف",
-                                    year = "2026",
-                                    status = "active",
-                                    isDefault = true,
-                                    targetCommitteesCount = 50
-                                )
-                                onSaveCourse(newCourse)
-                                courseId = newCourse.id
-                            },
-                            shape = RoundedCornerShape(8.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = Primary700)
-                        ) {
-                            Text("➕ إنشاء الدورة الرئيسية 2026 فوراً", fontSize = 12.sp)
-                        }
-                    }
-                } else {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        activeCourses.forEach { course ->
-                            FilterChip(
-                                selected = courseId == course.id,
-                                onClick = { courseId = course.id },
-                                label = { Text(course.name, maxLines = 1) }
-                            )
-                        }
+                Text("الدورة *", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    activeCourses.forEach { course ->
+                        FilterChip(selected = courseId == course.id, onClick = { courseId = course.id }, label = { Text(course.name, maxLines = 1) })
                     }
                 }
-
-                OutlinedTextField(
-                    value = sheikhName,
-                    onValueChange = { sheikhName = it },
-                    label = { Text("اسم الشيخ المسؤول / المقرئ") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                OutlinedTextField(
-                    value = sheikhPhone,
-                    onValueChange = { sheikhPhone = it },
-                    label = { Text("هاتف الشيخ") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    OutlinedTextField(
-                        value = studentsCount.toString(),
-                        onValueChange = { studentsCount = it.toIntOrNull() ?: 0 },
-                        label = { Text("عدد الطلاب") },
-                        singleLine = true,
-                        modifier = Modifier.weight(1f)
-                    )
-
-                    OutlinedTextField(
-                        value = number.toString(),
-                        onValueChange = { number = it.toIntOrNull() ?: 1 },
-                        label = { Text("رقم اللجنة") },
-                        singleLine = true,
-                        modifier = Modifier.weight(1f)
-                    )
+                if (onCreateCourse != null) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        OutlinedTextField(newCourseName, { newCourseName = it }, label = { Text("➕ إضافة دورة جديدة") }, singleLine = true, modifier = Modifier.weight(1f))
+                        TextButton(enabled = newCourseName.isNotBlank(), onClick = {
+                            val c = Course(id = "course-${java.util.UUID.randomUUID()}", name = newCourseName.trim(), startDate = com.example.ui.components.Dates.today(), status = "active")
+                            onCreateCourse(c)
+                            courseId = c.id
+                            newCourseName = ""
+                        }) { Text("إنشاء") }
+                    }
+                } else if (activeCourses.isEmpty()) {
+                    Text("لا توجد دورات. أضف دورة أولاً.", style = MaterialTheme.typography.bodySmall, color = Color(0xFFB91C1C))
                 }
 
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = number.toString(), onValueChange = { number = it.filter(Char::isDigit).toIntOrNull() ?: 0 },
+                        label = { Text("رقم اللجنة") }, singleLine = true, modifier = Modifier.weight(1f)
+                    )
+                    OutlinedTextField(name, { name = it }, label = { Text("اسم اللجنة *") }, singleLine = true, modifier = Modifier.weight(2f))
+                }
+                Text("المرحلة الحالية للجنة", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    initialStages.forEach { (k, l) -> FilterChip(selected = initialStage == k, onClick = { initialStage = k }, label = { Text(l) }) }
+                }
+                OutlinedTextField(book, { book = it }, label = { Text("الكتاب المقرر / مسار المسابقة") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(branch, { branch = it }, label = { Text("الفرع") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(association, { association = it }, label = { Text("اسم الجمعية (إن وجد)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(sheikhName, { sheikhName = it }, label = { Text("الشيخ المرسل إليه") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(sheikhPhone, { sheikhPhone = it }, label = { Text("هاتف الشيخ") }, singleLine = true, modifier = Modifier.weight(1f))
+                    OutlinedTextField(sheikhCountry, { sheikhCountry = it }, label = { Text("بلد الشيخ") }, singleLine = true, modifier = Modifier.weight(1f))
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(studentsCount, { studentsCount = it.filter(Char::isDigit) }, label = { Text("عدد الطلاب") }, singleLine = true, modifier = Modifier.weight(1f))
+                    OutlinedTextField(
+                        questionsCount.toString(), { questionsCount = it.filter(Char::isDigit).toIntOrNull()?.coerceIn(1, 30) ?: 1 },
+                        label = { Text("عدد الأسئلة") }, singleLine = true, modifier = Modifier.weight(1f)
+                    )
+                }
+                Text("أعضاء اللجنة", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                members.forEachIndexed { i, m ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        OutlinedTextField(m, { v -> members = members.mapIndexed { j, x -> if (j == i) v else x } }, label = { Text("عضو ${i + 1}") }, singleLine = true, modifier = Modifier.weight(1f))
+                        TextButton(onClick = { members = if (members.size == 1) listOf("") else members.filterIndexed { j, _ -> j != i } }) { Text("✕") }
+                    }
+                }
+                TextButton(onClick = { members = members + "" }) { Text("+ إضافة عضو") }
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(Color(0xFFF1F5F9))
-                        .clickable { isWomen = !isWomen }
-                        .padding(10.dp),
+                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(Color(0xFFF1F5F9)).clickable { isWomen = !isWomen }.padding(10.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    androidx.compose.material3.Checkbox(
-                        checked = isWomen,
-                        onCheckedChange = { isWomen = it }
-                    )
+                    androidx.compose.material3.Checkbox(checked = isWomen, onCheckedChange = { isWomen = it })
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = if (isWomen) "لجنة مصلى الأخوات 🧕" else "لجنة مصلى الرجال 👨",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Text(if (isWomen) "لجنة نسائية 🧕" else "لجنة رجال 👨", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
                 }
+                OutlinedTextField(notes, { notes = it }, label = { Text("ملاحظات عامة") }, minLines = 2, modifier = Modifier.fillMaxWidth())
             }
         },
         confirmButton = {
             Button(
-                enabled = courseId.isNotBlank() && number > 0,
+                enabled = courseId.isNotBlank() && number > 0 && name.isNotBlank(),
                 onClick = {
-                    // Same starting point as the web: registration done, five questions (MOB-07);
-                    // a random id cannot collide with another device's (MOB-11).
+                    val finalMembers = members.map { it.trim() }.filter { it.isNotEmpty() }
+                    // Stages before the chosen current stage are completed, as on the web; the server stamps the time.
+                    val order = listOf("exam", "scoring", "aggregation", "review", "sheet", "accreditation", "announcement", "ceremony")
+                    val upto = when (initialStage) {
+                        "exam" -> 0; "scoring" -> 1; "aggregation" -> 2; "review" -> 3; "sheet" -> 4
+                        "announcement" -> 6; "ceremony" -> 8; else -> 0
+                    }
+                    var stages = StagesMap().updateStage("registration", true, null)
+                    order.take(upto).forEach { stages = stages.updateStage(it, true, null) }
                     val newCommittee = Committee(
                         id = "comm-${java.util.UUID.randomUUID()}",
                         committeeNumber = number,
-                        committeeName = name.ifBlank { "لجنة رقم $number" },
-                        branch = branch,
-                        competitionBook = book,
-                        sheikhName = sheikhName,
-                        sheikhPhone = sheikhPhone,
-                        studentsCount = studentsCount,
+                        committeeName = name.trim(),
+                        associationName = association.trim(),
+                        members = finalMembers,
+                        branch = branch.trim(),
+                        competitionBook = book.trim(),
+                        generalNotes = notes.trim(),
+                        sheikhName = sheikhName.trim(),
+                        sheikhPhone = sheikhPhone.trim(),
+                        sheikhCountry = sheikhCountry.trim(),
+                        studentsCount = studentsCount.toIntOrNull() ?: 0,
                         isWomenCommittee = isWomen,
                         courseId = courseId,
-                        stages = StagesMap().updateStage("registration", true, null),
+                        courseName = activeCourses.find { it.id == courseId }?.name ?: "",
+                        stages = stages,
+                        createdDate = com.example.ui.components.Dates.today(),
                         scoringDetails = com.example.data.model.ScoringDetails(
-                            questions = (1..5).map { i ->
+                            examinerName = finalMembers.getOrNull(0) ?: "",
+                            reviewerName = finalMembers.getOrNull(1) ?: "",
+                            questions = (1..questionsCount).map { i ->
                                 com.example.data.model.QuestionScoringItem(id = "q-$i", questionNumber = i, label = "السؤال $i")
                             }
+                        ),
+                        aggregationDetails = com.example.data.model.AggregationDetails(
+                            aggregatorName = finalMembers.getOrNull(1) ?: finalMembers.getOrNull(0) ?: "",
+                            scoringReviewerName = finalMembers.getOrNull(0) ?: "",
+                            reviewerName = finalMembers.getOrNull(2) ?: ""
                         )
                     )
                     onSave(newCommittee)
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = Primary700)
-            ) {
-                Text("حفظ وتسجيل اللجنة")
-            }
+            ) { Text("حفظ وتسجيل اللجنة") }
         },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("إلغاء")
-            }
-        }
+        dismissButton = { TextButton(onClick = onDismiss) { Text("إلغاء") } }
     )
 }

@@ -1,1 +1,4 @@
 /build
+
+# Firebase client config (download from the Firebase console)
+google-services.json
