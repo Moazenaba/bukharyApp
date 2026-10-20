@@ -88,6 +88,8 @@ fun HomeScreen(
     onOpenAddCommittee: () -> Unit,
     /** Opens the committees list filtered by a stage ("all" for none), like the web's dashboard tiles. */
     onNavigateCommittees: (String) -> Unit = { onNavigate(AppNavScreen.COMMITTEES) },
+    /** The signed-in user's own ceremonies («حفلاتي») shown at the top. */
+    myCeremonies: @Composable () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val totalCommittees = committees.size
@@ -119,6 +121,7 @@ fun HomeScreen(
             .padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        item { myCeremonies() }
         item {
             Spacer(modifier = Modifier.height(6.dp))
             // Hero Greeting Card

@@ -81,6 +81,9 @@ fun CeremoniesScreen(
     onOpenCommittee: (String) -> Unit,
     onNavigateDailyAlerts: () -> Unit,
     onNavigateCalendar: () -> Unit,
+    currentUserId: String? = null,
+    ceremonyCandidates: List<com.example.data.remote.AssignableUserDto>? = null,
+    onLoadCandidates: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -130,6 +133,7 @@ fun CeremoniesScreen(
                 }
             }
         }
+        item { MyCeremoniesSection(committees, tasks, currentUserId, onOpenCommittee) }
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 StatTile("إجمالي اللجان", "${committees.size}", Modifier.weight(1f))
@@ -200,6 +204,9 @@ fun CeremoniesScreen(
                     )
                     Text("الكتاب: ${c.competitionBook} • الشيخ: ${c.sheikhName.ifBlank { "—" }}", style = MaterialTheme.typography.bodySmall)
                     Text("عدد الطلاب المكرمين: ${c.ceremonyDetails.honoreesCount.takeIf { it > 0 } ?: c.studentsCount} طالب", style = MaterialTheme.typography.bodySmall)
+                    if (c.ceremonyDetails.attendees.isNotEmpty()) {
+                        Text("المدعوون: ${c.ceremonyDetails.attendees.joinToString("، ") { it.name }}", style = MaterialTheme.typography.bodySmall, color = TextMuted)
+                    }
                     if (date.isNotBlank()) {
                         Text(
                             "الموعد: يوم ${arabicDayName(date)} ($date) — ${(task?.time ?: c.ceremonyDetails.time).ifBlank { "لم يحدد الوقت" }}",
@@ -233,6 +240,7 @@ fun CeremoniesScreen(
         var place by remember { mutableStateOf(c.ceremonyDetails.venue) }
         var honored by remember { mutableStateOf((c.ceremonyDetails.honoreesCount.takeIf { it > 0 } ?: c.studentsCount).toString()) }
         var notes by remember { mutableStateOf(c.ceremonyDetails.notes) }
+        var attendees by remember { mutableStateOf(c.ceremonyDetails.attendees) }
         AlertDialog(
             onDismissRequest = { scheduling = null },
             title = { Text("جدولة حفل تكريم لجنة #${c.committeeNumber}") },
@@ -252,6 +260,7 @@ fun CeremoniesScreen(
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                     )
                     OutlinedTextField(c.sheikhName, {}, readOnly = true, label = { Text("الشيخ المكرم") })
+                    AttendeePicker(ceremonyCandidates, onLoadCandidates, attendees) { attendees = it }
                     OutlinedTextField(notes, { notes = it }, label = { Text("ملاحظات وترتيبات الحفل (اختياري)") }, minLines = 2)
                     Text("يظهر الموعد تلقائياً في التنبيهات اليومية وتقويم المواعيد ليوم ($date).", style = MaterialTheme.typography.labelSmall, color = TextMuted)
                 }
@@ -259,7 +268,7 @@ fun CeremoniesScreen(
             confirmButton = {
                 Button(enabled = date.isNotBlank() && time.isNotBlank() && place.isNotBlank(), onClick = {
                     onScheduleCeremony(
-                        c, c.ceremonyDetails.copy(date = date, time = time.trim(), venue = place.trim(), honoreesCount = honored.toIntOrNull() ?: 0, notes = notes.trim())
+                        c, c.ceremonyDetails.copy(date = date, time = time.trim(), venue = place.trim(), honoreesCount = honored.toIntOrNull() ?: 0, notes = notes.trim(), attendees = attendees)
                     )
                     scheduling = null
                 }) { Text("حفظ وتأكيد الميعاد") }

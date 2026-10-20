@@ -839,6 +839,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     // ---------------- ceremony & stages from the ceremonies screens
 
+    private val _ceremonyCandidates = MutableStateFlow<List<AssignableUserDto>?>(null)
+    val ceremonyCandidates: StateFlow<List<AssignableUserDto>?> = _ceremonyCandidates.asStateFlow()
+
+    fun loadCeremonyCandidates() {
+        viewModelScope.launch {
+            try { _ceremonyCandidates.value = OnlineApi.ceremonyCandidates() } catch (e: OnlineApi.ApiFailure) { showError(e.message ?: "تعذر تحميل قائمة الأشخاص") } catch (_: Exception) { }
+        }
+    }
+
     fun toggleCeremonyDone(committee: Committee) = toggleStage(committee.id, "ceremony", committee.stages.ceremony.completed)
 
     // ---------------- course sheet (web: SummerCourseTrackerView)

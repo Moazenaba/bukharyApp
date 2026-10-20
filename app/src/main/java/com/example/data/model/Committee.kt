@@ -144,8 +144,12 @@ data class CeremonyDetails(
     @Json(name = "ceremonyPlace") val venue: String = "",
     @Json(name = "honoredStudentsCount") val honoreesCount: Int = 0,
     val attendingSheikhs: List<String> = emptyList(),
-    val notes: String = ""
+    val notes: String = "",
+    /** Accounts invited to the ceremony (the server notifies each one). */
+    val attendees: List<CeremonyAttendee> = emptyList()
 )
+
+data class CeremonyAttendee(val id: String = "", val name: String = "")
 
 data class AssistantReception(
     val assistantId: String = "",

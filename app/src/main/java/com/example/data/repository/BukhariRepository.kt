@@ -409,6 +409,7 @@ class BukhariRepository(
     suspend fun updateCeremony(committeeId: String, ceremony: CeremonyDetails): WriteResult = withContext(Dispatchers.IO) {
         val entity = db.committeeDao().getCommitteeById(committeeId) ?: return@withContext WriteResult.Rejected("اللجنة غير موجودة")
         db.committeeDao().updateCommittee(entity.copy(ceremonyDetails = ceremony))
+        val attendeesChanged = ceremony.attendees.map { it.id } != entity.ceremonyDetails.attendees.map { it.id }
         committeeAction(
             "updateCeremony", committeeId,
             mapOf(
@@ -418,7 +419,8 @@ class BukhariRepository(
                 "ceremonyPlace" to ceremony.venue.ifBlank { null },
                 "honoredStudentsCount" to ceremony.honoreesCount,
                 "attendingSheikhs" to ceremony.attendingSheikhs,
-                "notes" to ceremony.notes.ifBlank { null }
+                "notes" to ceremony.notes.ifBlank { null },
+                "attendeeUserIds" to if (attendeesChanged) ceremony.attendees.map { it.id } else null
             )
         )
     }

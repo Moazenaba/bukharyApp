@@ -91,6 +91,9 @@ object OnlineApi {
 
     suspend fun deleteUser(id: String) { call("DELETE", "api/users/${enc(id)}") }
 
+    /** Approved accounts that can be invited to a ceremony. */
+    suspend fun ceremonyCandidates(): List<AssignableUserDto> = get("api/users/ceremony-candidates", "users", AssignableUserDto::class.java)
+
     suspend fun resetPassword(id: String, temporaryPassword: String) {
         call("POST", "api/users/${enc(id)}/reset-password", mapOf("password" to temporaryPassword))
     }

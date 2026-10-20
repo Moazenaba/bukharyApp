@@ -314,6 +314,9 @@ class MainActivity : ComponentActivity() {
                                         onNavigate = { viewModel.navigateTo(it) },
                                         onOpenCommitteeDetail = { viewModel.openCommitteeDetail(it) },
                                         onToggleTask = { viewModel.toggleTask(it) },
+                                        myCeremonies = {
+                                            com.example.ui.screens.ceremonies.MyCeremoniesSection(committees, tasks, currentUser?.id) { viewModel.openCommitteeDetail(it) }
+                                        },
                                         onNavigateCommittees = { stage ->
                                             viewModel.setSelectedStageFilter(stage)
                                             viewModel.navigateTo(AppNavScreen.COMMITTEES)
@@ -429,7 +432,10 @@ class MainActivity : ComponentActivity() {
                                         onToggleCeremonyDone = { viewModel.toggleCeremonyDone(it) },
                                         onOpenCommittee = { viewModel.openCommitteeDetail(it) },
                                         onNavigateDailyAlerts = { viewModel.navigateTo(AppNavScreen.DAILY_ALERTS) },
-                                        onNavigateCalendar = { viewModel.navigateTo(AppNavScreen.SCHEDULE) }
+                                        onNavigateCalendar = { viewModel.navigateTo(AppNavScreen.SCHEDULE) },
+                                        currentUserId = currentUser?.id,
+                                        ceremonyCandidates = viewModel.ceremonyCandidates.collectAsStateWithLifecycle().value,
+                                        onLoadCandidates = { viewModel.loadCeremonyCandidates() }
                                     )
                                     AppNavScreen.DAILY_ALERTS -> com.example.ui.screens.alerts.DailyAlertsScreen(
                                         currentUser = currentUser,
