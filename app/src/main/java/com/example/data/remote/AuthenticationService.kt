@@ -123,7 +123,17 @@ class AuthenticationService(
         }
     }
 
-    private fun serverMessage(response: Response<*>): String? = ApiClient.serverMessage(response.errorBody()?.string())
+    /**
+     * The server's own message; otherwise, for a server that is down or not the API (5xx, or a
+     * 404 page without our JSON), say so instead of letting callers fall back to "wrong password".
+     */
+    private fun serverMessage(response: Response<*>): String? =
+        ApiClient.serverMessage(response.errorBody()?.string())
+            ?: if (response.code() >= 500 || response.code() == 404) SERVER_UNAVAILABLE else null
+
+    private companion object {
+        const val SERVER_UNAVAILABLE = "الخادم غير متاح حاليًا، حاول مرة أخرى بعد قليل"
+    }
 
     /** Public join request; returns the server-issued request code. */
     suspend fun register(name: String, phone: String, email: String, role: UserRole, pass: String, extras: JoinRequestExtras): Result<String> =
