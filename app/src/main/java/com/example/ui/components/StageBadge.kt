@@ -18,7 +18,7 @@ import androidx.compose.material.icons.filled.Checklist
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.EmojiEvents
-import androidx.compose.material.icons.filled.FactCheck
+import androidx.compose.material.icons.automirrored.filled.FactCheck
 import androidx.compose.material.icons.filled.HowToReg
 import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material.icons.filled.Circle
@@ -94,7 +94,7 @@ fun stageIcon(stageKey: String): ImageVector = when (stageKey) {
     "exam" -> Icons.Filled.EditNote
     "scoring" -> Icons.Filled.Checklist
     "aggregation" -> Icons.Filled.Calculate
-    "review" -> Icons.Filled.FactCheck
+    "review" -> Icons.AutoMirrored.Filled.FactCheck
     "sheet" -> Icons.Filled.Description
     "accreditation" -> Icons.Filled.Verified
     "announcement" -> Icons.Filled.Campaign

@@ -7,7 +7,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.MenuBook
+import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.TableChart
 import androidx.compose.material.icons.filled.Celebration
 import androidx.compose.material.icons.filled.Menu
@@ -18,7 +18,7 @@ import androidx.compose.material.icons.outlined.NotificationsActive
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Groups
 import androidx.compose.material.icons.outlined.Home
-import androidx.compose.material.icons.outlined.MenuBook
+import androidx.compose.material.icons.automirrored.outlined.MenuBook
 import androidx.compose.material.icons.outlined.TableChart
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -62,7 +62,7 @@ val RailItems = listOf(
     BottomNavItem(AppNavScreen.HOME, "الرئيسية", Icons.Filled.Home, Icons.Outlined.Home),
     BottomNavItem(AppNavScreen.COURSE_TRACKER, "الكشوفات", Icons.Filled.TableChart, Icons.Outlined.TableChart),
     BottomNavItem(AppNavScreen.COMMITTEES, "اللجان", Icons.Filled.Groups, Icons.Outlined.Groups),
-    BottomNavItem(AppNavScreen.EXAMS, "الامتحانات", Icons.Filled.MenuBook, Icons.Outlined.MenuBook),
+    BottomNavItem(AppNavScreen.EXAMS, "الامتحانات", Icons.AutoMirrored.Filled.MenuBook, Icons.AutoMirrored.Outlined.MenuBook),
     BottomNavItem(AppNavScreen.CEREMONIES, "الحفلات", Icons.Filled.Celebration, Icons.Outlined.Celebration),
     BottomNavItem(AppNavScreen.SCHEDULE, "التقويم", Icons.Filled.CalendarMonth, Icons.Outlined.CalendarMonth),
     BottomNavItem(AppNavScreen.DAILY_ALERTS, "التنبيهات", Icons.Filled.NotificationsActive, Icons.Outlined.NotificationsActive),

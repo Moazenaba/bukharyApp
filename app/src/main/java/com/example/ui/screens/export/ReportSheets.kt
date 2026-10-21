@@ -99,7 +99,7 @@ object ReportSheets {
                     c.sheikhCountry.ifBlank { "-" }, if (d.honoreesCount > 0) d.honoreesCount else c.studentsCount,
                     names(d.attendingSheikhs), names(d.attendees.map { it.name }), names(c.members),
                     c.competitionBook.ifBlank { "-" }, if (c.stages.ceremony.completed) "تم الحفل" else "مجدول",
-                    d.notes.ifBlank { task?.notes?.ifBlank { null } ?: "-" }
+                    d.notes.ifBlank { "-" } // the calendar task's notes hold the place (server syncCeremonyTask)
                 )
             }
     }

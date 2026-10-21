@@ -7,7 +7,7 @@ import android.content.Intent
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material.icons.filled.MenuBook
+import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import android.widget.Toast
 import android.content.ActivityNotFoundException
@@ -409,7 +409,7 @@ fun CommitteeCard(
 
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
-                    imageVector = Icons.Default.MenuBook,
+                    imageVector = Icons.AutoMirrored.Filled.MenuBook,
                     contentDescription = "كتاب المسابقة",
                     tint = Color(0xFF64748B),
                     modifier = Modifier.size(18.dp)

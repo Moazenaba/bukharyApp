@@ -27,8 +27,8 @@ import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Key
-import androidx.compose.material.icons.filled.Logout
-import androidx.compose.material.icons.filled.MenuBook
+import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Storage
@@ -87,7 +87,7 @@ fun MenuScreen(
             MenuEntry(AppNavScreen.HOME, "الرئيسية ونظرة عامة", Icons.Default.Home, null),
             MenuEntry(AppNavScreen.COURSE_TRACKER, "قاعدة البيانات والكشوفات", Icons.Default.TableChart, "الكشوفات"),
             MenuEntry(AppNavScreen.COMMITTEES, "إدارة اللجان الميدانية", Icons.Default.Groups, "$myCommittees"),
-            MenuEntry(AppNavScreen.EXAMS, "الامتحانات ونماذج PDF", Icons.Default.MenuBook, "${exams.size}")
+            MenuEntry(AppNavScreen.EXAMS, "الامتحانات ونماذج PDF", Icons.AutoMirrored.Filled.MenuBook, "${exams.size}")
         ),
         "المواعيد والتنظيم" to listOf(
             MenuEntry(AppNavScreen.CEREMONIES, "الحفلات والتكريم", Icons.Default.Celebration, if (ceremonies > 0) "$ceremonies حفل" else null),
@@ -152,7 +152,7 @@ fun MenuScreen(
         }
         item { Text("الحساب", style = MaterialTheme.typography.labelMedium, color = TextMuted, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 8.dp)) }
         item { MenuRow("تغيير كلمة المرور", Icons.Default.Key, null, onClick = onChangePassword) }
-        item { MenuRow("تسجيل الخروج", Icons.Default.Logout, null, tint = Color(0xFFDC2626), onClick = onLogout) }
+        item { MenuRow("تسجيل الخروج", Icons.AutoMirrored.Filled.Logout, null, tint = Color(0xFFDC2626), onClick = onLogout) }
         item { Spacer(Modifier.padding(16.dp)) }
     }
 }

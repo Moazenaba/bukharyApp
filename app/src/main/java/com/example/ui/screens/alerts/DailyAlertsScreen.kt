@@ -183,7 +183,24 @@ fun DailyAlertsScreen(
                     Text("اليوم موعد إقامة حفل تكريم وتوزيع جوائز (${ceremoniesToday.size}) لجنة!", fontWeight = FontWeight.Bold)
                     Text(ceremoniesToday.joinToString(" • ") { "لجنة #${it.committeeNumber ?: ""} (${it.title})" }, style = MaterialTheme.typography.bodySmall)
                     Text("📍 يرجى تجهيز شهادات التقدير والدروع التذكارية وكشوف التكريم.", style = MaterialTheme.typography.labelSmall)
-                    TextButton(onClick = onNavigateCeremonies) { Text("فتح تاب الحفلات والتكريم ↗", color = Color(0xFF0F172A)) }
+                    val context = androidx.compose.ui.platform.LocalContext.current
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        val rows = com.example.ui.screens.export.ReportSheets.ceremonyRows(committees, tasks, "day", selectedDate)
+                        TextButton(
+                            onClick = {
+                                com.example.ui.components.shareFile(
+                                    context,
+                                    com.example.data.SimpleXlsx.write(
+                                        "الحفلات (يومي)", com.example.ui.screens.export.ReportSheets.CEREMONY_HEADER, rows,
+                                        com.example.ui.screens.export.ReportSheets.CEREMONY_WIDTHS
+                                    ),
+                                    com.example.ui.screens.export.ReportSheets.ceremonyFileName("day", selectedDate), com.example.ui.components.XLSX_MIME
+                                )
+                            },
+                            enabled = rows.isNotEmpty()
+                        ) { Text("كشف حفلات اليوم Excel", color = Color(0xFF0F172A), fontWeight = FontWeight.Bold) }
+                        TextButton(onClick = onNavigateCeremonies) { Text("فتح تاب الحفلات والتكريم ↗", color = Color(0xFF0F172A)) }
+                    }
                 }
             }
         }

@@ -26,7 +26,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Groups
-import androidx.compose.material.icons.filled.MenuBook
+import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
@@ -235,7 +235,7 @@ fun HomeScreen(
                     QuickActionButton(
                         title = "بنك الامتحانات",
                         subtitle = "نماذج الـ PDF والأسئلة",
-                        icon = Icons.Default.MenuBook,
+                        icon = Icons.AutoMirrored.Filled.MenuBook,
                         onClick = { onNavigate(AppNavScreen.EXAMS) },
                         containerColor = Color.White,
                         contentColor = Primary800,
