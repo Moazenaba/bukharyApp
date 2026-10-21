@@ -710,7 +710,7 @@ private fun UserAccessDialog(
                         if (!allCommittees) {
                             CommitteeMultiPicker("اللجان المسندة:", committees, committeeIds, canAssign) { committeeIds = it }
                         }
-                        if (canGrant && role == "committee_head") {
+                        if (canGrant && (role == "committee_head" || "exams_pdf" in perms)) {
                             Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).toggleable(value = allExams, role = Role.Checkbox) { allExams = it }, verticalAlignment = Alignment.CenterVertically) { Checkbox(allExams, null); Text("فتح كل ملفات الامتحانات")
                             }
                             if (!allExams) ExamMultiPicker(exams, examIds) { examIds = it }

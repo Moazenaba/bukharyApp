@@ -99,6 +99,7 @@ fun ChangePasswordScreen(
                 error = when {
                     current.isBlank() -> "أدخل كلمة المرور الحالية"
                     next != confirm -> "كلمتا المرور الجديدتان غير متطابقتين"
+                    next == current -> if (forced) "اختر كلمة مرور جديدة مختلفة عن كلمة المرور المؤقتة" else "كلمة المرور الجديدة يجب أن تختلف عن الحالية"
                     else -> passwordProblem(next)
                 }
                 if (error == null) onSubmit(current, next) { ok -> if (ok) { current = ""; next = ""; confirm = "" } }

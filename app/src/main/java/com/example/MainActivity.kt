@@ -523,7 +523,8 @@ class MainActivity : ComponentActivity() {
                                         exams = exams,
                                         courses = courses,
                                         tasks = tasks,
-                                        pendingRequests = staffUsers.count { it.status == "pending" },
+                                        // Join requests are announced to admins and super admins only.
+                                        pendingRequests = if (currentUser?.role?.roleKey in setOf("super_admin", "admin")) staffUsers.count { it.status == "pending" } else 0,
                                         unreadNotifications = notifications.count { !it.read },
                                         onNavigate = { viewModel.navigateTo(it) },
                                         onAddCommittee = {

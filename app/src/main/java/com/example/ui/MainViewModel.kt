@@ -262,9 +262,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private suspend fun refreshFromServer(): Boolean = syncMutex.withLock {
         _isSyncing.value = true
         try {
-            authService.refreshMe()?.let { me ->
+            val me = authService.refreshMe()?.also { me ->
                 repository.cacheUser(me)
                 _currentUser.value = me
+            }
+            // Until a new password is chosen the server answers only account calls: the server is
+            // reachable, so this is not "offline", and queued writes wait instead of being refused.
+            if (me?.mustChangePassword == true) {
+                _lastSyncOk.value = true
+                return@withLock true
             }
             val result = repository.syncWithRemoteApi()
             _lastSyncOk.value = result.online

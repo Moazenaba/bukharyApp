@@ -124,10 +124,16 @@ object ApiClient {
         .authenticator(refreshAuthenticator)
         .build()
 
-    /** Outcome of a raw request: HTTP status (null = server unreachable) and the server's message. */
-    data class SendResult(val code: Int?, val message: String?, val body: String? = null)
+    /** Outcome of a raw request: HTTP status (null = server unreachable), the server's message and error code. */
+    data class SendResult(val code: Int?, val message: String?, val body: String? = null, val errorCode: String? = null)
 
-    private data class ErrorBody(val message: String? = null)
+    private data class ErrorBody(val message: String? = null, val code: String? = null)
+
+    private fun serverCode(errorBody: String?): String? = try {
+        errorBody?.let { moshi.adapter(ErrorBody::class.java).fromJson(it)?.code }
+    } catch (e: Exception) {
+        null
+    }
 
     /**
      * Sends a JSON request to [path] (e.g. "api/committees"). With [idempotencyKey], a repeat of the
@@ -140,8 +146,8 @@ object ApiClient {
             .build()
         okHttpClient.newCall(request).execute().use { res ->
             val text = res.body?.string()
-            val message = if (res.isSuccessful) null else serverMessage(text)
-            SendResult(res.code, message, if (res.isSuccessful) text else null)
+            if (res.isSuccessful) SendResult(res.code, null, text)
+            else SendResult(res.code, serverMessage(text), null, serverCode(text))
         }
     } catch (e: Exception) {
         SendResult(null, null)
@@ -160,7 +166,6 @@ object ApiClient {
         SendResult(null, null)
     }
 
-    /** Downloads [path] (e.g. an exam PDF) with the session; null when not allowed or unreachable. */
     /** Downloads a file; a failure carries the server's message (or the HTTP status) to show the user. */
     fun download(path: String): Result<ByteArray> = try {
         okHttpClient.newCall(Request.Builder().url(baseUrl + path).build()).execute().use { res ->

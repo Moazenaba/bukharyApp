@@ -205,6 +205,11 @@ class BukhariRepository(
                         ApiClient.onUnauthorized?.invoke()
                         break
                     }
+                    code == 403 && res.errorCode == "password_change_required" -> {
+                        // Not refused: it is sent once the user has chosen a new password.
+                        db.pendingOpDao().release(op.id)
+                        break
+                    }
                     code == 426 -> {
                         // This app version is too old for the server: keep the write until the app is updated.
                         db.pendingOpDao().recordFailure(op.id, op.attempts, false, res.message ?: "يرجى تحديث التطبيق")
