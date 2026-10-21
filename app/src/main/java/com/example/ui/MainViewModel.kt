@@ -162,7 +162,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
     val customPermissions: StateFlow<List<CustomPermission>> =
         repository.allCustomPermissions.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
-    val sheetRows: StateFlow<List<SheetRowDto>> = repository.sheetRows
+    // The course sheet too: a row without a course belongs to the default course, as on the web.
+    val sheetRows: StateFlow<List<SheetRowDto>> =
+        combine(repository.sheetRows, courses, selectedCourseId) { list, all, course ->
+            val defaultId = all.find { it.isDefault }?.id ?: all.find { it.status == "active" }?.id
+            list.filter { r -> course == null || (r.courseId?.takeIf { it.isNotBlank() } ?: defaultId) == course }
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     private val _filterInputs = combine(_searchQuery, _selectedStageFilter, selectedCourseId) { q, st, c -> Triple(q, st, c) }
 
