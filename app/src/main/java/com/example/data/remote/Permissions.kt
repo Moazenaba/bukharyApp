@@ -21,7 +21,7 @@ object Permissions {
 
     /** Exam ids whose file and content the user may open; null means all. */
     @Volatile
-    var examScope: Set<String>? = null
+    var examScope: Set<String>? = emptySet()
 
     fun can(action: String): Boolean = actions[action] == true
 
@@ -33,8 +33,8 @@ object Permissions {
     fun canOpenExam(examId: String): Boolean = can("exams.file") && (examScope?.contains(examId) ?: true)
 
     /**
-     * Applies the server's evaluated scope: "all", or a list of committee ids. Anything else
-     * (an older server) means no committee until the next successful refresh.
+     * Applies the server's evaluated scope: "all", or a list of ids. Anything else (an older server,
+     * a missing field) grants nothing until the next successful refresh: scopes fail closed.
      */
     fun applyServerScope(committeeScope: Any?, examScope: Any?) {
         this.committeeScope = when (committeeScope) {
@@ -43,8 +43,9 @@ object Permissions {
             else -> emptySet()
         }
         this.examScope = when (examScope) {
+            "all" -> null
             is List<*> -> examScope.mapNotNull { it as? String }.toSet()
-            else -> null
+            else -> emptySet()
         }
     }
 
