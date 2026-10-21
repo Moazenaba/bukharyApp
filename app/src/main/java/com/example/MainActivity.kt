@@ -93,6 +93,7 @@ class MainActivity : ComponentActivity() {
                 val courses by viewModel.courses.collectAsStateWithLifecycle()
                 val selectedCourseId by viewModel.selectedCourseId.collectAsStateWithLifecycle()
                 val committees by viewModel.committees.collectAsStateWithLifecycle()
+                val allCommittees by viewModel.allCommittees.collectAsStateWithLifecycle()
                 val filteredCommittees by viewModel.filteredCommittees.collectAsStateWithLifecycle()
                 val tasks by viewModel.tasks.collectAsStateWithLifecycle()
                 val exams by viewModel.exams.collectAsStateWithLifecycle()
@@ -229,7 +230,10 @@ class MainActivity : ComponentActivity() {
                                 notifications = notifications,
                                 isSyncing = isSyncing,
                                 isOnline = isNetworkAvailable && lastSyncOk,
-                                activeCourseName = defaultCourse?.name,
+                                activeCourseName = (courses.find { it.id == selectedCourseId } ?: defaultCourse)?.name,
+                                courses = courses,
+                                activeCourseId = selectedCourseId,
+                                onSelectCourse = { viewModel.setSelectedCourseId(it) },
                                 onSync = { viewModel.syncNow() },
                                 onNavigate = { screen -> viewModel.navigateTo(screen) },
                                 onMarkNotificationRead = { id -> viewModel.markNotificationRead(id) },
@@ -345,7 +349,7 @@ class MainActivity : ComponentActivity() {
                                     AppNavScreen.COMMITTEES -> CommitteesScreen(
                                         currentUser = currentUser,
                                         committees = filteredCommittees,
-                                        allCommittees = committees,
+                                        allCommittees = allCommittees,
                                         activeCourses = courses,
                                         selectedStageFilter = selectedStageFilter,
                                         searchQuery = searchQuery,
@@ -391,7 +395,7 @@ class MainActivity : ComponentActivity() {
                                         currentUser = currentUser,
                                         users = staffUsers,
                                         profiles = profiles,
-                                        committees = committees,
+                                        committees = allCommittees,
                                         exams = exams,
                                         isLoading = staffLoading,
                                         onReload = { viewModel.loadStaff() },
@@ -417,7 +421,7 @@ class MainActivity : ComponentActivity() {
                                     AppNavScreen.STATISTICS -> StatisticsScreen(committees = committees)
                                     AppNavScreen.COURSES -> com.example.ui.screens.courses.CoursesScreen(
                                         courses = courses,
-                                        committees = committees,
+                                        committees = allCommittees,
                                         onSaveCourse = { c, done -> viewModel.saveCourse(c, done) },
                                         onDeleteCourse = { viewModel.deleteCourse(it) },
                                         onSetDefaultCourse = { viewModel.setDefaultCourse(it) },

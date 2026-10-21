@@ -245,7 +245,6 @@ fun CommitteesScreen(
                 modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(top = 6.dp),
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                FilterChip(selected = selectedCourseId == null, onClick = { onCourseFilterChange(null) }, label = { Text("كل الدورات") })
                 activeCourses.forEach { c ->
                     FilterChip(selected = selectedCourseId == c.id, onClick = { onCourseFilterChange(c.id) }, label = { Text(c.name) })
                 }

@@ -91,8 +91,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _selectedStageFilter = MutableStateFlow("all")
     val selectedStageFilter: StateFlow<String> = _selectedStageFilter.asStateFlow()
 
-    private val _selectedCourseId = MutableStateFlow<String?>(null)
-    val selectedCourseId: StateFlow<String?> = _selectedCourseId.asStateFlow()
+    /** The course the user chose, remembered on this device (null until they choose). */
+    private val _chosenCourseId = MutableStateFlow<String?>(
+        application.getSharedPreferences("bukhari_ui", Context.MODE_PRIVATE).getString("current_course", null)
+    )
 
     private val _selectedCommitteeIdForDetail = MutableStateFlow<String?>(null)
     val selectedCommitteeIdForDetail: StateFlow<String?> = _selectedCommitteeIdForDetail.asStateFlow()
@@ -131,17 +133,38 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val assignableUsers: StateFlow<List<AssignableUserDto>> = _assignableUsers.asStateFlow()
 
     val courses: StateFlow<List<Course>> = repository.allCourses.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
-    val committees: StateFlow<List<Committee>> = repository.allCommittees.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    /**
+     * Every course stands alone: all screens show only the current course's data. The chosen course if
+     * it still exists, else the default course, else an active one.
+     */
+    val selectedCourseId: StateFlow<String?> = combine(courses, _chosenCourseId) { list, chosen ->
+        list.find { it.id == chosen }?.id ?: list.find { it.isDefault }?.id ?: list.find { it.status == "active" }?.id ?: list.firstOrNull()?.id
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    /** Committees of every course: only for placing people and counting each course. */
+    val allCommittees: StateFlow<List<Committee>> = repository.allCommittees.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+    val committees: StateFlow<List<Committee>> = combine(allCommittees, selectedCourseId) { list, course ->
+        if (course == null) list else list.filter { it.courseId == course }
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
     val users: StateFlow<List<AppUser>> = repository.allUsers.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
     val exams: StateFlow<List<Exam>> = repository.allExams.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
-    val tasks: StateFlow<List<ScheduleTask>> = repository.allTasks.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+    // Tasks and notices about a committee of another course are hidden; general ones stay.
+    val tasks: StateFlow<List<ScheduleTask>> =
+        combine(repository.allTasks, allCommittees, selectedCourseId) { list, all, course ->
+            val courseOf = all.associate { it.id to it.courseId }
+            list.filter { t -> course == null || t.committeeId.isNullOrBlank() || (courseOf[t.committeeId] ?: course) == course }
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
     val notifications: StateFlow<List<NotificationItem>> =
-        repository.allNotifications.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+        combine(repository.allNotifications, allCommittees, selectedCourseId) { list, all, course ->
+            val courseOf = all.associate { it.id to it.courseId }
+            list.filter { n -> course == null || n.committeeId.isNullOrBlank() || (courseOf[n.committeeId] ?: course) == course }
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
     val customPermissions: StateFlow<List<CustomPermission>> =
         repository.allCustomPermissions.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
     val sheetRows: StateFlow<List<SheetRowDto>> = repository.sheetRows
 
-    private val _filterInputs = combine(_searchQuery, _selectedStageFilter, _selectedCourseId) { q, st, c -> Triple(q, st, c) }
+    private val _filterInputs = combine(_searchQuery, _selectedStageFilter, selectedCourseId) { q, st, c -> Triple(q, st, c) }
 
     /** Same filters and sorting as the web's committee list (search, stage, course, gender, mine, unscored, sort). */
     val filteredCommittees: StateFlow<List<Committee>> by lazy {
@@ -315,7 +338,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun setSearchQuery(query: String) { _searchQuery.value = query }
     fun setSelectedStageFilter(filter: String) { _selectedStageFilter.value = filter }
-    fun setSelectedCourseId(courseId: String?) { _selectedCourseId.value = courseId }
+    fun setSelectedCourseId(courseId: String?) {
+        _chosenCourseId.value = courseId
+        _selectedCommitteeIdForDetail.value = null
+        getApplication<Application>().getSharedPreferences("bukhari_ui", Context.MODE_PRIVATE).edit().apply {
+            if (courseId == null) remove("current_course") else putString("current_course", courseId)
+        }.apply()
+    }
     fun openCommitteeDetail(committeeId: String) { _selectedCommitteeIdForDetail.value = committeeId }
     fun closeCommitteeDetail() { _selectedCommitteeIdForDetail.value = null }
     fun showMessage(message: String) { _snackBarMessage.value = message }
@@ -735,7 +764,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             try {
                 OnlineApi.deleteCourse(course.id)
                 showMessage("تم حذف الدورة")
-                if (_selectedCourseId.value == course.id) _selectedCourseId.value = null
+                if (_chosenCourseId.value == course.id) setSelectedCourseId(null)
                 refreshFromServer()
             } catch (e: OnlineApi.ApiFailure) {
                 if (e.httpCode == 409 && e.message?.contains("كشف") == true) {

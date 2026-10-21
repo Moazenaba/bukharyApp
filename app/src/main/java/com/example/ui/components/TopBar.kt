@@ -41,6 +41,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.model.AppUser
+import com.example.data.model.Course
 import com.example.data.model.NotificationItem
 import com.example.data.model.UserRole
 import com.example.ui.AppNavScreen
@@ -68,8 +69,12 @@ fun BukhariTopBar(
     isSyncing: Boolean = false,
     /** Device has network AND the last sync with the server succeeded. */
     isOnline: Boolean = false,
-    /** Name of the default course, shown under the title (nothing when there is none). */
+    /** Name of the course on screen, shown under the title (nothing when there is none). */
     activeCourseName: String? = null,
+    /** Courses stand alone; picking one here decides which course every screen shows. */
+    courses: List<Course> = emptyList(),
+    activeCourseId: String? = null,
+    onSelectCourse: (String) -> Unit = {},
     onSync: () -> Unit = {},
     onNavigate: (AppNavScreen) -> Unit,
     onMarkNotificationRead: (String) -> Unit,
@@ -143,12 +148,27 @@ fun BukhariTopBar(
                         )
                     }
 
-                    Text(
-                        text = activeCourseName ?: if (isOnline) "متصل بالخادم" else "غير متصل — تعرض آخر بيانات محفوظة",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Primary200,
-                        fontSize = 12.sp
-                    )
+                    var courseMenu by remember { mutableStateOf(false) }
+                    Box {
+                        Text(
+                            text = (activeCourseName ?: if (isOnline) "متصل بالخادم" else "غير متصل — تعرض آخر بيانات محفوظة") +
+                                if (courses.size > 1) " ▾" else "",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Primary200,
+                            fontSize = 12.sp,
+                            modifier = Modifier
+                                .clickable(enabled = courses.size > 1) { courseMenu = true }
+                                .padding(vertical = 4.dp)
+                        )
+                        DropdownMenu(expanded = courseMenu, onDismissRequest = { courseMenu = false }) {
+                            courses.forEach { c ->
+                                DropdownMenuItem(
+                                    text = { Text(if (c.id == activeCourseId) "✓ ${c.name}" else c.name) },
+                                    onClick = { courseMenu = false; onSelectCourse(c.id) }
+                                )
+                            }
+                        }
+                    }
                 }
             }
 
