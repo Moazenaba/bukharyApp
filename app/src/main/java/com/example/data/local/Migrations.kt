@@ -111,5 +111,12 @@ object Migrations {
         }
     }
 
-    val ALL = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+    /** 5 -> 6: committees list their staff (committee heads and sheikhs), from the server. */
+    val MIGRATION_5_6 = object : Migration(5, 6) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE `committees` ADD COLUMN `staff` TEXT NOT NULL DEFAULT '[]'")
+        }
+    }
+
+    val ALL = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
 }

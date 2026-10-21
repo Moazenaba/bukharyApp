@@ -346,7 +346,8 @@ private fun RegisterForm(
     var email by rememberSaveable { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
-    var role by rememberSaveable { mutableStateOf(UserRole.ASSISTANT) }
+    // Everyone joins as a sheikh; an admin sets the final role and committees.
+    val role = UserRole.SHEIKH
     var notes by rememberSaveable { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
 
@@ -406,48 +407,7 @@ private fun RegisterForm(
     )
     Spacer(modifier = Modifier.height(10.dp))
     Text(
-        text = "الدور المطلوب:",
-        style = MaterialTheme.typography.labelMedium,
-        color = Primary900,
-        fontWeight = FontWeight.Bold
-    )
-    Spacer(modifier = Modifier.height(6.dp))
-    listOf(
-        listOf(UserRole.ASSISTANT to "معاون ميداني", UserRole.TEACHER to "معلم / مقرئ"),
-        listOf(UserRole.COMMITTEE_HEAD to "رئيس لجنة", UserRole.AUDITOR to "مراجع ومدقق")
-    ).forEach { rowRoles ->
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            rowRoles.forEach { (option, label) ->
-                val isSelected = role == option
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(if (isSelected) Primary100 else Color(0xFFF1F5F9))
-                        .border(1.dp, if (isSelected) Primary700 else Color(0xFFCBD5E1), RoundedCornerShape(10.dp))
-                        .semantics {
-                            this.role = Role.RadioButton
-                            selected = isSelected
-                        }
-                        .clickable { role = option }
-                        .padding(vertical = 10.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = label,
-                        style = MaterialTheme.typography.labelSmall,
-                        fontSize = 12.sp,
-                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                        color = if (isSelected) Primary800 else Color(0xFF475569),
-                        textAlign = TextAlign.Center
-                    )
-                }
-            }
-        }
-        Spacer(modifier = Modifier.height(6.dp))
-    }
-    Text(
-        text = "هذا طلب فقط؛ الدور النهائي يحدده المشرف العام عند الاعتماد.",
+        text = "تنضم كشيخ، والأدمن هو من يسند إليك اللجان والحفلات أو يجعلك رئيس لجنة.",
         style = MaterialTheme.typography.bodySmall,
         color = Color(0xFF64748B)
     )
@@ -497,7 +457,6 @@ private fun RegisterForm(
                         email = ""
                         password = ""
                         notes = ""
-                        role = UserRole.ASSISTANT
                     }
                 }
             }

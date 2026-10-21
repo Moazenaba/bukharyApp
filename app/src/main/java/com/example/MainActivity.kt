@@ -400,7 +400,8 @@ class MainActivity : ComponentActivity() {
                                         onResetPassword = { u, pw, done -> viewModel.resetStaffPassword(u, pw, done) },
                                         onSaveProfile = { p, done -> viewModel.saveProfile(p, done) },
                                         onDeleteProfile = { viewModel.deleteProfile(it) },
-                                        onOpenCommittee = { viewModel.openCommitteeDetail(it) }
+                                        onOpenCommittee = { viewModel.openCommitteeDetail(it) },
+                                        onSaveAssignments = { members, ceremonies -> viewModel.saveAssignments(members, ceremonies, "تم حفظ اللجان والحفلات ✓") }
                                     )
                                     AppNavScreen.DATABASE_INSPECTOR -> DatabaseInspectorScreen(
                                         databaseStatus = databaseStatus,
@@ -503,7 +504,10 @@ class MainActivity : ComponentActivity() {
                                         onDelete = { viewModel.deleteCommittee(selectedCommittee.id) },
                                         onUpdateQuestionDetails = { qId, done, scorers, score, notes -> viewModel.updateQuestionDetails(selectedCommittee.id, qId, done, scorers, score, notes) },
                                         onSheetImported = { notes, count -> viewModel.recordSheetImport(selectedCommittee, notes, count) },
-                                        onSaveExcelUrl = { url -> viewModel.saveExcelUrl(selectedCommittee, url) }
+                                        onSaveExcelUrl = { url -> viewModel.saveExcelUrl(selectedCommittee, url) },
+                                        staffCandidates = viewModel.ceremonyCandidates.collectAsStateWithLifecycle().value,
+                                        onLoadStaffCandidates = { viewModel.loadCeremonyCandidates() },
+                                        onSaveStaff = { ids -> viewModel.saveAssignments(mapOf(selectedCommittee.id to ids), emptyMap(), "تم تحديث شيوخ اللجنة ✓") }
                                     ) }
                                 }
                             }

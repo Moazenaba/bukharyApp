@@ -91,7 +91,7 @@ private fun statusLabel(s: String) = when (s) {
 }
 
 /**
- * The web's «المعاونون والصلاحيات» (AssistantsView): approved accounts, join requests with
+ * The web's «الشيوخ والصلاحيات» (AssistantsView): approved accounts, join requests with
  * interviews and dossiers, and permission profiles. Every change is confirmed by the server first.
  */
 @Composable
@@ -110,6 +110,8 @@ fun UsersManagementScreen(
     onSaveProfile: (PermissionProfileDto, (Boolean) -> Unit) -> Unit,
     onDeleteProfile: (PermissionProfileDto) -> Unit,
     onOpenCommittee: (String) -> Unit,
+    /** New member lists per committee and (add, remove) per ceremony, for one person. */
+    onSaveAssignments: (Map<String, List<String>>, Map<String, Pair<List<String>, List<String>>>) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier
 ) {
     LaunchedEffect(Unit) { onReload() }
@@ -136,6 +138,8 @@ fun UsersManagementScreen(
     var approving by remember { mutableStateOf<StaffUserDto?>(null) }
     var assigningProfile by remember { mutableStateOf<StaffUserDto?>(null) }
     var demoting by remember { mutableStateOf<StaffUserDto?>(null) }
+    var placing by remember { mutableStateOf<StaffUserDto?>(null) }
+    val isSuperAdmin = Permissions.role == "super_admin"
     var profileEditing by remember { mutableStateOf<PermissionProfileDto?>(null) }
     var profileCreating by remember { mutableStateOf(false) }
     var profileDeleting by remember { mutableStateOf<PermissionProfileDto?>(null) }
@@ -164,7 +168,7 @@ fun UsersManagementScreen(
                     .background(Brush.horizontalGradient(listOf(Primary800, Color(0xFF065F46))), RoundedCornerShape(20.dp))
                     .padding(16.dp)
             ) {
-                Text("المعاونون والصلاحيات", color = Color.White, fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleMedium)
+                Text("الشيوخ والصلاحيات", color = Color.White, fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleMedium)
                 Text(
                     "إدارة المستخدمين المعتمدين، طلبات الانضمام والمقابلات، وبناء بروفايلات الصلاحيات.",
                     color = Color(0xFFD1FAE5), style = MaterialTheme.typography.bodySmall
@@ -215,7 +219,11 @@ fun UsersManagementScreen(
                 if (shownApproved.isEmpty() && !isLoading) item { Text("لا يوجد مستخدمون مطابقون", color = TextMuted) }
                 items(shownApproved, key = { it.id }) { u ->
                     val profile = profiles.find { it.id == u.profileId }
-                    val canEditUser = canGrant || (u.role == "assistant" && u.id != me.id) || u.id == me.id
+                    val canEditUser = canGrant || (u.role == "sheikh" && canManage) || u.id == me.id
+                    val placedOn = committees.count { c -> c.staff.any { it.id == u.id } }
+                    val invitedTo = committees.filter { c -> c.ceremonyDetails.attendees.any { it.id == u.id } }
+                    val canPlace = (u.role == "sheikh" || (u.role == "committee_head" && canGrant)) &&
+                        (Permissions.can("committees.members") || Permissions.can("committees.finalize"))
                     Card(
                         shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Color.White),
                         border = BorderStroke(1.dp, if (u.role == "super_admin") Color(0xFFFCD34D) else Color(0xFFE2E8F0))
@@ -231,7 +239,7 @@ fun UsersManagementScreen(
                                     if (u.mustChangePassword) Text("بانتظار تغيير كلمة المرور المؤقتة", style = MaterialTheme.typography.labelSmall, color = Color(0xFFB45309))
                                 }
                                 if (canEditUser) IconButton(onClick = { editing = u }) { Icon(Icons.Default.Edit, "تعديل ${u.name}", tint = Primary700) }
-                                if (u.role != "super_admin" && canDelete) IconButton(onClick = { deleting = u }) { Icon(Icons.Default.Delete, "حذف الحساب", tint = Danger) }
+                                if (u.role != "super_admin" && u.id != me.id && canDelete) IconButton(onClick = { deleting = u }) { Icon(Icons.Default.Delete, "حذف الحساب", tint = Danger) }
                             }
                             InfoLine(
                                 "نظام الصلاحية المطبق:",
@@ -250,24 +258,33 @@ fun UsersManagementScreen(
                             InfoLine(
                                 "اللجان المسموح بها:",
                                 when {
-                                    u.role == "super_admin" || u.allCommitteesAllowed -> "كل اللجان ✓"
-                                    u.role == "auditor" -> "اطلاع فقط على كل اللجان"
+                                    u.role == "super_admin" || u.role == "admin" || u.allCommitteesAllowed -> "كل اللجان ✓"
                                     else -> committeeLabel(u.assignedCommitteeIds).ifBlank { "لا توجد لجان مسندة" }
                                 }
                             )
                             InfoLine(
                                 "الامتحانات المصرح بها:",
                                 when {
-                                    u.role == "super_admin" || u.allExamsAllowed -> "كل الامتحانات ✓"
+                                    u.role == "super_admin" || u.role == "admin" || u.allExamsAllowed -> "كل الامتحانات ✓"
                                     u.allowedExamIds.isNotEmpty() -> "${u.allowedExamIds.size} امتحان محدد"
                                     else -> "لا يفتح ملفات الامتحانات"
                                 }
                             )
+                            if (u.role == "sheikh" || u.role == "committee_head") {
+                                InfoLine(
+                                    "اللجان والحفلات:",
+                                    "$placedOn لجنة · ${invitedTo.size} حفل" +
+                                        if (invitedTo.isEmpty()) "" else " (" + invitedTo.joinToString("، ") { "لجنة ${it.committeeNumber}" } + ")"
+                                )
+                            }
                             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                if (canPlace) {
+                                    Button(onClick = { placing = u }) { Text("اللجان والحفلات") }
+                                }
                                 if (canGrant && u.role != "super_admin" && profiles.isNotEmpty()) {
                                     OutlinedButton(onClick = { assigningProfile = u }) { Text("تغيير نظام الصلاحية") }
                                 }
-                                if (canGrant && u.id != me.id) {
+                                if (isSuperAdmin && u.id != me.id) {
                                     if (u.role == "super_admin") {
                                         OutlinedButton(onClick = { demoting = u }) { Text("تنزيل من سوبر أدمن", color = Danger) }
                                     } else {
@@ -452,15 +469,22 @@ fun UsersManagementScreen(
             dismissButton = { TextButton(onClick = { deleting = null }) { Text("إلغاء") } }
         )
     }
+    placing?.let { u ->
+        com.example.ui.screens.committees.PersonAssignmentsDialog(
+            userId = u.id, userName = u.name, userRole = u.role, committees = committees,
+            onDismiss = { placing = null },
+            onSave = { members, ceremonies -> onSaveAssignments(members, ceremonies) }
+        )
+    }
     demoting?.let { u ->
-        var to by remember { mutableStateOf("committee_head") }
+        var to by remember { mutableStateOf("admin") }
         AlertDialog(
             onDismissRequest = { demoting = null },
             title = { Text("تنزيل ${u.name} من المشرف العام") },
             text = {
                 Column {
                     Text("اختر الدور الجديد:")
-                    listOf("committee_head", "teacher", "assistant", "auditor").forEach { r ->
+                    listOf("admin", "committee_head", "sheikh").forEach { r ->
                         Row(Modifier.fillMaxWidth().clickable { to = r }, verticalAlignment = Alignment.CenterVertically) {
                             androidx.compose.material3.RadioButton(selected = to == r, onClick = { to = r })
                             Text(roleLabel(r))
@@ -591,7 +615,8 @@ private fun ExamMultiPicker(exams: List<Exam>, selected: List<String>, onChange:
 
 @Composable
 private fun RolePicker(role: String, enabled: Boolean, onChange: (String) -> Unit, includeSuper: Boolean) {
-    val roles = listOfNotNull(if (includeSuper) "super_admin" else null, "committee_head", "teacher", "assistant", "auditor")
+    // Only roles the server lets this user give (admins never give admin roles).
+    val roles = Permissions.grantableRoles.filter { includeSuper || it != "super_admin" }
     Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         roles.forEach { r -> FilterChip(selected = role == r, onClick = { if (enabled) onChange(r) }, enabled = enabled, label = { Text(roleLabel(r)) }) }
     }
@@ -637,7 +662,7 @@ private fun UserAccessDialog(
     var email by remember { mutableStateOf(user?.email ?: "") }
     var password by remember { mutableStateOf("") }
     var notes by remember { mutableStateOf(user?.notes ?: "") }
-    var role by remember { mutableStateOf(user?.role ?: "assistant") }
+    var role by remember { mutableStateOf(user?.role ?: "sheikh") }
     var profileId by remember { mutableStateOf("") }
     var perms by remember { mutableStateOf(user?.permissions ?: emptyList()) }
     var allCommittees by remember { mutableStateOf(user?.allCommitteesAllowed ?: false) }
@@ -683,7 +708,7 @@ private fun UserAccessDialog(
                             Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).toggleable(value = allCommittees, role = Role.Checkbox) { allCommittees = it }, verticalAlignment = Alignment.CenterVertically) { Checkbox(allCommittees, null); Text("كل اللجان في كل الدورات")
                             }
                         }
-                        if (!allCommittees && role != "auditor") {
+                        if (!allCommittees) {
                             CommitteeMultiPicker("اللجان المسندة:", committees, committeeIds, canAssign) { committeeIds = it }
                         }
                         if (canGrant && role == "committee_head") {
@@ -718,7 +743,7 @@ private fun UserAccessDialog(
                 if (user == null) {
                     body["password"] = password
                     body["status"] = "approved"
-                    body["role"] = if (canGrant) role else "assistant"
+                    body["role"] = if (canGrant) role else "sheikh"
                     if (canGrant && profileId.isNotBlank()) body["profileId"] = profileId
                     else {
                         body["permissions"] = if (canGrant) perms else emptyList<String>()

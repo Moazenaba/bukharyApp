@@ -169,7 +169,7 @@ data class StaffUserDto(
     val name: String = "",
     val phone: String = "",
     val email: String = "",
-    val role: String = "assistant",
+    val role: String = "sheikh",
     val status: String = "pending",
     val assignedCommittees: List<Int> = emptyList(),
     val assignedCommitteeIds: List<String> = emptyList(),

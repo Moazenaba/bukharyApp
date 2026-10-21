@@ -5,6 +5,7 @@ import androidx.room.TypeConverter
 import com.example.data.model.AggregationDetails
 import com.example.data.model.AssistantReception
 import com.example.data.model.CeremonyDetails
+import com.example.data.model.CommitteeStaff
 import com.example.data.model.ExamApproval
 import com.example.data.model.ScoringDetails
 import com.example.data.model.StagesMap
@@ -36,6 +37,23 @@ class Converters {
     private val ceremonyDetailsAdapter = moshi.adapter(CeremonyDetails::class.java)
     private val assistantReceptionAdapter = moshi.adapter(AssistantReception::class.java)
     private val examApprovalAdapter = moshi.adapter(ExamApproval::class.java)
+    private val staffListAdapter = moshi.adapter<List<CommitteeStaff>>(
+        Types.newParameterizedType(List::class.java, CommitteeStaff::class.java)
+    )
+
+    @TypeConverter
+    fun fromStaffList(value: List<CommitteeStaff>?): String = staffListAdapter.toJson(value ?: emptyList())
+
+    @TypeConverter
+    fun toStaffList(value: String?): List<CommitteeStaff> {
+        if (value.isNullOrBlank()) return emptyList()
+        return try {
+            staffListAdapter.fromJson(value) ?: emptyList()
+        } catch (e: Exception) {
+            Log.w("Converters", "Unreadable stored value (${value.length} characters); content not logged", e)
+            emptyList()
+        }
+    }
 
     @TypeConverter
     fun fromStringList(value: List<String>?): String {

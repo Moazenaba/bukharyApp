@@ -99,6 +99,9 @@ fun CommitteeDetailModal(
     onUpdateQuestionDetails: (String, Boolean, List<String>, Double?, String?) -> Unit = { _, _, _, _, _ -> },
     onSheetImported: (String, Int?) -> Unit = { _, _ -> },
     onSaveExcelUrl: (String) -> Unit = {},
+    staffCandidates: List<com.example.data.remote.AssignableUserDto>? = null,
+    onLoadStaffCandidates: () -> Unit = {},
+    onSaveStaff: (List<String>) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var activeTab by remember { mutableIntStateOf(0) } // 0: Stepper, 1: Assistant & Exam, 2: Scoring & Aggregation, 3: Ceremony
@@ -317,6 +320,7 @@ fun CommitteeDetailModal(
 
             // Tab 0: Interactive 9 Stages Stepper
             if (activeTab == 0) {
+                CommitteeStaffSection(committee, currentUser?.id, staffCandidates, onLoadStaffCandidates, onSaveStaff)
                 InteractiveStageStepper(
                     stages = committee.stages,
                     onToggleStage = onToggleStage,

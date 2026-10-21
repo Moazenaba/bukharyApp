@@ -287,7 +287,7 @@ fun BukhariTopBar(
 
                         if (currentUser?.canAccessScreen(AppNavScreen.ASSISTANTS) == true) {
                             DropdownMenuItem(
-                                text = { Text("👮 المعاونون وإدارة الصلاحيات (RBAC)") },
+                                text = { Text("👮 الشيوخ وإدارة الصلاحيات") },
                                 onClick = {
                                     onNavigate(AppNavScreen.ASSISTANTS)
                                     showMenu = false

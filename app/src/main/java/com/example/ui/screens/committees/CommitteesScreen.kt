@@ -153,8 +153,8 @@ fun CommitteesScreen(
             Column {
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Assistant bar (web): assigned committees, my committees only, unscored questions.
-            if (currentUser?.role == com.example.data.model.UserRole.ASSISTANT) {
+            // Assigned-committees bar (web) for committee heads and sheikhs.
+            if (currentUser?.role == com.example.data.model.UserRole.SHEIKH || currentUser?.role == com.example.data.model.UserRole.COMMITTEE_HEAD) {
                 Column(
                     Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Color(0xFFECFDF5)).padding(10.dp)
                 ) {

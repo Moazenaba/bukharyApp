@@ -95,7 +95,7 @@ fun MenuScreen(
             MenuEntry(AppNavScreen.COURSES, "إضافة وإدارة الدورات", Icons.Default.EventRepeat, "${courses.size}")
         ),
         "الكادر والإحصائيات" to listOf(
-            MenuEntry(AppNavScreen.ASSISTANTS, "المعاونون والصلاحيات", Icons.Default.Badge, if (pendingRequests > 0) "$pendingRequests معلق" else null),
+            MenuEntry(AppNavScreen.ASSISTANTS, "الشيوخ والصلاحيات", Icons.Default.Badge, if (pendingRequests > 0) "$pendingRequests معلق" else null),
             MenuEntry(AppNavScreen.STATISTICS, "حساب ونسبة الإنجاز", Icons.Default.DonutLarge, null),
             MenuEntry(AppNavScreen.DAILY_ALERTS, "التنبيهات والمهام اليومية", Icons.Default.NotificationsActive, if (todays > 0) "$todays اليوم" else null),
             MenuEntry(AppNavScreen.AUDIT, "سجل التدقيق", Icons.Default.History, null)

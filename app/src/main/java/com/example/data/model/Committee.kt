@@ -151,6 +151,9 @@ data class CeremonyDetails(
 
 data class CeremonyAttendee(val id: String = "", val name: String = "")
 
+/** A committee head or sheikh assigned to a committee (set by the server). */
+data class CommitteeStaff(val id: String = "", val name: String = "", val role: String = "sheikh")
+
 data class AssistantReception(
     val assistantId: String = "",
     @Json(name = "assistantName") val receivedByName: String = "",
@@ -192,5 +195,7 @@ data class Committee(
     val createdDate: String = "",
     val createdAtTime: String = "",
     /** Server version; sent back on save so a stale edit is refused instead of overwriting newer data. */
-    val updatedAt: String? = null
+    val updatedAt: String? = null,
+    /** Committee heads and sheikhs assigned to this committee. */
+    val staff: List<CommitteeStaff> = emptyList()
 )

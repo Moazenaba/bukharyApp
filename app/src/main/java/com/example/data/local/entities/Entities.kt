@@ -15,6 +15,7 @@ import com.example.data.model.NotificationItem
 import com.example.data.model.ScheduleTask
 import com.example.data.model.ScoringDetails
 import com.example.data.model.StagesMap
+import com.example.data.model.CommitteeStaff
 import com.example.data.model.UserRole
 
 @Entity(tableName = "courses")
@@ -87,7 +88,9 @@ data class CommitteeEntity(
     val examApprovedBy: ExamApproval? = null,
     val createdDate: String = "",
     val createdAtTime: String = "",
-    val updatedAt: String? = null
+    val updatedAt: String? = null,
+    /** Committee heads and sheikhs on the committee (from the server, read-only here). */
+    val staff: List<CommitteeStaff> = emptyList()
 ) {
     fun toDomain() = Committee(
         id = id,
@@ -113,7 +116,8 @@ data class CommitteeEntity(
         examApprovedBy = examApprovedBy,
         createdDate = createdDate,
         createdAtTime = createdAtTime,
-        updatedAt = updatedAt
+        updatedAt = updatedAt,
+        staff = staff
     )
 
     companion object {
@@ -141,7 +145,8 @@ data class CommitteeEntity(
             examApprovedBy = model.examApprovedBy,
             createdDate = model.createdDate,
             createdAtTime = model.createdAtTime,
-            updatedAt = model.updatedAt
+            updatedAt = model.updatedAt,
+            staff = model.staff
         )
     }
 }
@@ -153,9 +158,9 @@ data class AppUserEntity(
     val phone: String,
     val email: String = "",
     val passportNumber: String = "",
-    val roleId: String = "assistant", // Reference to Role ID
+    val roleId: String = "sheikh", // Reference to Role ID
     // The server and web app call this field "role".
-    @Json(name = "role") val roleKey: String = "assistant",
+    @Json(name = "role") val roleKey: String = "sheikh",
     val status: String = "approved",
     /** Committee numbers (read-only, derived by the server). Numbers repeat across courses. */
     val assignedCommittees: List<Int> = emptyList(),

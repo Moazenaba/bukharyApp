@@ -225,7 +225,7 @@ fun DailyAlertsScreen(
             }
         }
         items(shown, key = { it.id }) { t ->
-            val canToggle = (canWriteTasks || t.assignedAssistantId == currentUser?.id) && currentUser?.role != UserRole.AUDITOR
+            val canToggle = (canWriteTasks || t.assignedAssistantId == currentUser?.id)
             Card(
                 shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Color.White),
                 border = BorderStroke(

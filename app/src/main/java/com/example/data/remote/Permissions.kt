@@ -23,6 +23,10 @@ object Permissions {
     @Volatile
     var examScope: Set<String>? = emptySet()
 
+    /** Roles the user may give to others (admins never give admin roles). */
+    @Volatile
+    var grantableRoles: List<String> = listOf("sheikh")
+
     fun can(action: String): Boolean = actions[action] == true
 
     fun inScope(committeeId: String): Boolean = committeeScope?.contains(committeeId) ?: true
@@ -52,6 +56,7 @@ object Permissions {
     fun clear() {
         actions = emptyMap()
         role = ""
+        grantableRoles = listOf("sheikh")
         committeeScope = emptySet()
         examScope = null
     }

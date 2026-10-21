@@ -50,7 +50,7 @@ enum class AppNavScreen(val route: String, val titleAr: String, val iconRes: Str
     COMMITTEES("committees", "اللجان والمراحل", "groups"),
     EXAMS("exams", "الامتحانات", "menu_book"),
     SCHEDULE("schedule", "التقويم والمهام", "calendar"),
-    ASSISTANTS("assistants", "المعاونون والصلاحيات", "badge"),
+    ASSISTANTS("assistants", "الشيوخ والصلاحيات", "badge"),
     DATABASE_INSPECTOR("database_inspector", "حالة البيانات والمزامنة", "database"),
     STATISTICS("statistics", "الإحصائيات الشاملة", "bar_chart"),
     COURSES("courses", "إضافة وإدارة الدورات", "event_repeat"),
@@ -533,6 +533,30 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun updateCeremony(committeeId: String, ceremony: CeremonyDetails) =
         write("تم حفظ تفاصيل الحفل ✓") { repository.updateCeremony(committeeId, ceremony) }
+
+    /**
+     * Places people on committees and invites them to ceremonies (one write per committee, so each
+     * person gets one notice per change). Staff lists come from the server, so they are reloaded after.
+     */
+    fun saveAssignments(
+        members: Map<String, List<String>>,
+        ceremonies: Map<String, Pair<List<String>, List<String>>>,
+        success: String
+    ) {
+        viewModelScope.launch {
+            var last: WriteResult = WriteResult.Sent
+            for ((committeeId, ids) in members) {
+                last = repository.setCommitteeMembers(committeeId, ids)
+                if (last !is WriteResult.Sent) break
+            }
+            if (last is WriteResult.Sent) for ((committeeId, change) in ceremonies) {
+                last = repository.setCeremonyAttendees(committeeId, change.first, change.second)
+                if (last !is WriteResult.Sent) break
+            }
+            report(last, success)
+            if (last is WriteResult.Sent) refreshFromServer()
+        }
+    }
 
     // ---------------- exams
 

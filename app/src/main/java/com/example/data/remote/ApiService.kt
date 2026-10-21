@@ -34,6 +34,8 @@ data class ServerPermissions(
     val committeeScope: Any? = null,
     /** "all" or a list of exam ids. */
     val exams: Any? = null,
+    /** Roles this user may give to others. */
+    val grantableRoles: List<String> = listOf("sheikh"),
     val mustChangePassword: Boolean = false
 )
 

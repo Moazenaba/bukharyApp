@@ -76,6 +76,7 @@ class AuthenticationService(
     private fun applyPermissions(user: AppUser, permissions: ServerPermissions) {
         Permissions.actions = permissions.actions
         Permissions.role = user.role.roleKey
+        Permissions.grantableRoles = permissions.grantableRoles
         Permissions.applyServerScope(permissions.committeeScope, permissions.exams)
     }
 
@@ -88,6 +89,7 @@ class AuthenticationService(
             null
         } ?: return
         Permissions.actions = saved.actions
+        Permissions.grantableRoles = saved.grantableRoles
         Permissions.applyServerScope(saved.committeeScope, saved.exams)
     }
 

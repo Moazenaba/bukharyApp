@@ -124,11 +124,13 @@ class BukhariRepository(
             val courses = coursesRes.body()?.courses
             val committees = api.getCommittees().bodyIfOk()?.committees
             val users = if (Permissions.can("users.read")) api.getUsers().bodyIfOk()?.users else null
-            val exams = api.getExams().bodyIfOk()?.exams
+            // A screen the user may not open is emptied, so nothing cached under an older role stays visible.
+            val exams = if (Permissions.can("exams.read")) api.getExams().bodyIfOk()?.exams else emptyList()
             val tasks = api.getTasks().bodyIfOk()?.tasks
             val notifications = api.getNotifications().bodyIfOk()?.notifications
             val customPermissions = api.getCustomPermissions().bodyIfOk()?.permissions
-            api.getSheetRows().bodyIfOk()?.rows?.let { _sheetRows.value = it }
+            if (Permissions.can("summerRows.read")) api.getSheetRows().bodyIfOk()?.rows?.let { _sheetRows.value = it }
+            else _sheetRows.value = emptyList()
 
             db.withTransaction {
                 courses?.let { db.courseDao().clearAll(); db.courseDao().insertCourses(it) }
@@ -423,6 +425,19 @@ class BukhariRepository(
                 "attendeeUserIds" to if (attendeesChanged) ceremony.attendees.map { it.id } else null
             )
         )
+    }
+
+    /**
+     * Places committee heads and sheikhs on a committee: [userIds] is the full list the caller can
+     * place (people the caller cannot place keep their membership). Everyone added or removed is notified.
+     */
+    suspend fun setCommitteeMembers(committeeId: String, userIds: List<String>): WriteResult = withContext(Dispatchers.IO) {
+        push("setCommitteeMembers", "PUT", "api/committees/${enc(committeeId)}/members", mapOf("userIds" to userIds))
+    }
+
+    /** Invites people to (or removes them from) a committee's ceremony without changing its details. */
+    suspend fun setCeremonyAttendees(committeeId: String, add: List<String>, remove: List<String>): WriteResult = withContext(Dispatchers.IO) {
+        push("setCeremonyAttendees", "POST", "api/committees/${enc(committeeId)}/ceremony-attendees", mapOf("add" to add, "remove" to remove))
     }
 
     /** Saves base data together with the sheet stage's Excel link (the server keeps it on the sheet stage). */

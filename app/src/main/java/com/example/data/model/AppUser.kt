@@ -2,16 +2,21 @@ package com.example.data.model
 
 import com.example.ui.AppNavScreen
 
+/**
+ * The four roles (server/policy.ts): the super admin sees everything; an admin sees everything
+ * except other admins; a committee head staffs the committees assigned to them with sheikhs;
+ * a sheikh sees only the committees and ceremonies assigned to them.
+ */
 enum class UserRole(val roleKey: String, val titleAr: String, val emoji: String) {
-    SUPER_ADMIN("super_admin", "المشرف العام / مدير النظام", "👑"),
-    COMMITTEE_HEAD("committee_head", "رئيس لجنة واختبارات", "👨‍🏫"),
-    TEACHER("teacher", "معلم / عضو هيئة تدريس", "📖"),
-    ASSISTANT("assistant", "معاون ميداني / تنفيذي", "👤"),
-    AUDITOR("auditor", "مراجع ومدقق جودة", "🔍");
+    SUPER_ADMIN("super_admin", "المشرف العام (سوبر أدمن)", "👑"),
+    ADMIN("admin", "أدمن", "🛡️"),
+    COMMITTEE_HEAD("committee_head", "رئيس لجنة", "👨‍🏫"),
+    SHEIKH("sheikh", "شيخ", "👤");
 
     companion object {
+        /** Older role names (teacher, assistant, auditor) became sheikh on the server. */
         fun fromKey(key: String): UserRole {
-            return entries.find { it.roleKey.equals(key, ignoreCase = true) } ?: ASSISTANT
+            return entries.find { it.roleKey.equals(key, ignoreCase = true) } ?: SHEIKH
         }
     }
 }
@@ -34,7 +39,7 @@ object SystemPermissions {
         MANAGE_COURSES to "إدارة وإضافة الدورات",
         CALENDAR_SCHEDULE to "الجدول وتقويم المواعيد",
         PROGRESS_STATS to "حساب ونسبة الإنجاز والإحصائيات",
-        MANAGE_ASSISTANTS to "المعاونون وتعيين الصلاحيات"
+        MANAGE_ASSISTANTS to "قبول طلبات الانضمام وتعديل بيانات الشيوخ"
     )
 }
 
@@ -44,7 +49,7 @@ data class AppUser(
     val phone: String,
     val email: String = "",
     val passportNumber: String = "",
-    val role: UserRole = UserRole.ASSISTANT,
+    val role: UserRole = UserRole.SHEIKH,
     val status: String = "approved", // pending, approved, rejected
     /** Committee numbers, for display only (numbers repeat across courses). */
     val assignedCommittees: List<Int> = emptyList(),
@@ -61,9 +66,9 @@ data class AppUser(
     /** Server version; sent back on save so a stale edit is refused. */
     val updatedAt: String? = null
 ) {
-    /** A permission the super admin granted to this user (super admins have all). */
+    /** A permission an admin granted to this user (super admins and admins have all). */
     fun hasPermission(permissionId: String): Boolean =
-        role == UserRole.SUPER_ADMIN || permissions.contains(permissionId)
+        role == UserRole.SUPER_ADMIN || role == UserRole.ADMIN || permissions.contains(permissionId)
 
     /**
      * Which screens to show: the same rules as the web app's tabs. Actions inside a screen
@@ -74,9 +79,9 @@ data class AppUser(
         val p = com.example.data.remote.Permissions
         return when (screen) {
             AppNavScreen.HOME, AppNavScreen.CEREMONIES, AppNavScreen.DAILY_ALERTS, AppNavScreen.COMMITTEES -> true
-            AppNavScreen.COURSE_TRACKER -> p.can("summerRows.write") || p.can("audit.read")
+            AppNavScreen.COURSE_TRACKER -> p.can("summerRows.read")
             AppNavScreen.EXAMS -> p.can("exams.write") || p.can("exams.file")
-            AppNavScreen.SCHEDULE -> p.can("tasks.write") || role == UserRole.ASSISTANT
+            AppNavScreen.SCHEDULE -> p.can("tasks.read")
             AppNavScreen.ASSISTANTS -> p.can("users.read")
             AppNavScreen.STATISTICS -> p.can("stats.read")
             AppNavScreen.COURSES -> p.can("courses.write")
