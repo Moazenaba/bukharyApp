@@ -335,7 +335,6 @@ private fun RegisterForm(
     onSubmit: (name: String, phone: String, email: String, role: UserRole, pass: String, extras: com.example.data.remote.JoinRequestExtras, onDone: (Boolean) -> Unit) -> Unit
 ) {
     var whatsapp by rememberSaveable { mutableStateOf("") }
-    var nationalId by rememberSaveable { mutableStateOf("") }
     var quranLevel by rememberSaveable { mutableStateOf("") }
     var qualification by rememberSaveable { mutableStateOf("") }
     var experience by rememberSaveable { mutableStateOf("") }
@@ -416,8 +415,6 @@ private fun RegisterForm(
     Spacer(modifier = Modifier.height(6.dp))
     OutlinedTextField(whatsapp, { whatsapp = it.take(50) }, label = { Text("رقم الواتساب") }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
     Spacer(modifier = Modifier.height(8.dp))
-    OutlinedTextField(nationalId, { nationalId = it.take(50) }, label = { Text("رقم الهوية الوطنية") }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
-    Spacer(modifier = Modifier.height(8.dp))
     OutlinedTextField(quranLevel, { quranLevel = it.take(500) }, label = { Text("مستوى حفظ القرآن الكريم والإجازات") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
     Spacer(modifier = Modifier.height(8.dp))
     OutlinedTextField(qualification, { qualification = it.take(500) }, label = { Text("المؤهل العلمي والتخصص") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
@@ -446,7 +443,7 @@ private fun RegisterForm(
             error = joinRequestProblem(name, phone, email, password)
             if (error == null) {
                 val extras = com.example.data.remote.JoinRequestExtras(
-                    notes = notes.trim(), whatsapp = whatsapp, nationalId = nationalId, quranLevel = quranLevel,
+                    notes = notes.trim(), whatsapp = whatsapp, quranLevel = quranLevel,
                     qualification = qualification, experience = experience, availability = availability,
                     preferredCommittees = preferred.split(',', '،', ' ').mapNotNull { it.trim().toIntOrNull() }.distinct()
                 )

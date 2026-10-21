@@ -442,7 +442,6 @@ fun UsersManagementScreen(
                     InfoLine("الهاتف:", u.phone)
                     InfoLine("واتساب:", u.whatsapp ?: u.phone)
                     if (u.email.isNotBlank()) InfoLine("البريد:", u.email)
-                    u.nationalId?.let { InfoLine("رقم الهوية:", it) }
                     InfoLine("مقدار الحفظ:", u.quranLevel ?: "—")
                     InfoLine("المؤهل العلمي:", u.qualification ?: "—")
                     u.experience?.let { InfoLine("الخبرات:", it) }

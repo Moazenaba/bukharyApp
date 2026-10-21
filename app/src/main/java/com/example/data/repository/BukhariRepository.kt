@@ -495,8 +495,12 @@ class BukhariRepository(
     }
 
     /** Downloads an exam's PDF (allowed roles, within their exam allow-list). */
-    suspend fun downloadExamFile(examId: String): ByteArray? = withContext(Dispatchers.IO) {
-        ApiClient.download("api/exams/${enc(examId)}/file")
+    suspend fun downloadExamFile(examId: String): Result<ByteArray> = withContext(Dispatchers.IO) {
+        ApiClient.download("api/exams/${enc(examId)}/file").mapCatching { bytes ->
+            // An error page served with 200 (proxy, size limit) must not be saved as a broken PDF.
+            check(bytes.size >= 5 && String(bytes, 0, 5, Charsets.ISO_8859_1) == "%PDF-") { "الملف الذي وصل من الخادم ليس ملف PDF صالحاً" }
+            bytes
+        }
     }
 
     // ------------------------------------------------------------------ tasks

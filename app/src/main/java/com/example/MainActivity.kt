@@ -35,6 +35,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.core.content.FileProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 import com.example.ui.AppNavScreen
 import com.example.ui.MainViewModel
 import com.example.ui.components.BukhariBottomNavBar
@@ -55,18 +57,30 @@ class MainActivity : ComponentActivity() {
 
     private val viewModel: MainViewModel by viewModels()
 
-    /** Opens a downloaded exam PDF in the user's PDF viewer. */
+    /** Opens a downloaded exam PDF in the user's PDF viewer; without one, offers to save or share it. */
     private fun openPdf(file: File) {
         val uri = FileProvider.getUriForFile(this, "$packageName.files", file)
         val intent = Intent(Intent.ACTION_VIEW).setDataAndType(uri, "application/pdf").addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         try {
             startActivity(intent)
         } catch (e: ActivityNotFoundException) {
-            viewModel.showMessage("لا يوجد تطبيق لعرض ملفات PDF على هذا الجهاز")
+            val send = Intent(Intent.ACTION_SEND).setType("application/pdf").putExtra(Intent.EXTRA_STREAM, uri)
+                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            try {
+                startActivity(Intent.createChooser(send, file.name))
+            } catch (e2: ActivityNotFoundException) {
+                viewModel.showMessage("لا يوجد تطبيق لعرض ملفات PDF على هذا الجهاز")
+            }
         }
     }
 
     private val askNotifications = registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) { }
+
+    override fun onStop() {
+        super.onStop()
+        // A downloaded update is installed shortly after the user leaves the app (not on rotation).
+        if (!isChangingConfigurations) com.example.update.UpdateWorker.runAfterLeaving(applicationContext)
+    }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
@@ -79,6 +93,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         com.example.push.PushNotifications.init(this)
+        com.example.update.UpdateWorker.schedule(this)
         val openNotifications = intent?.getBooleanExtra(com.example.push.PushNotifications.EXTRA_OPEN_NOTIFICATIONS, false) == true
 
         setContent {
@@ -140,6 +155,38 @@ class MainActivity : ComponentActivity() {
                         ) askNotifications.launch(android.Manifest.permission.POST_NOTIFICATIONS)
                         if (openNotifications) viewModel.navigateTo(AppNavScreen.NOTIFICATIONS)
                     }
+                }
+
+                // App updates: downloaded quietly now, installed once the app leaves the screen (onStop).
+                LaunchedEffect(Unit) { com.example.update.AppUpdater.onAppOpened(applicationContext) }
+                val updateUi by com.example.update.AppUpdater.ui.collectAsStateWithLifecycle()
+                when (val state = updateUi) {
+                    com.example.update.AppUpdater.UiState.NeedsPermission -> androidx.compose.material3.AlertDialog(
+                        onDismissRequest = { com.example.update.AppUpdater.dismissPermissionRequest(this@MainActivity) },
+                        title = { Text("التحديث التلقائي") },
+                        text = { Text("ليصلك كل تحديث جديد للتطبيق تلقائياً، اسمح للتطبيق بتثبيت التحديثات (مرة واحدة فقط): فعّل «السماح من هذا المصدر» ثم ارجع للتطبيق.") },
+                        confirmButton = {
+                            androidx.compose.material3.TextButton(onClick = {
+                                com.example.update.AppUpdater.dismissPermissionRequest(this@MainActivity)
+                                startActivity(com.example.update.AppUpdater.permissionSettingsIntent(this@MainActivity))
+                            }) { Text("السماح") }
+                        },
+                        dismissButton = {
+                            androidx.compose.material3.TextButton(onClick = { com.example.update.AppUpdater.dismissPermissionRequest(this@MainActivity) }) { Text("لاحقاً") }
+                        }
+                    )
+                    is com.example.update.AppUpdater.UiState.ReadyToInstall -> androidx.compose.material3.AlertDialog(
+                        onDismissRequest = { com.example.update.AppUpdater.dismiss() },
+                        title = { Text("تحديث جديد") },
+                        text = { Text("الإصدار ${state.versionName} جاهز للتثبيت.") },
+                        confirmButton = {
+                            androidx.compose.material3.TextButton(onClick = {
+                                lifecycleScope.launch { com.example.update.AppUpdater.installNow(applicationContext) }
+                            }) { Text("تحديث الآن") }
+                        },
+                        dismissButton = { androidx.compose.material3.TextButton(onClick = { com.example.update.AppUpdater.dismiss() }) { Text("لاحقاً") } }
+                    )
+                    com.example.update.AppUpdater.UiState.Idle -> Unit
                 }
 
                 val dialogError by viewModel.dialogError.collectAsStateWithLifecycle()
@@ -349,7 +396,8 @@ class MainActivity : ComponentActivity() {
                                     AppNavScreen.COMMITTEES -> CommitteesScreen(
                                         currentUser = currentUser,
                                         committees = filteredCommittees,
-                                        allCommittees = allCommittees,
+                                        // The current course before search/filters: counts and the «جاري الامتحان الآن» sheets.
+                                        allCommittees = committees,
                                         activeCourses = courses,
                                         selectedStageFilter = selectedStageFilter,
                                         searchQuery = searchQuery,

@@ -150,7 +150,6 @@ class AuthenticationService(
                         password = pass,
                         notes = extras.notes.trim().ifBlank { null },
                         whatsapp = extras.whatsapp.trim().ifBlank { null },
-                        nationalId = extras.nationalId.trim().ifBlank { null },
                         quranLevel = extras.quranLevel.trim().ifBlank { null },
                         qualification = extras.qualification.trim().ifBlank { null },
                         experience = extras.experience.trim().ifBlank { null },

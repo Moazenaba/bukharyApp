@@ -601,9 +601,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     /** Downloads an exam's PDF into the app cache and hands it back for opening. */
     fun openExamFile(exam: Exam, onReady: (java.io.File) -> Unit) {
         viewModelScope.launch {
-            val bytes = repository.downloadExamFile(exam.id)
-            if (bytes == null) {
-                showMessage("تعذر تنزيل ملف الأسئلة (تحقق من الاتصال أو الصلاحية)")
+            showMessage("جاري تنزيل ملف الأسئلة…")
+            val bytes = repository.downloadExamFile(exam.id).getOrElse { e ->
+                showMessage("تعذر تنزيل ملف الأسئلة: ${e.message ?: "تحقق من الاتصال"}")
                 return@launch
             }
             val dir = java.io.File(getApplication<Application>().cacheDir, "exams").apply { mkdirs() }

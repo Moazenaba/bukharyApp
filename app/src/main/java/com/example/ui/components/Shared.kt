@@ -61,14 +61,29 @@ fun printHtml(context: Context, jobName: String, bodyHtml: String) {
         </style></head><body>$bodyHtml</body></html>
     """.trimIndent()
     val webView = WebView(context)
+    // Android's docs: keep the WebView referenced until the print job is created, or it can be
+    // garbage collected first and nothing opens.
+    printingViews.add(webView)
     webView.webViewClient = object : WebViewClient() {
+        private var started = false
         override fun onPageFinished(view: WebView, url: String?) {
-            val manager = context.getSystemService(Context.PRINT_SERVICE) as PrintManager
-            manager.print(jobName, view.createPrintDocumentAdapter(jobName), PrintAttributes.Builder().build())
+            if (started) return
+            started = true
+            try {
+                val manager = context.getSystemService(Context.PRINT_SERVICE) as PrintManager
+                manager.print(jobName, view.createPrintDocumentAdapter(jobName), PrintAttributes.Builder().build())
+            } catch (e: Exception) {
+                android.widget.Toast.makeText(context, "تعذر إنشاء ملف PDF: ${e.message}", android.widget.Toast.LENGTH_LONG).show()
+            } finally {
+                printingViews.remove(view)
+            }
         }
     }
     webView.loadDataWithBaseURL(null, html, "text/html", "UTF-8", null)
 }
+
+/** WebViews whose page is loading for [printHtml]. */
+private val printingViews = mutableSetOf<WebView>()
 
 fun escapeHtml(s: String?): String = (s ?: "").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;")
 

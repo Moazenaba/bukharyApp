@@ -5,6 +5,8 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- In-app updates (com.example.update.AppUpdater): the app installs its own newer versions. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <application
         android:allowBackup="false"
@@ -38,6 +40,11 @@
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"
             android:value="bukhari_alerts" />
+
+        <!-- Result of installing an app update. -->
+        <receiver
+            android:name="com.example.update.UpdateInstallReceiver"
+            android:exported="false" />
 
         <!-- Shares downloaded exam PDFs (app cache) with a PDF viewer app. -->
         <provider

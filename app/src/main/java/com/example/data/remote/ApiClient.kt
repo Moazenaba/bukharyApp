@@ -161,12 +161,17 @@ object ApiClient {
     }
 
     /** Downloads [path] (e.g. an exam PDF) with the session; null when not allowed or unreachable. */
-    fun download(path: String): ByteArray? = try {
+    /** Downloads a file; a failure carries the server's message (or the HTTP status) to show the user. */
+    fun download(path: String): Result<ByteArray> = try {
         okHttpClient.newCall(Request.Builder().url(baseUrl + path).build()).execute().use { res ->
-            if (res.isSuccessful) res.body?.bytes() else null
+            val body = res.body?.bytes()
+            when {
+                res.isSuccessful && body != null -> Result.success(body)
+                else -> Result.failure(IllegalStateException(serverMessage(body?.toString(Charsets.UTF_8)) ?: "HTTP ${res.code}"))
+            }
         }
     } catch (e: Exception) {
-        null
+        Result.failure(e)
     }
 
     fun serverMessage(errorBody: String?): String? = try {

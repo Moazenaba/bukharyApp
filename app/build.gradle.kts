@@ -39,8 +39,8 @@ android {
     minSdk = 24
     targetSdk = 36
     // Raise on every release: the server can require a minimum versionCode (MIN_ANDROID_VERSION_CODE).
-    versionCode = 7
-    versionName = "1.1.5"
+    versionCode = 8
+    versionName = "1.1.6"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     firebase.forEach { (k, v) -> buildConfigField("String", "FIREBASE_$k", "\"$v\"") }

@@ -101,7 +101,6 @@ data class RegisterRequest(
     val password: String,
     val notes: String?,
     val whatsapp: String? = null,
-    val nationalId: String? = null,
     val quranLevel: String? = null,
     val qualification: String? = null,
     val experience: String? = null,
@@ -113,7 +112,6 @@ data class RegisterRequest(
 data class JoinRequestExtras(
     val notes: String = "",
     val whatsapp: String = "",
-    val nationalId: String = "",
     val quranLevel: String = "",
     val qualification: String = "",
     val experience: String = "",
