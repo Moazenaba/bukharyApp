@@ -20,6 +20,9 @@ object SheetRules {
     fun announced(c: Committee) = anyDone(c, listOf("announcement", "ceremony"))
     fun ceremony(c: Committee) = c.stages.ceremony.completed
 
+    /** «المكان» of a committee: the sheikh's place stored on the committee, else its branch. */
+    fun place(c: Committee) = c.sheikhCountry.trim().ifBlank { c.branch.trim() }
+
     private fun SheetRowDto.withFlags(c: Committee) = copy(
         delivered = delivered(c), corrected = corrected(c), reviewed = reviewed(c), announced = announced(c), ceremony = ceremony(c)
     )
@@ -38,10 +41,12 @@ object SheetRules {
                 SheetRow(
                     r.copy(
                         number = c.committeeNumber,
-                        sheikh_name = r.sheikh_name.ifBlank { c.sheikhName.ifBlank { c.committeeName } },
-                        place = r.place.ifBlank { c.branch },
-                        book = r.book.ifBlank { c.competitionBook },
-                        students_count = if (r.students_count > 0) r.students_count else c.studentsCount,
+                        // The committee holds the data people edit, so its values win; the row's own
+                        // copy is only a fallback and is never deleted (web: committeeSync.ts).
+                        sheikh_name = c.sheikhName.ifBlank { r.sheikh_name.ifBlank { c.committeeName } },
+                        place = place(c).ifBlank { r.place },
+                        book = c.competitionBook.ifBlank { r.book },
+                        students_count = if (c.studentsCount > 0) c.studentsCount else r.students_count,
                         courseId = c.courseId, courseName = c.courseName
                     ).withFlags(c)
                 )
@@ -52,7 +57,7 @@ object SheetRules {
                 SheetRow(
                     SheetRowDto(
                         id = "committee:${c.id}", number = c.committeeNumber, sheikh_name = c.sheikhName.ifBlank { c.committeeName },
-                        place = c.branch, book = c.competitionBook, students_count = c.studentsCount,
+                        place = place(c), book = c.competitionBook, students_count = c.studentsCount,
                         committeeId = c.id, courseId = c.courseId, courseName = c.courseName
                     ).withFlags(c),
                     virtual = true

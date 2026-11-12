@@ -10,7 +10,7 @@ import java.util.Calendar
 import java.util.Locale
 import java.util.TimeZone
 
-/** The «جاري الامتحان الآن» and ceremonies sheets, the same columns and rules as the web's reportExport.ts. */
+/** The «في انتظار الامتحان» and ceremonies sheets, the same columns and rules as the web's reportExport.ts. */
 object ReportSheets {
     private val ARABIC_DAYS = listOf("الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت")
     val PERIOD_LABELS = linkedMapOf("day" to "يومي", "week" to "أسبوعي", "month" to "شهري")
@@ -22,7 +22,7 @@ object ReportSheets {
     private fun calendarOf(date: String) = Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply { time = iso().parse(date)!! }
     private fun format(cal: Calendar) = iso().format(cal.time)
 
-    val EXAM_HEADER = listOf("م", "رقم اللجنة", "اسم اللجنة", "اسم الشيخ", "البلد", "عدد الطلاب", "المراقبون", "عدد المراقبين", "الكتاب / المسابقة", "الجمعية", "نوع اللجنة")
+    val EXAM_HEADER = listOf("م", "رقم اللجنة", "اسم اللجنة", "اسم الشيخ", "المكان", "عدد الطلاب", "المراقبون", "عدد المراقبين", "الكتاب / المسابقة", "الجمعية", "نوع اللجنة")
     val EXAM_WIDTHS = listOf(5, 10, 24, 24, 16, 11, 40, 12, 24, 20, 10)
 
     fun examInProgress(committees: List<Committee>) =
@@ -41,10 +41,10 @@ object ReportSheets {
         } + listOf(listOf<Any?>("", "", "الإجمالي (${list.size} لجنة)", "", "", list.sumOf { it.studentsCount }, "", list.sumOf { proctorCount(it) }, "", "", ""))
     }
 
-    /** Body of the printable «جاري الامتحان الآن» sheet (printHtml saves it as PDF). */
+    /** Body of the printable «في انتظار الامتحان» sheet (printHtml saves it as PDF). */
     fun examPrintBody(committees: List<Committee>, date: String): String {
         val rows = examRows(committees)
-        val body = StringBuilder("<h2 class='center'>كشف لجان «جاري الامتحان الآن» — مسابقات مسجد الإمام البخاري</h2><p class='center'>$date — ${rows.size - 1} لجنة</p><table><tr>")
+        val body = StringBuilder("<h2 class='center'>كشف لجان «في انتظار الامتحان» — مسابقات مسجد الإمام البخاري</h2><p class='center'>$date — ${rows.size - 1} لجنة</p><table><tr>")
         EXAM_HEADER.take(8).forEach { body.append("<th>$it</th>") }
         body.append("</tr>")
         rows.forEachIndexed { i, r ->
@@ -76,7 +76,7 @@ object ReportSheets {
     }
 
     val CEREMONY_HEADER = listOf(
-        "م", "التاريخ", "اليوم", "الوقت", "مكان الحفل", "رقم اللجنة", "اسم اللجنة", "اسم الشيخ", "البلد", "عدد الطلاب المكرمين",
+        "م", "التاريخ", "اليوم", "الوقت", "مكان الحفل", "رقم اللجنة", "اسم اللجنة", "اسم الشيخ", "مكان الشيخ", "عدد الطلاب المكرمين",
         "المشايخ الحاضرون", "المدعوون للحفل", "مراقبو اللجنة", "الكتاب / المسابقة", "الحالة", "ملاحظات"
     )
     val CEREMONY_WIDTHS = listOf(5, 12, 10, 18, 22, 10, 22, 22, 14, 12, 28, 28, 32, 22, 10, 28)
@@ -107,5 +107,38 @@ object ReportSheets {
     fun ceremonyFileName(period: String, anchor: String): String {
         val (from, to) = periodRange(period, anchor)
         return "كشف_الحفلات_${PERIOD_LABELS[period]}_${if (from == to) from else "${from}_إلى_$to"}.xlsx"
+    }
+
+    /** Columns of the ceremonies PDF: what fits on an A4 landscape page (web: ceremoniesPdfTable). */
+    private val CEREMONY_PDF_COLUMNS = listOf(0, 1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 13, 14)
+    val CEREMONY_PDF_HEADER = CEREMONY_PDF_COLUMNS.map { CEREMONY_HEADER[it] }
+    val CEREMONY_PDF_WEIGHTS = listOf(3, 9, 7, 9, 12, 6, 14, 12, 7, 14, 14, 14, 7)
+
+    fun ceremonyPdfRows(rows: List<List<Any?>>): List<List<Any?>> = rows.map { r -> CEREMONY_PDF_COLUMNS.map { r.getOrNull(it) } }
+
+    fun ceremonyTitle(period: String) = "كشف الحفلات (${PERIOD_LABELS[period]}) — مسابقات مسجد الإمام البخاري"
+
+    fun ceremonySubtitle(period: String, anchor: String, count: Int): String {
+        val (from, to) = periodRange(period, anchor)
+        return "${if (from == to) from else "من $from إلى $to"} — $count حفل"
+    }
+
+    /** Latin file name: some apps drop an Arabic name when a file is shared. */
+    fun ceremonyPdfFileName(period: String, anchor: String): String {
+        val (from, to) = periodRange(period, anchor)
+        return "Bukhari-ceremonies-$period-${if (from == to) from else "${from}_to_$to"}.pdf"
+    }
+
+    /** Body of the printable ceremonies sheet (printHtml saves it as PDF). */
+    fun ceremonyPrintBody(rows: List<List<Any?>>, period: String, anchor: String): String {
+        val body = StringBuilder("<h2 class='center'>${escapeHtml(ceremonyTitle(period))}</h2><p class='center'>${escapeHtml(ceremonySubtitle(period, anchor, rows.size))}</p><table><tr>")
+        CEREMONY_PDF_HEADER.forEach { body.append("<th>${escapeHtml(it)}</th>") }
+        body.append("</tr>")
+        ceremonyPdfRows(rows).forEach { r ->
+            body.append("<tr>")
+            r.forEach { body.append("<td>${escapeHtml(it?.toString() ?: "")}</td>") }
+            body.append("</tr>")
+        }
+        return body.append("</table><style>@page{size:A4 landscape}</style>").toString()
     }
 }

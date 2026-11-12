@@ -103,6 +103,8 @@ fun SummerCourseTrackerScreen(
     onExtractFromImage: (ByteArray, (List<SheetRowDto>?) -> Unit) -> Unit = { _, _ -> },
     onAddCourse: (Course, (Boolean) -> Unit) -> Unit = { _, _ -> },
     onCreateCommitteeFromRow: (Committee) -> Unit = {},
+    /** Saves sheikh name, place, book and students on the committee itself (rows linked to a committee). */
+    onSaveCommittee: (Committee) -> Unit = {},
     onExport: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -166,7 +168,7 @@ fun SummerCourseTrackerScreen(
             r.book.lowercase().contains(q) || r.notes.lowercase().contains(q) || r.number.toString().contains(q)
         val matchesStatus = when (status) {
             "not_delivered" -> !r.delivered; "delivered" -> r.delivered; "corrected" -> r.corrected; "reviewed" -> r.reviewed
-            "announced" -> r.announced; "ceremony" -> r.ceremony; "uncertain" -> r.uncertain; "struck_out" -> r.struck_out
+            "announced" -> r.announced; "no_ceremony" -> !r.ceremony; "ceremony" -> r.ceremony; "uncertain" -> r.uncertain; "struck_out" -> r.struck_out
             else -> true
         }
         val matchesCourse = selectedCourseId == null || (r.courseId ?: defaultCourse?.id) == selectedCourseId
@@ -236,8 +238,8 @@ fun SummerCourseTrackerScreen(
             )
             Row(Modifier.padding(top = 6.dp).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 listOf(
-                    "all" to "الكل", "not_delivered" to "لم يمتحن", "delivered" to "تم الامتحان", "corrected" to "تم التصحيح",
-                    "reviewed" to "تمت المراجعة", "announced" to "تم الإعلان", "ceremony" to "تم الحفل", "uncertain" to "يحتاج تدقيق", "struck_out" to "مشطوب"
+                    "all" to "الكل", "not_delivered" to "في انتظار الامتحان", "delivered" to "تم الامتحان", "corrected" to "تم التصحيح",
+                    "reviewed" to "تمت المراجعة", "announced" to "تم الإعلان", "no_ceremony" to "لم يتم الحفل", "ceremony" to "تم الحفل", "uncertain" to "يحتاج تدقيق", "struck_out" to "مشطوب"
                 ).forEach { (k, l) -> FilterChip(selected = status == k, onClick = { status = k }, label = { Text(l) }) }
             }
             if (books.isNotEmpty()) Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -283,7 +285,8 @@ fun SummerCourseTrackerScreen(
                                 style = MaterialTheme.typography.labelSmall, color = TextMuted
                             )
                         }
-                        if (canEdit && !sr.virtual) IconButton(onClick = { editing = sr }) { Icon(Icons.Default.Edit, "تعديل الصف", tint = Primary700) }
+                        // A committee's data (sheikh, place, book, students) can be edited from its row too.
+                        if ((canEdit && !sr.virtual) || (committee != null && Permissions.can("committees.update"))) IconButton(onClick = { editing = sr }) { Icon(Icons.Default.Edit, "تعديل الصف", tint = Primary700) }
                         if (canEdit && !sr.virtual) IconButton(onClick = { deleting = r }) { Icon(Icons.Default.Delete, "حذف الصف", tint = Color(0xFFEF4444)) }
                     }
                     Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -321,7 +324,26 @@ fun SummerCourseTrackerScreen(
     }
 
     editing?.let { sr ->
-        RowEditDialog(sr.row, courses, onDismiss = { editing = null }) { updated -> onSaveRow(updated) { ok -> if (ok) editing = null } }
+        RowEditDialog(sr.row, courses, onDismiss = { editing = null }) { updated ->
+            val committee = updated.committeeId?.let { id -> committees.find { it.id == id } }
+            if (committee != null && Permissions.can("committees.update")) {
+                // Linked row: the edit goes to the committee, so it shows everywhere (web, details, ceremonies).
+                val changed = committee.copy(
+                    sheikhName = updated.sheikh_name, sheikhCountry = updated.place,
+                    competitionBook = updated.book, studentsCount = updated.students_count
+                )
+                if (changed != committee) onSaveCommittee(changed)
+                val old = sr.row
+                val rowOnlyChanged = updated.notes != old.notes || updated.struck_out != old.struck_out || updated.uncertain != old.uncertain
+                if (rowOnlyChanged) {
+                    onSaveRow(updated) { ok -> if (ok) editing = null }
+                } else {
+                    editing = null
+                }
+            } else {
+                onSaveRow(updated) { ok -> if (ok) editing = null }
+            }
+        }
     }
     deleting?.let { r ->
         AlertDialog(
@@ -423,7 +445,7 @@ private fun RowEditDialog(row: SheetRowDto, courses: List<Course>, onDismiss: ()
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 if (!linked) OutlinedTextField(number, { number = it.filter(Char::isDigit) }, label = { Text("م") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
                 OutlinedTextField(sheikh, { sheikh = it }, label = { Text("اسم الشيخ") }, singleLine = true)
-                OutlinedTextField(place, { place = it }, label = { Text("المكان") }, singleLine = true)
+                OutlinedTextField(place, { place = it }, label = { Text("المكان (مكان الشيخ)") }, singleLine = true)
                 OutlinedTextField(book, { book = it }, label = { Text("الكتاب") }, singleLine = true)
                 OutlinedTextField(students, { students = it.filter(Char::isDigit) }, label = { Text("عدد الطلاب") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
                 OutlinedTextField(notes, { notes = it }, label = { Text("ملاحظات") })

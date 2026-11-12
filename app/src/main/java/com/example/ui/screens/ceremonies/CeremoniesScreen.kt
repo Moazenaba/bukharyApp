@@ -328,9 +328,9 @@ private fun CeremoniesExportCard(committees: List<Committee>, tasks: List<Schedu
         border = BorderStroke(1.dp, Color(0xFFA7F3D0))
     ) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("تصدير كشف الحفلات (Excel)", fontWeight = FontWeight.Black)
+            Text("تصدير ومشاركة كشف الحفلات (Excel / PDF)", fontWeight = FontWeight.Black)
             Text(
-                "الموعد والمكان واسم الشيخ والبلد وعدد الطلاب المكرمين والمشايخ والمدعوين ومراقبي اللجنة — " +
+                "الموعد والمكان واسم الشيخ ومكانه وعدد الطلاب المكرمين والمشايخ والمدعوين ومراقبي اللجنة — " +
                     if (from == to) from else "من $from إلى $to",
                 style = MaterialTheme.typography.bodySmall, color = TextMuted
             )
@@ -351,7 +351,31 @@ private fun CeremoniesExportCard(committees: List<Committee>, tasks: List<Schedu
                 },
                 enabled = rows.isNotEmpty(),
                 modifier = Modifier.fillMaxWidth()
-            ) { Text(if (rows.isEmpty()) "لا توجد حفلات في هذه الفترة" else "تصدير (${rows.size} حفل)") }
+            ) { Text(if (rows.isEmpty()) "لا توجد حفلات في هذه الفترة" else "Excel (${rows.size} حفل)") }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                // «تصدير PDF»: the print screen, where the sheet is saved as a PDF file or printed.
+                OutlinedButton(
+                    onClick = { printHtml(context, "كشف الحفلات", ReportSheets.ceremonyPrintBody(rows, period, anchor)) },
+                    enabled = rows.isNotEmpty(),
+                    modifier = Modifier.weight(1f)
+                ) { Text("تصدير PDF") }
+                // «مشاركة PDF»: a ready PDF file sent through the share sheet (WhatsApp, Telegram, e-mail...).
+                Button(
+                    onClick = {
+                        try {
+                            val pdf = com.example.data.PdfTable.write(
+                                ReportSheets.ceremonyTitle(period), ReportSheets.ceremonySubtitle(period, anchor, rows.size),
+                                ReportSheets.CEREMONY_PDF_HEADER, ReportSheets.ceremonyPdfRows(rows), ReportSheets.CEREMONY_PDF_WEIGHTS
+                            )
+                            shareFile(context, pdf, ReportSheets.ceremonyPdfFileName(period, anchor), "application/pdf")
+                        } catch (e: Exception) {
+                            android.widget.Toast.makeText(context, "تعذر إنشاء ملف PDF: ${e.message}", android.widget.Toast.LENGTH_LONG).show()
+                        }
+                    },
+                    enabled = rows.isNotEmpty(),
+                    modifier = Modifier.weight(1f)
+                ) { Text("مشاركة PDF") }
+            }
         }
     }
 }

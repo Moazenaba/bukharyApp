@@ -211,7 +211,7 @@ fun CommitteesScreen(
                 }
             }
 
-            // Web: the «جاري الامتحان الآن» sheet (sheikh, country, students and proctors of each committee)
+            // Web: the «في انتظار الامتحان» sheet (sheikh, country, students and proctors of each committee)
             val examCount = com.example.ui.screens.export.ReportSheets.examInProgress(allCommittees).size
             val context = androidx.compose.ui.platform.LocalContext.current
             Row(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -220,7 +220,7 @@ fun CommitteesScreen(
                     com.example.ui.components.shareFile(
                         context,
                         com.example.data.SimpleXlsx.write(
-                            "جاري الامتحان الآن", com.example.ui.screens.export.ReportSheets.EXAM_HEADER,
+                            "في انتظار الامتحان", com.example.ui.screens.export.ReportSheets.EXAM_HEADER,
                             com.example.ui.screens.export.ReportSheets.examRows(allCommittees), com.example.ui.screens.export.ReportSheets.EXAM_WIDTHS
                         ),
                         "كشف_جاري_الامتحان_الآن_${com.example.ui.components.Dates.today()}.xlsx", com.example.ui.components.XLSX_MIME
@@ -228,11 +228,11 @@ fun CommitteesScreen(
                 },
                 enabled = examCount > 0,
                 modifier = Modifier.weight(1f)
-            ) { Text("كشف «جاري الامتحان الآن» Excel ($examCount)") }
+            ) { Text("كشف «في انتظار الامتحان» Excel ($examCount)") }
             OutlinedButton(
                 onClick = {
                     com.example.ui.components.printHtml(
-                        context, "كشف جاري الامتحان الآن",
+                        context, "كشف في انتظار الامتحان",
                         com.example.ui.screens.export.ReportSheets.examPrintBody(allCommittees, com.example.ui.components.Dates.today())
                     )
                 },
@@ -589,7 +589,7 @@ fun AddCommitteeDialog(
         number = (allCommittees.filter { it.courseId == courseId }.maxOfOrNull { it.committeeNumber } ?: 0) + 1
     }
     val initialStages = listOf(
-        "exam" to "🟦 جاري الامتحان الآن", "scoring" to "🟠 في التصحيح", "aggregation" to "🔵 في التجميع",
+        "exam" to "🟦 في انتظار الامتحان", "scoring" to "✅ تم الامتحان (في التصحيح)", "aggregation" to "🔵 في التجميع",
         "sheet" to "🟣 كتابة الكشف", "review" to "🟡 في المراجعة", "announcement" to "📢 إعلان النتيجة", "ceremony" to "🟢 تم الحفل"
     )
 
@@ -639,7 +639,7 @@ fun AddCommitteeDialog(
                 OutlinedTextField(sheikhName, { sheikhName = it }, label = { Text("الشيخ المرسل إليه") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(sheikhPhone, { sheikhPhone = it }, label = { Text("هاتف الشيخ") }, singleLine = true, modifier = Modifier.weight(1f))
-                    OutlinedTextField(sheikhCountry, { sheikhCountry = it }, label = { Text("بلد الشيخ") }, singleLine = true, modifier = Modifier.weight(1f))
+                    OutlinedTextField(sheikhCountry, { sheikhCountry = it }, label = { Text("مكان الشيخ (المسجد / القاعة)") }, singleLine = true, modifier = Modifier.weight(1f))
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(studentsCount, { studentsCount = it.filter(Char::isDigit) }, label = { Text("عدد الطلاب") }, singleLine = true, modifier = Modifier.weight(1f))

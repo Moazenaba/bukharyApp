@@ -389,6 +389,7 @@ class MainActivity : ComponentActivity() {
                                         onExtractFromImage = { uri, done -> viewModel.extractTableFromImage(uri, done) },
                                         onAddCourse = { course, done -> viewModel.saveCourse(course, done) },
                                         onCreateCommitteeFromRow = { viewModel.createCommitteeFromRow(it) },
+                                        onSaveCommittee = { viewModel.saveCommittee(it) },
                                         onExport = { showExport = true },
                                         onToggleStage = { commId, stageKey, curr -> viewModel.toggleStage(commId, stageKey, curr) },
                                         onOpenCommitteeDetail = { viewModel.openCommitteeDetail(it) }
@@ -396,7 +397,7 @@ class MainActivity : ComponentActivity() {
                                     AppNavScreen.COMMITTEES -> CommitteesScreen(
                                         currentUser = currentUser,
                                         committees = filteredCommittees,
-                                        // The current course before search/filters: counts and the «جاري الامتحان الآن» sheets.
+                                        // The current course before search/filters: counts and the «في انتظار الامتحان» sheets.
                                         allCommittees = committees,
                                         activeCourses = courses,
                                         selectedStageFilter = selectedStageFilter,
