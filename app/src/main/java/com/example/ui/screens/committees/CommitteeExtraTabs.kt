@@ -83,7 +83,7 @@ fun CommitteeBaseDataTab(
                 sheikhPhone, { sheikhPhone = it }, label = { Text("هاتف الشيخ") }, enabled = canEditBase, singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone), modifier = Modifier.fillMaxWidth()
             )
-            OutlinedTextField(sheikhCountry, { sheikhCountry = it }, label = { Text("بلد الشيخ") }, enabled = canEditBase, singleLine = true, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(sheikhCountry, { sheikhCountry = it }, label = { Text("مكان الشيخ (المسجد / القاعة)") }, enabled = canEditBase, singleLine = true, modifier = Modifier.fillMaxWidth())
             OutlinedTextField(
                 students, { students = it.filter(Char::isDigit) }, label = { Text("عدد الطلاب") }, enabled = canEditBase, singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth()

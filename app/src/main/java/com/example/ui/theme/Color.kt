@@ -65,7 +65,7 @@ val StageColorMap = mapOf(
     "exam" to StageColorSet(
         key = "exam",
         name = "الامتحان",
-        activeLabel = "جاري الامتحان الآن",
+        activeLabel = "في انتظار الامتحان",
         emoji = "🟦",
         bg = Color(0xFFEFF6FF),
         text = Color(0xFF1D4ED8),
@@ -75,7 +75,7 @@ val StageColorMap = mapOf(
     "scoring" to StageColorSet(
         key = "scoring",
         name = "التصحيح",
-        activeLabel = "في التصحيح",
+        activeLabel = "تم الامتحان / التصحيح",
         emoji = "🟠",
         bg = Color(0xFFFFFBEB),
         text = Color(0xFFB45309),
