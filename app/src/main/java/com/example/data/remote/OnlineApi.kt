@@ -52,6 +52,11 @@ object OnlineApi {
 
     // ---------------------------------------------------------------- courses
 
+    /** Short fingerprint of all server data (GET /api/sync/state); null on an older server. */
+    suspend fun syncVersion(): String? = runCatching {
+        mapAdapter.fromJson(call("GET", "api/sync/state"))?.get("version") as? String
+    }.getOrNull()
+
     suspend fun saveCourse(course: Map<String, Any?>) { call("POST", "api/courses", course) }
 
     /** A course with sheet rows answers 409 with a question; [deleteSheetRows] confirms it. */
