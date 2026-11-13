@@ -241,7 +241,7 @@ fun DailyAlertsScreen(
                         Icon(
                             if (t.completed) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
                             contentDescription = if (t.completed) "إلغاء تحديد «${t.title}» كمنجز" else "تحديد «${t.title}» كمنجز",
-                            tint = if (t.completed) Color(0xFF059669) else Color(0xFF94A3B8)
+                            tint = if (t.completed) Color(0xFF059669) else TextMuted
                         )
                     }
                     Spacer(Modifier.width(10.dp))
@@ -256,7 +256,7 @@ fun DailyAlertsScreen(
                         Text(
                             t.title, fontWeight = FontWeight.Bold,
                             textDecoration = if (t.completed) TextDecoration.LineThrough else null,
-                            color = if (t.completed) Color(0xFF94A3B8) else Color(0xFF0F172A)
+                            color = if (t.completed) TextMuted else Color(0xFF0F172A)
                         )
                         if (t.deliverable.isNotBlank()) Text("📋 المطلوب: ${t.deliverable}", style = MaterialTheme.typography.bodySmall)
                         if (t.notes.isNotBlank()) Text("💬 ${t.notes}", style = MaterialTheme.typography.bodySmall, color = TextMuted)

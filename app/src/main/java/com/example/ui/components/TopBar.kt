@@ -1,5 +1,6 @@
 package com.example.ui.components
 
+import com.example.ui.theme.TextMuted
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -253,12 +254,12 @@ fun BukhariTopBar(
                                             Text(
                                                 text = notif.description,
                                                 style = MaterialTheme.typography.bodySmall,
-                                                color = Color(0xFF64748B)
+                                                color = TextMuted
                                             )
                                             Text(
                                                 text = notif.createdAt,
                                                 style = MaterialTheme.typography.labelSmall,
-                                                color = Color(0xFF94A3B8)
+                                                color = TextMuted
                                             )
                                         }
                                     },
@@ -340,7 +341,7 @@ fun BukhariTopBar(
                             }
                         )
                         DropdownMenuItem(
-                            text = { Text("🚪 تسجيل الخروج", color = Color(0xFFEF4444)) },
+                            text = { Text("🚪 تسجيل الخروج", color = Color(0xFFB91C1C)) },
                             onClick = {
                                 onLogout()
                                 showMenu = false

@@ -1,5 +1,6 @@
 package com.example.ui.components
 
+import com.example.ui.theme.TextMuted
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -48,7 +49,7 @@ fun StageBadge(
     val stageSet = StageColorMap[stageKey] ?: return
 
     val bg = if (completed) stageSet.bg else Color(0xFFF8FAFC)
-    val text = if (completed) stageSet.text else Color(0xFF94A3B8)
+    val text = if (completed) stageSet.text else TextMuted
     val border = if (completed) stageSet.border else Color(0xFFE2E8F0)
     val dot = if (completed) stageSet.dot else Color(0xFFCBD5E1)
 

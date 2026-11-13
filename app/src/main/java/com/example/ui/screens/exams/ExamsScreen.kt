@@ -1,5 +1,6 @@
 package com.example.ui.screens.exams
 
+import com.example.ui.theme.TextMuted
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.text.KeyboardOptions
@@ -217,7 +218,7 @@ fun ExamsScreen(
                 if (filtered.isEmpty()) {
                     item {
                     Box(modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp), contentAlignment = Alignment.Center) {
-                        Text("لا توجد امتحانات مطابقة للبحث", style = MaterialTheme.typography.bodyMedium, color = Color(0xFF64748B))
+                        Text("لا توجد امتحانات مطابقة للبحث", style = MaterialTheme.typography.bodyMedium, color = TextMuted)
                     }
                     }
                 } else {
@@ -237,7 +238,7 @@ fun ExamsScreen(
             } else {
                 val shownBooks = bookNames.filter { searchQuery.isBlank() || it.contains(searchQuery, ignoreCase = true) }
                 run {
-                    if (shownBooks.isEmpty()) item { Text("لا توجد كتب مقررة مطابقة", color = Color(0xFF64748B), modifier = Modifier.padding(16.dp)) }
+                    if (shownBooks.isEmpty()) item { Text("لا توجد كتب مقررة مطابقة", color = TextMuted, modifier = Modifier.padding(16.dp)) }
                     items(shownBooks, key = { it }) { name ->
                         val dto = books.find { it.name == name }
                         Card(
@@ -318,7 +319,7 @@ fun ExamsScreen(
 @Composable
 private fun MiniStat(title: String, value: String, modifier: Modifier) {
     Column(modifier.background(Color.White, RoundedCornerShape(12.dp)).border(1.dp, Color(0xFFE2E8F0), RoundedCornerShape(12.dp)).padding(8.dp)) {
-        Text(title, style = MaterialTheme.typography.labelSmall, color = Color(0xFF64748B))
+        Text(title, style = MaterialTheme.typography.labelSmall, color = TextMuted)
         Text(value, fontWeight = FontWeight.Bold, color = Primary700)
     }
 }
@@ -469,7 +470,7 @@ fun ExamCard(
                         text = if (exam.hasFile) "📄 ${exam.pdfFileName.ifBlank { "نموذج_امتحان.pdf" }} ${exam.pdfFileSize}" else "لا يوجد ملف PDF بعد",
                         style = MaterialTheme.typography.bodySmall,
                         fontSize = 12.sp,
-                        color = Color(0xFF64748B)
+                        color = TextMuted
                     )
                     if (onUpload != null) {
                         TextButton(onClick = onUpload, contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
@@ -531,7 +532,7 @@ fun ExamPreviewDialog(
                     Text(
                         text = "النموذج متاح كملف PDF ورقي تم توزيعه على اللجان.",
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color(0xFF64748B)
+                        color = TextMuted
                     )
                 } else {
                     exam.sampleQuestions.forEach { question ->

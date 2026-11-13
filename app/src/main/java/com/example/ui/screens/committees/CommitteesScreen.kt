@@ -1,5 +1,6 @@
 package com.example.ui.screens.committees
 
+import com.example.ui.theme.TextMuted
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -286,14 +287,14 @@ fun CommitteesScreen(
                         Icon(
                             imageVector = Icons.Default.Search,
                             contentDescription = null,
-                            tint = Color(0xFF64748B),
+                            tint = TextMuted,
                             modifier = Modifier.size(40.dp)
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             text = "لا توجد لجان مطابقة للبحث أو التصفية الحالية",
                             style = MaterialTheme.typography.titleMedium,
-                            color = Color(0xFF64748B)
+                            color = TextMuted
                         )
                         if (searchQuery.isNotBlank() || selectedStageFilter != "all") {
                             TextButton(onClick = {
@@ -324,7 +325,7 @@ fun CommitteesScreen(
                         Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
                                 "عرض ${if (committees.isEmpty()) 0 else (current - 1) * pageSize + 1} إلى ${minOf(current * pageSize, committees.size)} من إجمالي ${committees.size} لجنة مسجلة",
-                                style = MaterialTheme.typography.labelSmall, color = Color(0xFF64748B)
+                                style = MaterialTheme.typography.labelSmall, color = TextMuted
                             )
                             if (pages > 1) Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                                 TextButton(onClick = { page = current - 1 }, enabled = current > 1) { Text("السابق") }
@@ -408,7 +409,7 @@ fun CommitteeCard(
                     Text(
                         text = "${committee.branch} • ${if (committee.isWomenCommittee) "مصلى الأخوات" else "مصلى الرجال"} • ${committee.studentsCount} طالباً",
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color(0xFF64748B)
+                        color = TextMuted
                     )
                 }
                 // ✏️ Edit the committee's data (what was entered when it was added).
@@ -425,7 +426,7 @@ fun CommitteeCard(
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.MenuBook,
                     contentDescription = "كتاب المسابقة",
-                    tint = Color(0xFF64748B),
+                    tint = TextMuted,
                     modifier = Modifier.size(18.dp)
                 )
                 Spacer(modifier = Modifier.width(6.dp))
@@ -507,7 +508,7 @@ fun CommitteeCard(
                     Text(
                         text = "$doneCount من $totalStages",
                         style = MaterialTheme.typography.labelMedium,
-                        color = Color(0xFF64748B)
+                        color = TextMuted
                     )
                 }
                 Spacer(modifier = Modifier.height(8.dp))

@@ -1,5 +1,6 @@
 package com.example.ui.screens.home
 
+import com.example.ui.theme.TextMuted
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.background
@@ -176,7 +177,7 @@ fun HomeScreen(
                         value = "$completedCommittees",
                         sub = "لجنة مكرّمة",
                         icon = Icons.Default.WorkspacePremium,
-                        color = Color(0xFF16A34A),
+                        color = Color(0xFF15803D),
                         bgColor = Color(0xFFF0FDF4),
                         modifier = Modifier.weight(1f).clickable { onNavigateCommittees("ceremony") }
                     )
@@ -185,7 +186,7 @@ fun HomeScreen(
                         value = "$totalStudents",
                         sub = "طالباً وطالبة",
                         icon = Icons.Default.Person,
-                        color = Color(0xFFD97706),
+                        color = Color(0xFFB45309),
                         bgColor = Color(0xFFFFFBEB),
                         modifier = Modifier.weight(1f).clickable { onNavigateCommittees("all") }
                     )
@@ -337,7 +338,7 @@ fun HomeScreen(
                     Text(
                         text = "لم يتم جدولة مواعيد حفلات قادمة بعد.",
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color(0xFF64748B)
+                        color = TextMuted
                     )
                 } else {
                     Row(
@@ -493,7 +494,7 @@ fun KpiCard(
                 Text(
                     text = title,
                     style = MaterialTheme.typography.labelMedium,
-                    color = Color(0xFF64748B)
+                    color = TextMuted
                 )
                 Box(
                     modifier = Modifier
@@ -580,7 +581,7 @@ fun QuickActionButton(
                     text = subtitle,
                     style = MaterialTheme.typography.bodySmall,
                     fontSize = 12.sp,
-                    color = if (containerColor == Color.White) Color(0xFF64748B) else Color.White.copy(alpha = 0.8f)
+                    color = if (containerColor == Color.White) TextMuted else Color.White.copy(alpha = 0.8f)
                 )
             }
         }
@@ -614,7 +615,7 @@ fun HomeTaskItem(
                 Icon(
                     imageVector = if (task.completed) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
                     contentDescription = "تبديل الإنجاز",
-                    tint = if (task.completed) Color(0xFF16A34A) else Color(0xFF94A3B8)
+                    tint = if (task.completed) Color(0xFF16A34A) else TextMuted
                 )
             }
 
@@ -659,7 +660,7 @@ fun HomeTaskItem(
                         text = "التسليم: ${task.deliverable}",
                         style = MaterialTheme.typography.bodySmall,
                         fontSize = 12.sp,
-                        color = Color(0xFF64748B)
+                        color = TextMuted
                     )
                 }
             }
@@ -667,7 +668,7 @@ fun HomeTaskItem(
             Text(
                 text = task.time,
                 style = MaterialTheme.typography.labelSmall,
-                color = Color(0xFF64748B),
+                color = TextMuted,
                 fontWeight = FontWeight.Bold
             )
         }

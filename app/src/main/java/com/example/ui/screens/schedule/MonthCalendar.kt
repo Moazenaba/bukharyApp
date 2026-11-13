@@ -1,5 +1,6 @@
 package com.example.ui.screens.schedule
 
+import com.example.ui.theme.TextMuted
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -69,7 +70,7 @@ fun MonthCalendar(tasks: List<ScheduleTask>, selectedDate: String?, onSelect: (S
                 modifier = Modifier.align(Alignment.CenterHorizontally)
             ) { Text("الذهاب لليوم الحالي") }
             Row(Modifier.fillMaxWidth()) {
-                listOf("سبت", "أحد", "اثنين", "ثلاثاء", "أربعاء", "خميس", "جمعة").forEach { d -> Text(d, maxLines = 1, softWrap = false, style = MaterialTheme.typography.labelSmall, color = Color(0xFF64748B), modifier = Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.Center) }
+                listOf("سبت", "أحد", "اثنين", "ثلاثاء", "أربعاء", "خميس", "جمعة").forEach { d -> Text(d, maxLines = 1, softWrap = false, style = MaterialTheme.typography.labelSmall, color = TextMuted, modifier = Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.Center) }
             }
             val cells = offset + days
             val rows = (cells + 6) / 7

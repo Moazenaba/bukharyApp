@@ -1,5 +1,6 @@
 package com.example.ui.screens.committees
 
+import com.example.ui.theme.TextMuted
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.text.KeyboardOptions
@@ -202,7 +203,7 @@ fun CommitteeDetailModal(
                         Text(
                             text = "الدورة: ${committee.courseName}",
                             style = MaterialTheme.typography.bodySmall,
-                            color = Color(0xFF64748B),
+                            color = TextMuted,
                             fontSize = 12.sp
                         )
                     }
@@ -255,7 +256,7 @@ fun CommitteeDetailModal(
                     Text(
                         text = "المكان: ${committee.sheikhCountry.ifBlank { committee.branch.ifBlank { "—" } }} • ${if (committee.isWomenCommittee) "مصلى الأخوات" else "مصلى الرجال"}",
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color(0xFF64748B)
+                        color = TextMuted
                     )
                     if (inScope && Permissions.can("committees.update")) {
                         androidx.compose.material3.TextButton(
@@ -539,7 +540,7 @@ fun CommitteeDetailModal(
                                     Text(
                                         text = if (done) "مصحح ✓" else "قيد التصحيح",
                                         style = MaterialTheme.typography.labelSmall,
-                                        color = if (done) Color(0xFFB45309) else Color(0xFF94A3B8)
+                                        color = if (done) Color(0xFFB45309) else TextMuted
                                     )
                                     if (canScoring && questionsState.size > 1) {
                                         IconButton(onClick = {
@@ -556,7 +557,7 @@ fun CommitteeDetailModal(
                             Text(
                                 text = "لم تُضف أسئلة لهذه اللجنة بعد.",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = Color(0xFF64748B)
+                                color = TextMuted
                             )
                         }
                         if (canScoring) {
@@ -785,7 +786,7 @@ fun CommitteeDetailModal(
                         if (canFinalize) Text(
                             text = "يظهر الموعد في التقويم تلقائياً. إتمام مرحلة الحفل يتم من تبويب المراحل.",
                             style = MaterialTheme.typography.bodySmall,
-                            color = Color(0xFF64748B),
+                            color = TextMuted,
                             modifier = Modifier.padding(top = 6.dp)
                         )
                     }

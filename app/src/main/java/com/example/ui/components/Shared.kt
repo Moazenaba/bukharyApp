@@ -1,5 +1,6 @@
 package com.example.ui.components
 
+import com.example.ui.theme.TextMuted
 import android.content.Context
 import android.print.PrintAttributes
 import android.print.PrintManager
@@ -113,7 +114,7 @@ fun StatTile(title: String, value: String, modifier: Modifier = Modifier, tint: 
             .border(1.dp, Color(0xFFE2E8F0), RoundedCornerShape(14.dp))
             .padding(10.dp)
     ) {
-        Text(title, style = MaterialTheme.typography.labelSmall, color = Color(0xFF64748B))
+        Text(title, style = MaterialTheme.typography.labelSmall, color = TextMuted)
         Text(value, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black, color = tint)
     }
 }

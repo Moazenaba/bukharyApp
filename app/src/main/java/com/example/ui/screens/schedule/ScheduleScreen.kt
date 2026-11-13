@@ -1,5 +1,6 @@
 package com.example.ui.screens.schedule
 
+import com.example.ui.theme.TextMuted
 import androidx.compose.foundation.selection.selectable
 
 import androidx.compose.material3.minimumInteractiveComponentSize
@@ -261,7 +262,7 @@ fun ScheduleScreen(
                     Text(
                         text = "لا توجد مهام مطابقة للتصفية المحددة",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = Color(0xFF64748B)
+                        color = TextMuted
                     )
                 }
             }
@@ -354,7 +355,7 @@ fun ScheduleTaskCard(
                 Icon(
                     imageVector = if (task.completed) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
                     contentDescription = "تبديل الإنجاز",
-                    tint = if (task.completed) Color(0xFF16A34A) else Color(0xFF94A3B8),
+                    tint = if (task.completed) Color(0xFF16A34A) else TextMuted,
                     modifier = Modifier.size(24.dp)
                 )
             }
@@ -417,7 +418,7 @@ fun ScheduleTaskCard(
                     text = task.title,
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
-                    color = if (task.completed) Color(0xFF64748B) else Primary900
+                    color = if (task.completed) TextMuted else Primary900
                 )
 
                 if (task.deliverable.isNotBlank()) {
@@ -433,7 +434,7 @@ fun ScheduleTaskCard(
                     Text(
                         text = "المعاون المسؤول: ${task.assignedAssistantName}",
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color(0xFF64748B),
+                        color = TextMuted,
                         fontSize = 12.sp
                     )
                 }
@@ -456,7 +457,7 @@ fun ScheduleTaskCard(
                         Text(
                             text = "اكتمل في: ${task.completedAt}",
                             style = MaterialTheme.typography.labelSmall,
-                            color = Color(0xFF16A34A),
+                            color = Color(0xFF15803D),
                             fontSize = 12.sp
                         )
                     }

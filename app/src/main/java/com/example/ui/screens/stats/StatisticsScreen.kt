@@ -1,5 +1,6 @@
 package com.example.ui.screens.stats
 
+import com.example.ui.theme.TextMuted
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 
@@ -156,7 +157,7 @@ fun StatisticsScreen(
                     Text(
                         text = "تم إنجاز $completedStagesTotal مرحلة من أصل $totalStagesPossible مرحلة في كافة اللجان.",
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color(0xFF64748B)
+                        color = TextMuted
                     )
                 }
             }
@@ -175,7 +176,7 @@ fun StatisticsScreen(
                     border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0))
                 ) {
                     Column(modifier = Modifier.padding(14.dp)) {
-                        Text(text = "مصلى الرجال 👨", style = MaterialTheme.typography.bodySmall, color = Color(0xFF64748B))
+                        Text(text = "مصلى الرجال 👨", style = MaterialTheme.typography.bodySmall, color = TextMuted)
                         Text(text = "$maleCount لجان", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black, color = Primary900)
                     }
                 }
@@ -187,7 +188,7 @@ fun StatisticsScreen(
                     border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0))
                 ) {
                     Column(modifier = Modifier.padding(14.dp)) {
-                        Text(text = "مصلى الأخوات 🧕", style = MaterialTheme.typography.bodySmall, color = Color(0xFF64748B))
+                        Text(text = "مصلى الأخوات 🧕", style = MaterialTheme.typography.bodySmall, color = TextMuted)
                         Text(text = "$womenCount لجان", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black, color = Color(0xFF7E22CE))
                     }
                 }
@@ -227,7 +228,7 @@ fun StatisticsScreen(
                                     Icon(
                                         imageVector = stageIcon(key),
                                         contentDescription = null,
-                                        tint = stageSet?.dot ?: Color(0xFF64748B),
+                                        tint = stageSet?.dot ?: TextMuted,
                                         modifier = Modifier.size(16.dp)
                                     )
                                     Spacer(modifier = Modifier.width(6.dp))

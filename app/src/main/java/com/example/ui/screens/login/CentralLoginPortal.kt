@@ -1,5 +1,6 @@
 package com.example.ui.screens.login
 
+import com.example.ui.theme.TextMuted
 import androidx.compose.ui.semantics.liveRegion
 
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -170,7 +171,7 @@ fun CentralLoginPortal(
         Text(
             text = "منظومة إدارة المسابقات والدورات العلمية الشرعية",
             style = MaterialTheme.typography.bodyMedium,
-            color = Color(0xFF64748B),
+            color = TextMuted,
             textAlign = TextAlign.Center
         )
         Spacer(modifier = Modifier.height(20.dp))
@@ -200,7 +201,7 @@ fun CentralLoginPortal(
                                     label,
                                     fontSize = 13.sp,
                                     fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Medium,
-                                    color = if (selectedTab == index) Primary800 else Color(0xFF64748B)
+                                    color = if (selectedTab == index) Primary800 else TextMuted
                                 )
                             },
                             modifier = Modifier.testTag(tag)
@@ -428,10 +429,10 @@ private fun RegisterForm(
     Text(
         text = "تنضم كشيخ، والأدمن هو من يسند إليك اللجان والحفلات أو يجعلك رئيس لجنة.",
         style = MaterialTheme.typography.bodySmall,
-        color = Color(0xFF64748B)
+        color = TextMuted
     )
     Spacer(modifier = Modifier.height(10.dp))
-    Text("بيانات اختيارية تساعد المشرف على المراجعة", style = MaterialTheme.typography.labelMedium, color = Color(0xFF64748B))
+    Text("بيانات اختيارية تساعد المشرف على المراجعة", style = MaterialTheme.typography.labelMedium, color = TextMuted)
     Spacer(modifier = Modifier.height(6.dp))
     OutlinedTextField(whatsapp, { whatsapp = it.take(50) }, label = { Text("رقم الواتساب") }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
     Spacer(modifier = Modifier.height(8.dp))
@@ -607,7 +608,7 @@ private fun PasswordToggle(visible: Boolean, onToggle: () -> Unit) {
         Icon(
             imageVector = if (visible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
             contentDescription = if (visible) "إخفاء كلمة المرور" else "إظهار كلمة المرور",
-            tint = Color(0xFF64748B)
+            tint = TextMuted
         )
     }
 }

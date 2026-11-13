@@ -37,7 +37,8 @@ private val LightColorScheme = lightColorScheme(
     onSurface = TextMain,
     surfaceVariant = SurfaceSubtle,
     onSurfaceVariant = TextMuted,
-    outline = BorderSoft,
+    // Field and button borders need 3:1 against white; BorderSoft (1.2:1) stays for decorative dividers.
+    outline = TextMuted,
     outlineVariant = BorderActive
 )
 
