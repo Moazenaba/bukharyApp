@@ -18,6 +18,7 @@
 -keep class com.example.data.model.** { *; }
 -keep class com.example.data.remote.** { *; }
 -keep class com.example.data.local.entities.** { *; }
+-keep class com.example.update.AppUpdater$UpdateInfo { *; }
 
 
 # Tink (used by androidx.security:security-crypto) references compile-time-only Error Prone

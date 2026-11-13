@@ -58,6 +58,6 @@ object Permissions {
         role = ""
         grantableRoles = listOf("sheikh")
         committeeScope = emptySet()
-        examScope = null
+        examScope = emptySet()
     }
 }
