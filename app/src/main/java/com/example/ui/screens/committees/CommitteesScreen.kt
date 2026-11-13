@@ -1,5 +1,6 @@
 package com.example.ui.screens.committees
 
+import androidx.compose.ui.semantics.Role
 import com.example.ui.theme.TextMuted
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.ui.text.input.ImeAction
@@ -375,7 +376,7 @@ fun CommitteeCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onOpenDetail)
+            .clickable(role = Role.Button, onClick = onOpenDetail)
             .testTag("committee_card_${committee.id}"),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = SurfacePure),

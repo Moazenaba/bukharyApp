@@ -1,5 +1,6 @@
 package com.example.ui.screens.menu
 
+import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -128,7 +129,7 @@ fun MenuScreen(
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 quick.forEach { q ->
                     Card(
-                        Modifier.weight(1f).clickable { if (q.label == "إضافة لجنة") onAddCommittee() else onExport() },
+                        Modifier.weight(1f).clickable(role = Role.Button) { if (q.label == "إضافة لجنة") onAddCommittee() else onExport() },
                         shape = RoundedCornerShape(14.dp), colors = CardDefaults.cardColors(containerColor = Color.White),
                         border = BorderStroke(1.dp, Color(0xFFA7F3D0))
                     ) {
@@ -160,7 +161,7 @@ fun MenuScreen(
 @Composable
 private fun MenuRow(label: String, icon: ImageVector, badge: String?, tint: Color = Primary700, onClick: () -> Unit) {
     Card(
-        Modifier.fillMaxWidth().clickable(onClick = onClick),
+        Modifier.fillMaxWidth().clickable(role = Role.Button, onClick = onClick),
         shape = RoundedCornerShape(14.dp), colors = CardDefaults.cardColors(containerColor = Color.White),
         border = BorderStroke(1.dp, Color(0xFFE2E8F0))
     ) {

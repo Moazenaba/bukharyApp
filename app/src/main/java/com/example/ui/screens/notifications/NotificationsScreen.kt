@@ -1,5 +1,6 @@
 package com.example.ui.screens.notifications
 
+import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -76,7 +77,7 @@ fun NotificationsScreen(
         if (notifications.isEmpty()) item { Text("لا توجد إشعارات حتى الآن", color = TextMuted, modifier = Modifier.padding(20.dp)) }
         items(notifications, key = { it.id }) { n ->
             Card(
-                Modifier.fillMaxWidth().clickable {
+                Modifier.fillMaxWidth().clickable(role = Role.Button) {
                     if (!n.read) onMarkRead(n.id)
                     n.committeeId?.let { id -> if (committees.any { it.id == id }) onOpenCommittee(id) }
                 },

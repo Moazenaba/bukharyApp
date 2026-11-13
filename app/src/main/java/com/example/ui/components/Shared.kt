@@ -1,5 +1,7 @@
 package com.example.ui.components
 
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import com.example.ui.theme.TextMuted
 import android.content.Context
 import android.print.PrintAttributes
@@ -99,7 +101,7 @@ fun ScreenBanner(title: String, subtitle: String, icon: ImageVector, colors: Lis
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(icon, null, tint = Color.White)
             Spacer(Modifier.width(8.dp))
-            Text(title, color = Color.White, fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleMedium)
+            Text(title, color = Color.White, fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleMedium, modifier = Modifier.semantics { heading() })
         }
         Spacer(Modifier.height(4.dp))
         Text(subtitle, color = Color.White.copy(alpha = 0.85f), style = MaterialTheme.typography.bodySmall)

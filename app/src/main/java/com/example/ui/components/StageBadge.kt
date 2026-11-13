@@ -1,5 +1,6 @@
 package com.example.ui.components
 
+import androidx.compose.ui.semantics.Role
 import com.example.ui.theme.TextMuted
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -56,7 +57,7 @@ fun StageBadge(
     val clickableModifier = if (onClick != null) {
         modifier
             .clip(RoundedCornerShape(9999.dp))
-            .clickable(onClick = onClick)
+            .clickable(role = Role.Button, onClick = onClick)
     } else {
         modifier.clip(RoundedCornerShape(9999.dp))
     }

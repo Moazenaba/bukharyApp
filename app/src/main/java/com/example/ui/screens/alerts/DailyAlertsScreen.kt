@@ -241,7 +241,7 @@ fun DailyAlertsScreen(
                         Icon(
                             if (t.completed) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
                             contentDescription = if (t.completed) "إلغاء تحديد «${t.title}» كمنجز" else "تحديد «${t.title}» كمنجز",
-                            tint = if (t.completed) Color(0xFF059669) else TextMuted
+                            tint = if (t.completed) Color(0xFF15803D) else TextMuted
                         )
                     }
                     Spacer(Modifier.width(10.dp))

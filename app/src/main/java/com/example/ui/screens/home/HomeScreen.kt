@@ -1,5 +1,6 @@
 package com.example.ui.screens.home
 
+import androidx.compose.ui.semantics.Role
 import com.example.ui.theme.TextMuted
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
@@ -155,7 +156,7 @@ fun HomeScreen(
                         icon = Icons.Default.Groups,
                         color = Color(0xFF0F766E),
                         bgColor = Color(0xFFF0FDFA),
-                        modifier = Modifier.weight(1f).clickable { onNavigateCommittees("all") }
+                        modifier = Modifier.weight(1f).clickable(role = Role.Button) { onNavigateCommittees("all") }
                     )
                     KpiCard(
                         title = "الامتحان (منتظر/تم)",
@@ -164,7 +165,7 @@ fun HomeScreen(
                         icon = Icons.Default.School,
                         color = Color(0xFF2563EB),
                         bgColor = Color(0xFFEFF6FF),
-                        modifier = Modifier.weight(1f).clickable { onNavigateCommittees("registration") }
+                        modifier = Modifier.weight(1f).clickable(role = Role.Button) { onNavigateCommittees("registration") }
                     )
                 }
                 Spacer(modifier = Modifier.height(10.dp))
@@ -179,7 +180,7 @@ fun HomeScreen(
                         icon = Icons.Default.WorkspacePremium,
                         color = Color(0xFF15803D),
                         bgColor = Color(0xFFF0FDF4),
-                        modifier = Modifier.weight(1f).clickable { onNavigateCommittees("ceremony") }
+                        modifier = Modifier.weight(1f).clickable(role = Role.Button) { onNavigateCommittees("ceremony") }
                     )
                     KpiCard(
                         title = "إجمالي الطلاب",
@@ -188,7 +189,7 @@ fun HomeScreen(
                         icon = Icons.Default.Person,
                         color = Color(0xFFB45309),
                         bgColor = Color(0xFFFFFBEB),
-                        modifier = Modifier.weight(1f).clickable { onNavigateCommittees("all") }
+                        modifier = Modifier.weight(1f).clickable(role = Role.Button) { onNavigateCommittees("all") }
                     )
                 }
             }
@@ -284,7 +285,7 @@ fun HomeScreen(
                         style = MaterialTheme.typography.labelSmall,
                         color = Primary700,
                         fontWeight = FontWeight.Bold,
-                        modifier = Modifier.clickable { onNavigate(AppNavScreen.SCHEDULE) }
+                        modifier = Modifier.clickable(role = Role.Button) { onNavigate(AppNavScreen.SCHEDULE) }
                     )
                 }
 
@@ -435,7 +436,7 @@ fun HeroGreetingCard(
                 ) {
                     Row(
                         modifier = Modifier
-                            .clickable { onViewTracker() }
+                            .clickable(role = Role.Button) { onViewTracker() }
                             .padding(horizontal = 12.dp, vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
@@ -544,7 +545,7 @@ fun QuickActionButton(
     Card(
         modifier = modifier
             .clip(RoundedCornerShape(16.dp))
-            .clickable(onClick = onClick)
+            .clickable(role = Role.Button, onClick = onClick)
             .testTag("btn_quick_action_$title"),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = containerColor),
@@ -611,11 +612,11 @@ fun HomeTaskItem(
             modifier = Modifier.padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(onClick = onToggle) {
+            androidx.compose.material3.IconToggleButton(checked = task.completed, onCheckedChange = { onToggle() }) {
                 Icon(
                     imageVector = if (task.completed) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
-                    contentDescription = "تبديل الإنجاز",
-                    tint = if (task.completed) Color(0xFF16A34A) else TextMuted
+                    contentDescription = if (task.completed) "إلغاء تحديد «${task.title}» كمنجز" else "تحديد «${task.title}» كمنجز",
+                    tint = if (task.completed) Color(0xFF15803D) else TextMuted
                 )
             }
 
@@ -684,7 +685,7 @@ fun CeremonyCard(
         modifier = Modifier
             .width(260.dp)
             .clip(RoundedCornerShape(16.dp))
-            .clickable(onClick = onClick)
+            .clickable(role = Role.Button, onClick = onClick)
             .testTag("ceremony_card_${committee.id}"),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = Color(0xFFF0FDF4)),

@@ -1,5 +1,6 @@
 package com.example.ui.screens.exams
 
+import androidx.compose.ui.semantics.Role
 import com.example.ui.theme.TextMuted
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -335,7 +336,7 @@ fun ExamCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onPreview)
+            .clickable(role = Role.Button, onClick = onPreview)
             .testTag("exam_card_${exam.id}"),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = SurfacePure),
@@ -717,7 +718,7 @@ fun AddExamDialog(
                     shape = RoundedCornerShape(10.dp),
                     color = Color(0xFFEFF6FF),
                     border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFBFDBFE)),
-                    modifier = Modifier.fillMaxWidth().clickable { pickPdf.launch("application/pdf") }
+                    modifier = Modifier.fillMaxWidth().clickable(role = Role.Button) { pickPdf.launch("application/pdf") }
                 ) {
                     Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.PictureAsPdf, contentDescription = null, tint = Color(0xFF2563EB), modifier = Modifier.size(20.dp))

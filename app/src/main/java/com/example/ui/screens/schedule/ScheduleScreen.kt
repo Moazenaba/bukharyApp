@@ -348,14 +348,15 @@ fun ScheduleTaskCard(
             modifier = Modifier.padding(14.dp),
             verticalAlignment = Alignment.Top
         ) {
-            IconButton(
-                onClick = onToggle,
+            androidx.compose.material3.IconToggleButton(
+                checked = task.completed,
+                onCheckedChange = { onToggle() },
                 modifier = Modifier.padding(top = 2.dp)
             ) {
                 Icon(
                     imageVector = if (task.completed) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
-                    contentDescription = "تبديل الإنجاز",
-                    tint = if (task.completed) Color(0xFF16A34A) else TextMuted,
+                    contentDescription = if (task.completed) "إلغاء تحديد «${task.title}» كمنجز" else "تحديد «${task.title}» كمنجز",
+                    tint = if (task.completed) Color(0xFF15803D) else TextMuted,
                     modifier = Modifier.size(24.dp)
                 )
             }

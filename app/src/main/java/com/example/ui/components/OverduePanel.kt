@@ -1,5 +1,6 @@
 package com.example.ui.components
 
+import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -46,7 +47,7 @@ fun OverduePanel(committees: List<Committee>, tasks: List<ScheduleTask>, onOpen:
         Text("⏰ لجان متأخرة (${items.size})", fontWeight = FontWeight.Black, color = Color(0xFF881337))
         items.take(limit).forEach { item ->
             Row(
-                Modifier.fillMaxWidth().background(Color.White, RoundedCornerShape(12.dp)).clickable { onOpen(item.committee.id) }.padding(8.dp),
+                Modifier.fillMaxWidth().background(Color.White, RoundedCornerShape(12.dp)).clickable(role = Role.Button) { onOpen(item.committee.id) }.padding(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Box(Modifier.size(32.dp).background(Color(0xFFE11D48), RoundedCornerShape(8.dp)), contentAlignment = Alignment.Center) {
