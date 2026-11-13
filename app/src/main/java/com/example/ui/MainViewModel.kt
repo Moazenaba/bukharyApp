@@ -259,6 +259,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     @Volatile private var lastRefreshAt = 0L
+    /** Server data fingerprint at the last full refresh; a periodic check that finds it unchanged downloads nothing. */
+    @Volatile private var lastServerVersion: String? = null
 
     /**
      * Keeps the screens current while the app is on screen: called when the app comes back to the
@@ -268,13 +270,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun refreshWhileVisible() {
         if (!_isLoggedIn.value || _isSyncing.value || !_isNetworkAvailable.value) return
         if (System.currentTimeMillis() - lastRefreshAt < 15_000) return
-        viewModelScope.launch { refreshFromServer() }
+        viewModelScope.launch {
+            // A few bytes first; the full lists (megabytes for a large course) only when something changed.
+            val version = OnlineApi.syncVersion()
+            if (version != null && version == lastServerVersion && _unsentCount.value == 0) return@launch
+            refreshFromServer()
+        }
     }
 
     /** Sends queued writes, reloads data and the user's permissions from the server. */
     private suspend fun refreshFromServer(): Boolean = syncMutex.withLock {
         lastRefreshAt = System.currentTimeMillis()
         _isSyncing.value = true
+        // Read before loading, so a change made while loading is picked up by the next check.
+        val versionBefore = OnlineApi.syncVersion()
         try {
             val me = authService.refreshMe()?.also { me ->
                 repository.cacheUser(me)
@@ -288,6 +297,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
             val result = repository.syncWithRemoteApi()
             _lastSyncOk.value = result.online
+            if (result.online) lastServerVersion = versionBefore
             if (result.online) {
                 // Lists that only the management screens use, loaded with the rest like on the web.
                 try { _books.value = OnlineApi.books() } catch (_: Exception) { }
