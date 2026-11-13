@@ -393,7 +393,7 @@ fun ExamCard(
                 }
             }
 
-            // Web: «🔒 مقفول — تُتاح الورقة …» until shortly before the exam.
+            // Web: «مقفول — تُتاح الورقة …» until shortly before the exam.
             ExamLock.text(exam)?.let { (locked, text) ->
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(

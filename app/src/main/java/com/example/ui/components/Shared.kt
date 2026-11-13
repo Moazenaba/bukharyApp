@@ -76,7 +76,7 @@ fun printHtml(context: Context, jobName: String, bodyHtml: String) {
                 val manager = context.getSystemService(Context.PRINT_SERVICE) as PrintManager
                 manager.print(jobName, view.createPrintDocumentAdapter(jobName), PrintAttributes.Builder().build())
             } catch (e: Exception) {
-                android.widget.Toast.makeText(context, "تعذر إنشاء ملف PDF: ${e.message}", android.widget.Toast.LENGTH_LONG).show()
+                com.example.ui.components.UiMessages.show("تعذر إنشاء ملف PDF: ${e.message}")
             } finally {
                 printingViews.remove(view)
             }

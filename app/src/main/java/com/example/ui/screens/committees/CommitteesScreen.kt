@@ -458,7 +458,7 @@ fun CommitteeCard(
                 }
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
-                    text = "📅 ${st.label}",
+                    text = st.label,
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Bold,
                     color = fg,
@@ -482,7 +482,7 @@ fun CommitteeCard(
                             try {
                                 context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:${committee.sheikhPhone}")))
                             } catch (e: ActivityNotFoundException) {
-                                Toast.makeText(context, "لا يوجد تطبيق اتصال على هذا الجهاز", Toast.LENGTH_SHORT).show()
+                                com.example.ui.components.UiMessages.show("لا يوجد تطبيق اتصال على هذا الجهاز")
                             }
                         }) {
                             Icon(
@@ -635,8 +635,8 @@ fun AddCommitteeDialog(
         number = (allCommittees.filter { it.courseId == courseId }.maxOfOrNull { it.committeeNumber } ?: 0) + 1
     }
     val initialStages = listOf(
-        "exam" to "🟦 في انتظار الامتحان", "scoring" to "✅ تم الامتحان", "aggregation" to "🟠 تم التصحيح",
-        "review" to "🔵 تم التجميع", "sheet" to "🟡 تمت المراجعة", "announcement" to "📜 تم الاعتماد", "ceremony" to "🟢 تم الحفل"
+        "exam" to "في انتظار الامتحان", "scoring" to "تم الامتحان", "aggregation" to "تم التصحيح",
+        "review" to "تم التجميع", "sheet" to "تمت المراجعة", "announcement" to "تم الاعتماد", "ceremony" to "تم الحفل"
     )
 
     // Why the save button is off, shown next to it instead of leaving it silently disabled.

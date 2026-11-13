@@ -265,7 +265,7 @@ fun CommitteeDetailModal(
                         androidx.compose.material3.TextButton(
                             onClick = { activeTab = COMMITTEE_DATA_TAB },
                             modifier = Modifier.testTag("btn_edit_committee_data")
-                        ) { Text("✏️ تعديل بيانات اللجنة (الرقم، الاسم، الشيخ، المكان، الكتاب، الطلاب)") }
+                        ) { Text("تعديل بيانات اللجنة (الرقم، الاسم، الشيخ، المكان، الكتاب، الطلاب)") }
                     }
                 }
             }
@@ -284,7 +284,7 @@ fun CommitteeDetailModal(
             ) {
                 listOf(
                     0 to "المراحل التسع 📌",
-                    COMMITTEE_DATA_TAB to "✏️ تعديل بيانات اللجنة",
+                    COMMITTEE_DATA_TAB to "تعديل بيانات اللجنة",
                     1 to "الاستلام والجاهزية 🤝",
                     2 to "التصحيح والتجميع ✏️",
                     5 to "كشف الدرجات 🟣",

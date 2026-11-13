@@ -205,6 +205,11 @@ class MainActivity : ComponentActivity() {
 
                 // The server's reason for a refused save stays on screen until it is read (a toast
                 // vanished in a few seconds, and sat under the keyboard of the form being filled).
+                // Messages from screens that have no view-model go to the same snackbar.
+                LaunchedEffect(Unit) {
+                    com.example.ui.components.UiMessages.messages.collect { viewModel.showMessage(it) }
+                }
+
                 val dialogError by viewModel.dialogError.collectAsStateWithLifecycle()
                 dialogError?.let { message ->
                     androidx.compose.material3.AlertDialog(

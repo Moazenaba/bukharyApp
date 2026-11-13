@@ -227,7 +227,7 @@ fun CeremoniesScreen(
                     }
                     // Full width, never pushed off-screen by the buttons row below.
                     if (Permissions.canOn("committees.update", c.id)) {
-                        OutlinedButton(onClick = { onEditCommittee(c.id) }, modifier = Modifier.fillMaxWidth()) { Text("✏️ تعديل بيانات اللجنة") }
+                        OutlinedButton(onClick = { onEditCommittee(c.id) }, modifier = Modifier.fillMaxWidth()) { Text("تعديل بيانات اللجنة") }
                     }
                     // Opens WhatsApp with the invitation typed in; the user presses send (web: «دعوة على واتساب»).
                     val waInvite = com.example.ui.components.WhatsApp.link(
@@ -240,11 +240,11 @@ fun CeremoniesScreen(
                                 try {
                                     context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(waInvite)))
                                 } catch (e: android.content.ActivityNotFoundException) {
-                                    android.widget.Toast.makeText(context, "لا يوجد واتساب أو متصفح على هذا الجهاز", android.widget.Toast.LENGTH_SHORT).show()
+                                    com.example.ui.components.UiMessages.show("لا يوجد واتساب أو متصفح على هذا الجهاز")
                                 }
                             },
                             modifier = Modifier.fillMaxWidth()
-                        ) { Text("💬 دعوة الشيخ للحفل على واتساب") }
+                        ) { Text("دعوة الشيخ للحفل على واتساب") }
                     }
                     Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         if (canFinalize) {
@@ -394,7 +394,7 @@ private fun CeremoniesExportCard(committees: List<Committee>, tasks: List<Schedu
                             )
                             shareFile(context, pdf, ReportSheets.ceremonyPdfFileName(period, anchor), "application/pdf")
                         } catch (e: Exception) {
-                            android.widget.Toast.makeText(context, "تعذر إنشاء ملف PDF: ${e.message}", android.widget.Toast.LENGTH_LONG).show()
+                            com.example.ui.components.UiMessages.show("تعذر إنشاء ملف PDF: ${e.message}")
                         }
                     },
                     enabled = rows.isNotEmpty(),
@@ -444,7 +444,7 @@ fun CeremonyStatusReportCard(committees: List<Committee>, tasks: List<ScheduleTa
                                 )
                                 shareFile(context, pdf, ReportSheets.statusFileName(status, today), "application/pdf")
                             } catch (e: Exception) {
-                                android.widget.Toast.makeText(context, "تعذر إنشاء ملف PDF: ${e.message}", android.widget.Toast.LENGTH_LONG).show()
+                                com.example.ui.components.UiMessages.show("تعذر إنشاء ملف PDF: ${e.message}")
                             }
                         },
                         enabled = count > 0,
