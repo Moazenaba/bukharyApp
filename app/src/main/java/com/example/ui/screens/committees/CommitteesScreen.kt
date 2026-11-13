@@ -1,5 +1,6 @@
 package com.example.ui.screens.committees
 
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.semantics.Role
 import com.example.ui.theme.TextMuted
 import androidx.compose.material.icons.filled.Close
@@ -129,10 +130,14 @@ fun CommitteesScreen(
     val canAdd = com.example.data.remote.Permissions.can("committees.create")
 
     // Only stages that have committees are offered as filters; keeps the row short and every chip meaningful.
-    val filterTabs = listOf("all" to "الكل (${allCommittees.size})") + OrderedStageKeys.mapNotNull { (key, _) ->
-        val count = allCommittees.count { com.example.ui.components.currentStageKey(it.stages) == key }
-        if (count == 0 && key != selectedStageFilter) null
-        else key to "${StageColorMap[key]?.activeLabel ?: ""} ($count)"
+    val filterTabs = remember(allCommittees, selectedStageFilter) {
+        // One pass to count per stage (this was nine passes, redone on every keystroke of the search box).
+        val perStage = allCommittees.groupingBy { com.example.ui.components.currentStageKey(it.stages) }.eachCount()
+        listOf("all" to "الكل (${allCommittees.size})") + OrderedStageKeys.mapNotNull { (key, _) ->
+            val count = perStage[key] ?: 0
+            if (count == 0 && key != selectedStageFilter) null
+            else key to "${StageColorMap[key]?.activeLabel ?: ""} ($count)"
+        }
     }
 
     Scaffold(
@@ -403,6 +408,8 @@ fun CommitteeCard(
                 Column(Modifier.weight(1f)) {
                     Text(
                         text = committee.committeeName,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = Primary900
@@ -433,6 +440,8 @@ fun CommitteeCard(
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
                     text = committee.competitionBook,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = Primary900

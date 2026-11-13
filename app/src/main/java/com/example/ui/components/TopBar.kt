@@ -1,5 +1,6 @@
 package com.example.ui.components
 
+import androidx.compose.ui.text.style.TextOverflow
 import com.example.ui.theme.TextMuted
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -294,6 +295,8 @@ fun BukhariTopBar(
                             Column(modifier = Modifier.padding(12.dp)) {
                                 Text(
                                     text = user.name,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
                                     fontWeight = FontWeight.Bold,
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = Primary900

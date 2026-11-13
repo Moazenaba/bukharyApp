@@ -1,5 +1,6 @@
 package com.example.ui.screens.schedule
 
+import androidx.compose.ui.text.style.TextOverflow
 import com.example.ui.theme.TextMuted
 import androidx.compose.foundation.selection.selectable
 
@@ -417,6 +418,8 @@ fun ScheduleTaskCard(
 
                 Text(
                     text = task.title,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
                     color = if (task.completed) TextMuted else Primary900

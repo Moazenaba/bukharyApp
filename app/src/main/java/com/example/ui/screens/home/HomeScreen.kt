@@ -1,5 +1,6 @@
 package com.example.ui.screens.home
 
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.semantics.Role
 import com.example.ui.theme.TextMuted
 import androidx.compose.foundation.horizontalScroll
@@ -96,9 +97,9 @@ fun HomeScreen(
 ) {
     val totalCommittees = committees.size
     // Web: committees waiting for their exam or whose exam is done and not yet scored.
-    val activeCommittees = committees.count { com.example.ui.components.currentStageKey(it.stages) in setOf("registration", "exam") }
-    val completedCommittees = committees.count { it.stages.ceremony.completed }
-    val totalStudents = committees.sumOf { it.studentsCount }
+    val activeCommittees = remember(committees) { committees.count { com.example.ui.components.currentStageKey(it.stages) in setOf("registration", "exam") } }
+    val completedCommittees = remember(committees) { committees.count { it.stages.ceremony.completed } }
+    val totalStudents = remember(committees) { committees.sumOf { it.studentsCount } }
 
     val urgentTasks = remember(tasks) {
         tasks.filter { !it.completed }
@@ -651,6 +652,8 @@ fun HomeTaskItem(
 
                 Text(
                     text = task.title,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Bold,
                     color = Primary900

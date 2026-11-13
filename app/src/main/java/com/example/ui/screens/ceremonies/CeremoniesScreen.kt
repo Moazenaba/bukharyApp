@@ -1,5 +1,6 @@
 package com.example.ui.screens.ceremonies
 
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
@@ -197,7 +198,7 @@ fun CeremoniesScreen(
                         Spacer(Modifier.width(8.dp))
                         Column(Modifier.weight(1f)) {
                             Text(c.branch.ifBlank { "—" }, style = MaterialTheme.typography.labelSmall, color = TextMuted)
-                            Text(c.committeeName, fontWeight = FontWeight.Black)
+                            Text(c.committeeName, fontWeight = FontWeight.Black, maxLines = 2, overflow = TextOverflow.Ellipsis)
                         }
                     }
                     Text(

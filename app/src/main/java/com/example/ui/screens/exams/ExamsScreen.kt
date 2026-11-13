@@ -1,5 +1,6 @@
 package com.example.ui.screens.exams
 
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.semantics.Role
 import com.example.ui.theme.TextMuted
 import androidx.compose.ui.text.input.ImeAction
@@ -368,12 +369,16 @@ fun ExamCard(
                     Column {
                         Text(
                             text = exam.title,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold,
                             color = Primary900
                         )
                         Text(
                             text = exam.book,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
                             style = MaterialTheme.typography.bodySmall,
                             color = Color(0xFF0F766E),
                             fontWeight = FontWeight.SemiBold
@@ -504,6 +509,8 @@ fun ExamPreviewDialog(
             Column {
                 Text(
                     text = exam.title,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Black,
                     color = Primary900

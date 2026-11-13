@@ -1,5 +1,6 @@
 package com.example.ui.screens.stats
 
+import androidx.compose.runtime.remember
 import com.example.ui.theme.TextMuted
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
@@ -294,10 +295,13 @@ private fun WebStatsSections(committees: List<Committee>) {
         rate >= 25 -> "مستوى التقدم: مقبول - يتطلب تسريع الوتيرة"
         else -> "مستوى التقدم: في البداية - بانتظار الاعتماد الميداني"
     }
-    val questions = committees.sumOf { it.scoringDetails.questions.size }
-    val scored = committees.sumOf { c -> c.scoringDetails.questions.count { it.completed } }
-    val byStage = OrderedStageKeys.map { (k, n) -> n to committees.count { com.example.ui.components.currentStageKey(it.stages) == k } }
-    val byBook = committees.groupingBy { it.competitionBook.trim().ifBlank { "متون غير مصنفة" } }.eachCount().entries.sortedByDescending { it.value }
+    val questions = remember(committees) { committees.sumOf { it.scoringDetails.questions.size } }
+    val scored = remember(committees) { committees.sumOf { c -> c.scoringDetails.questions.count { it.completed } } }
+    val byStage = remember(committees) {
+        val perStage = committees.groupingBy { com.example.ui.components.currentStageKey(it.stages) }.eachCount()
+        OrderedStageKeys.map { (k, n) -> n to (perStage[k] ?: 0) }
+    }
+    val byBook = remember(committees) { committees.groupingBy { it.competitionBook.trim().ifBlank { "متون غير مصنفة" } }.eachCount().entries.sortedByDescending { it.value } }
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = SurfacePure)) {

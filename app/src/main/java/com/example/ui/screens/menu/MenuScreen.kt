@@ -1,5 +1,6 @@
 package com.example.ui.screens.menu
 
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -115,7 +116,7 @@ fun MenuScreen(
         item {
             Card(colors = CardDefaults.cardColors(containerColor = Primary800), shape = RoundedCornerShape(18.dp)) {
                 Column(Modifier.padding(16.dp).fillMaxWidth()) {
-                    Text(user.name, color = Color.White, fontWeight = FontWeight.Black)
+                    Text(user.name, color = Color.White, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text("${user.role.emoji} ${user.role.titleAr}", color = Color(0xFFCCFBF1), style = MaterialTheme.typography.bodySmall)
                     Text("📞 ${user.phone}", color = Color(0xFFCCFBF1), style = MaterialTheme.typography.labelSmall)
                 }

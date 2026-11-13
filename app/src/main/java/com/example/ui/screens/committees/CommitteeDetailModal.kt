@@ -1,5 +1,6 @@
 package com.example.ui.screens.committees
 
+import androidx.compose.ui.text.style.TextOverflow
 import com.example.ui.theme.TextMuted
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -196,6 +197,8 @@ fun CommitteeDetailModal(
                     Column {
                         Text(
                             text = committee.committeeName,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = Primary900
