@@ -35,12 +35,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.core.content.FileProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.launch
 import com.example.ui.AppNavScreen
 import com.example.ui.MainViewModel
 import com.example.ui.components.BukhariBottomNavBar
 import com.example.ui.components.BukhariTopBar
+import com.example.ui.screens.committees.COMMITTEE_DATA_TAB
 import com.example.ui.screens.committees.CommitteeDetailModal
 import com.example.ui.screens.committees.CommitteesScreen
 import com.example.ui.screens.course_tracker.SummerCourseTrackerScreen
@@ -96,6 +99,16 @@ class MainActivity : ComponentActivity() {
         com.example.update.UpdateWorker.schedule(this)
         val openNotifications = intent?.getBooleanExtra(com.example.push.PushNotifications.EXTRA_OPEN_NOTIFICATIONS, false) == true
 
+        // While the app is on screen it refreshes on return and every minute (data entered on the web
+        // or another phone appears without restarting the app).
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                while (true) {
+                    viewModel.refreshWhileVisible()
+                    kotlinx.coroutines.delay(60_000)
+                }
+            }
+        }
         setContent {
             BukhariTheme(lightBackgroundBehindStatusBar = !viewModel.isLoggedIn.collectAsStateWithLifecycle().value) {
                 val isLoggedIn by viewModel.isLoggedIn.collectAsStateWithLifecycle()
@@ -104,6 +117,7 @@ class MainActivity : ComponentActivity() {
                 val currentUser by viewModel.currentUser.collectAsStateWithLifecycle()
                 val currentScreen by viewModel.currentNavScreen.collectAsStateWithLifecycle()
                 val selectedCommitteeId by viewModel.selectedCommitteeIdForDetail.collectAsStateWithLifecycle()
+                val detailOpensOnEdit by viewModel.detailOpensOnEdit.collectAsStateWithLifecycle()
 
                 val courses by viewModel.courses.collectAsStateWithLifecycle()
                 val selectedCourseId by viewModel.selectedCourseId.collectAsStateWithLifecycle()
@@ -405,6 +419,7 @@ class MainActivity : ComponentActivity() {
                                         onSearchChange = { viewModel.setSearchQuery(it) },
                                         onStageFilterChange = { viewModel.setSelectedStageFilter(it) },
                                         onOpenCommitteeDetail = { viewModel.openCommitteeDetail(it) },
+                                        onEditCommittee = { viewModel.openCommitteeDetail(it, edit = true) },
                                         onSaveCommittee = { viewModel.saveCommittee(it) },
                                         onDeleteCommittee = { viewModel.deleteCommittee(it) },
                                         selectedCourseId = selectedCourseId,
@@ -545,6 +560,7 @@ class MainActivity : ComponentActivity() {
                                     key(selectedCommittee.id) { CommitteeDetailModal(
                                         committee = selectedCommittee,
                                         currentUser = currentUser,
+                                        initialTab = if (detailOpensOnEdit) COMMITTEE_DATA_TAB else 0,
                                         onClose = { viewModel.closeCommitteeDetail() },
                                         onToggleStage = { stageKey, curr -> viewModel.toggleStage(selectedCommittee.id, stageKey, curr) },
                                         onAssistantReception = { phone, cancel -> viewModel.recordAssistantReception(selectedCommittee.id, phone, cancel) },

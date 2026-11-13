@@ -83,6 +83,8 @@ import com.example.ui.theme.SurfacePure
 fun CommitteeDetailModal(
     committee: Committee,
     currentUser: AppUser?,
+    /** Tab shown first; [COMMITTEE_DATA_TAB] when opened from an «edit» button. */
+    initialTab: Int = 0,
     onClose: () -> Unit,
     onToggleStage: (stageKey: String, currentStatus: Boolean) -> Unit,
     /** The server records who received/approved from the logged-in session; `cancel`/`revoke` undo it. */
@@ -104,7 +106,7 @@ fun CommitteeDetailModal(
     onSaveStaff: (List<String>) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    var activeTab by remember { mutableIntStateOf(0) } // 0: Stepper, 1: Assistant & Exam, 2: Scoring & Aggregation, 3: Ceremony
+    var activeTab by remember { mutableIntStateOf(initialTab) } // 0: Stepper, 1: Assistant & Exam, 2: Scoring & Aggregation, 3: Ceremony
 
     // Assistant handover state
     var asstPhone by remember { mutableStateOf(committee.receivedByAssistant?.phone ?: currentUser?.phone ?: "") }
@@ -248,10 +250,16 @@ fun CommitteeDetailModal(
                         )
                     }
                     Text(
-                        text = "المكان: ${committee.sheikhCountry} • ${if (committee.isWomenCommittee) "مصلى الأخوات" else "مصلى الرجال"}",
+                        text = "المكان: ${committee.sheikhCountry.ifBlank { committee.branch.ifBlank { "—" } }} • ${if (committee.isWomenCommittee) "مصلى الأخوات" else "مصلى الرجال"}",
                         style = MaterialTheme.typography.bodySmall,
                         color = Color(0xFF64748B)
                     )
+                    if (inScope && Permissions.can("committees.update")) {
+                        androidx.compose.material3.TextButton(
+                            onClick = { activeTab = COMMITTEE_DATA_TAB },
+                            modifier = Modifier.testTag("btn_edit_committee_data")
+                        ) { Text("✏️ تعديل بيانات اللجنة (الرقم، الاسم، الشيخ، المكان، الكتاب، الطلاب)") }
+                    }
                 }
             }
 
@@ -269,11 +277,11 @@ fun CommitteeDetailModal(
             ) {
                 listOf(
                     0 to "المراحل التسع 📌",
+                    COMMITTEE_DATA_TAB to "✏️ تعديل بيانات اللجنة",
                     1 to "الاستلام والجاهزية 🤝",
                     2 to "التصحيح والتجميع ✏️",
                     5 to "كشف الدرجات 🟣",
-                    3 to "حفل التكريم 🎓",
-                    4 to "بيانات اللجنة ⚙️"
+                    3 to "حفل التكريم 🎓"
                 ).forEach { (idx, title) ->
                     val isSel = activeTab == idx
                     Box(
@@ -298,7 +306,7 @@ fun CommitteeDetailModal(
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            if (activeTab == 4) {
+            if (activeTab == COMMITTEE_DATA_TAB) {
                 CommitteeBaseDataTab(
                     committee = committee,
                     courses = courses,
@@ -779,3 +787,6 @@ fun CommitteeDetailModal(
         }
     }
 }
+
+/** The «تعديل بيانات اللجنة» tab of the committee details. */
+const val COMMITTEE_DATA_TAB = 4
