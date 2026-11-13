@@ -113,6 +113,7 @@ class MainActivity : ComponentActivity() {
         // The look is decided before the first frame, so a dark phone never flashes the light screens.
         val uiPrefs = getSharedPreferences("bukhari_ui", MODE_PRIVATE)
         val themeMode = androidx.compose.runtime.mutableStateOf(com.example.ui.theme.ThemeMode.fromKey(uiPrefs.getString("theme_mode", null)))
+        val shellPref = androidx.compose.runtime.mutableStateOf(com.example.domain.ShellPref.fromKey(uiPrefs.getString("shell_pref", null)))
         fun phoneIsDark() =
             (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES
         com.example.ui.theme.ThemeState.dark = com.example.ui.theme.ThemeMode.isDark(themeMode.value, phoneIsDark())
@@ -140,6 +141,7 @@ class MainActivity : ComponentActivity() {
                 val logoutConfirmation by viewModel.logoutConfirmation.collectAsStateWithLifecycle()
                 val foreignUnsentWork by viewModel.foreignUnsentWork.collectAsStateWithLifecycle()
                 val assignableUsers by viewModel.assignableUsers.collectAsStateWithLifecycle()
+                val useSimple = currentUser?.let { com.example.domain.RoleShell.useSimple(it.role, shellPref.value) } == true
                 var showChangePassword by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(false) }
                 val sheetRows by viewModel.sheetRows.collectAsStateWithLifecycle()
                 val databaseStatus by viewModel.databaseStatus.collectAsStateWithLifecycle()
@@ -301,10 +303,37 @@ class MainActivity : ComponentActivity() {
                     else viewModel.navigateBack()
                 }
 
+                // The existing full committee form, reused by both looks.
+                val committeeModal: @Composable (com.example.data.model.Committee, Int, () -> Unit) -> Unit = { c, tab, close ->
+                                    // Fresh form state for each committee (no values carried over from the previous one).
+                                    key(c.id) { CommitteeDetailModal(
+                                        committee = c,
+                                        currentUser = currentUser,
+                                        initialTab = tab,
+                                        onClose = close,
+                                        onToggleStage = { stageKey, curr -> viewModel.toggleStage(c.id, stageKey, curr) },
+                                        onAssistantReception = { phone, cancel -> viewModel.recordAssistantReception(c.id, phone, cancel) },
+                                        onApproveExam = { revoke -> viewModel.approveExamReadiness(c.id, revoke) },
+                                        onUpdateQuestion = { qId, done -> viewModel.updateQuestion(c.id, qId, done) },
+                                        onUpdateScoring = { viewModel.updateScoring(c.id, it) },
+                                        onUpdateAggregation = { viewModel.updateAggregation(c.id, it) },
+                                        onUpdateCeremony = { viewModel.updateCeremony(c.id, it) },
+                                        courses = courses,
+                                        onSaveBase = { viewModel.saveCommittee(it) },
+                                        onDelete = { viewModel.deleteCommittee(c.id) },
+                                        onUpdateQuestionDetails = { qId, done, scorers, score, notes -> viewModel.updateQuestionDetails(c.id, qId, done, scorers, score, notes) },
+                                        onSheetImported = { notes, count -> viewModel.recordSheetImport(c, notes, count) },
+                                        onSaveExcelUrl = { url -> viewModel.saveExcelUrl(c, url) },
+                                        staffCandidates = viewModel.ceremonyCandidates.collectAsStateWithLifecycle().value,
+                                        onLoadStaffCandidates = { viewModel.loadCeremonyCandidates() },
+                                        onSaveStaff = { ids -> viewModel.saveAssignments(mapOf(c.id to ids), emptyMap(), "تم تحديث شيوخ اللجنة ✓") }
+                                    ) }
+                }
+
                 // One Scaffold for every state, so messages (e.g. login errors) are always visible.
                 Scaffold(
                     topBar = {
-                        if (isLoggedIn) {
+                        if (isLoggedIn && !useSimple) {
                             BukhariTopBar(
                                 currentUser = currentUser,
                                 notifications = notifications,
@@ -323,7 +352,7 @@ class MainActivity : ComponentActivity() {
                         }
                     },
                     bottomBar = {
-                        if (isLoggedIn && !isWide) {
+                        if (isLoggedIn && !isWide && !useSimple) {
                             BukhariBottomNavBar(
                                 currentUser = currentUser,
                                 currentScreen = currentScreen,
@@ -375,7 +404,49 @@ class MainActivity : ComponentActivity() {
                             modifier = Modifier.padding(innerPadding)
                         )
 
-                        else -> Row(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+                        else -> if (useSimple && currentUser != null) {
+                            com.example.ui.simple.SimpleShell(
+                                user = currentUser!!,
+                                committees = committees,
+                                tasks = tasks,
+                                notifications = notifications,
+                                selectedCommitteeId = selectedCommitteeId,
+                                candidates = viewModel.ceremonyCandidates.collectAsStateWithLifecycle().value,
+                                isOnline = isNetworkAvailable && lastSyncOk,
+                                themeMode = themeMode.value,
+                                onThemeMode = { chosen ->
+                                    themeMode.value = chosen
+                                    uiPrefs.edit().putString("theme_mode", chosen.key).apply()
+                                    com.example.ui.theme.ThemeState.dark = com.example.ui.theme.ThemeMode.isDark(chosen, phoneIsDark())
+                                },
+                                onOpenCommittee = { viewModel.openCommitteeDetail(it) },
+                                onCloseCommittee = { viewModel.closeCommitteeDetail() },
+                                onToggleTask = { viewModel.toggleTask(it) },
+                                onOneTap = { c, step ->
+                                    when (step.kind) {
+                                        com.example.domain.StepKind.RECEIVE -> viewModel.recordAssistantReception(c.id, currentUser?.phone.orEmpty(), false)
+                                        com.example.domain.StepKind.EXAM_READY -> viewModel.approveExamReadiness(c.id, false)
+                                        else -> step.stageKey?.let { viewModel.toggleStage(c.id, it, false) }
+                                    }
+                                },
+                                onSaveStaff = { c, ids -> viewModel.saveAssignments(mapOf(c.id to ids), emptyMap(), "تم تحديث شيوخ اللجنة ✓") },
+                                onLoadCandidates = { viewModel.loadCeremonyCandidates() },
+                                onOpenNotification = { n ->
+                                    viewModel.markNotificationRead(n.id)
+                                    n.committeeId?.let { viewModel.openCommitteeDetail(it) }
+                                },
+                                onMarkAllRead = { viewModel.markAllNotificationsRead() },
+                                onSync = { viewModel.syncNow() },
+                                onChangePassword = { showChangePassword = true },
+                                onLogout = { viewModel.requestLogout() },
+                                onFullView = {
+                                    shellPref.value = com.example.domain.ShellPref.FULL
+                                    uiPrefs.edit().putString("shell_pref", com.example.domain.ShellPref.FULL.key).apply()
+                                },
+                                legacyForm = { c, tab, close -> committeeModal(c, tab, close) },
+                                modifier = Modifier.padding(innerPadding)
+                            )
+                        } else Row(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
                             if (isWide) {
                                 BukhariNavigationRail(
                                     currentUser = currentUser,
@@ -583,29 +654,7 @@ class MainActivity : ComponentActivity() {
 
                             selectedCommitteeId?.let { commId ->
                                 committees.find { it.id == commId }?.let { selectedCommittee ->
-                                    // Fresh form state for each committee (no values carried over from the previous one).
-                                    key(selectedCommittee.id) { CommitteeDetailModal(
-                                        committee = selectedCommittee,
-                                        currentUser = currentUser,
-                                        initialTab = if (detailOpensOnEdit) COMMITTEE_DATA_TAB else 0,
-                                        onClose = { viewModel.closeCommitteeDetail() },
-                                        onToggleStage = { stageKey, curr -> viewModel.toggleStage(selectedCommittee.id, stageKey, curr) },
-                                        onAssistantReception = { phone, cancel -> viewModel.recordAssistantReception(selectedCommittee.id, phone, cancel) },
-                                        onApproveExam = { revoke -> viewModel.approveExamReadiness(selectedCommittee.id, revoke) },
-                                        onUpdateQuestion = { qId, done -> viewModel.updateQuestion(selectedCommittee.id, qId, done) },
-                                        onUpdateScoring = { viewModel.updateScoring(selectedCommittee.id, it) },
-                                        onUpdateAggregation = { viewModel.updateAggregation(selectedCommittee.id, it) },
-                                        onUpdateCeremony = { viewModel.updateCeremony(selectedCommittee.id, it) },
-                                        courses = courses,
-                                        onSaveBase = { viewModel.saveCommittee(it) },
-                                        onDelete = { viewModel.deleteCommittee(selectedCommittee.id) },
-                                        onUpdateQuestionDetails = { qId, done, scorers, score, notes -> viewModel.updateQuestionDetails(selectedCommittee.id, qId, done, scorers, score, notes) },
-                                        onSheetImported = { notes, count -> viewModel.recordSheetImport(selectedCommittee, notes, count) },
-                                        onSaveExcelUrl = { url -> viewModel.saveExcelUrl(selectedCommittee, url) },
-                                        staffCandidates = viewModel.ceremonyCandidates.collectAsStateWithLifecycle().value,
-                                        onLoadStaffCandidates = { viewModel.loadCeremonyCandidates() },
-                                        onSaveStaff = { ids -> viewModel.saveAssignments(mapOf(selectedCommittee.id to ids), emptyMap(), "تم تحديث شيوخ اللجنة ✓") }
-                                    ) }
+                                    committeeModal(selectedCommittee, if (detailOpensOnEdit) COMMITTEE_DATA_TAB else 0) { viewModel.closeCommitteeDetail() }
                                 }
                             }
                             }
