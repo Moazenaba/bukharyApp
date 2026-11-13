@@ -118,5 +118,14 @@ object Migrations {
         }
     }
 
-    val ALL = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+    /** The committee's exam day and when each exam paper opens (server migration 020). */
+    val MIGRATION_6_7 = object : Migration(6, 7) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE `committees` ADD COLUMN `examDate` TEXT")
+            db.execSQL("ALTER TABLE `exams` ADD COLUMN `opensAt` TEXT")
+            db.execSQL("ALTER TABLE `exams` ADD COLUMN `lockedUntil` TEXT")
+        }
+    }
+
+    val ALL = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
 }

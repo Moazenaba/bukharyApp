@@ -55,21 +55,6 @@ data class StagesMap(
         }
     }
 
-    fun getCurrentActiveStage(): String {
-        val keys = listOf(
-            "ceremony", "announcement", "accreditation", "sheet",
-            "review", "aggregation", "scoring", "exam", "registration"
-        )
-        // Find the latest completed stage or the next stage to complete
-        for (i in keys.indices.reversed()) {
-            val key = keys[i]
-            if (!getStage(key).completed) {
-                return key
-            }
-        }
-        return "ceremony"
-    }
-
     fun getCompletedCount(): Int {
         var count = 0
         if (registration.completed) count++
@@ -186,6 +171,8 @@ data class Committee(
     val sheikhCountry: String = "",
     val studentsCount: Int = 0,
     val isWomenCommittee: Boolean = false,
+    /** The committee's exam day (YYYY-MM-DD). null = not set; "" sent on save clears it. */
+    val examDate: String? = null,
     val stages: StagesMap = StagesMap(),
     val scoringDetails: ScoringDetails = ScoringDetails(),
     val aggregationDetails: AggregationDetails = AggregationDetails(),

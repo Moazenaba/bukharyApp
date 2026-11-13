@@ -126,7 +126,7 @@ fun CommitteesScreen(
     val filterTabs = listOf("all" to "الكل (${allCommittees.size})") + OrderedStageKeys.mapNotNull { (key, _) ->
         val count = allCommittees.count { com.example.ui.components.currentStageKey(it.stages) == key }
         if (count == 0 && key != selectedStageFilter) null
-        else key to "${StageColorMap[key]?.name ?: ""} ($count)"
+        else key to "${StageColorMap[key]?.activeLabel ?: ""} ($count)"
     }
 
     Scaffold(
@@ -361,11 +361,11 @@ fun CommitteeCard(
     onApproveReadiness: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
-    val activeStageKey = committee.stages.getCurrentActiveStage()
+    val activeStageKey = com.example.ui.components.currentStageKey(committee.stages)
     var confirmDelete by remember { mutableStateOf(false) }
     val doneCount = OrderedStageKeys.count { (key, _) -> committee.stages.getStage(key).completed }
     val totalStages = OrderedStageKeys.size
-    val activeName = StageColorMap[activeStageKey]?.name ?: ""
+    val activeName = StageColorMap[activeStageKey]?.activeLabel ?: ""
 
     Card(
         modifier = Modifier
@@ -430,6 +430,24 @@ fun CommitteeCard(
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = Primary900
+                )
+            }
+
+            // Web: «الامتحان النهارده» / «بكرة» / «فات ميعاده» while the exam is not recorded.
+            com.example.ui.components.ExamDates.status(committee)?.let { st ->
+                val (bg, fg) = when (st.tone) {
+                    com.example.ui.components.ExamDates.Tone.LATE -> Color(0xFFFFF1F2) to Color(0xFF9F1239)
+                    com.example.ui.components.ExamDates.Tone.TODAY -> Color(0xFFFFFBEB) to Color(0xFF92400E)
+                    com.example.ui.components.ExamDates.Tone.SOON -> Color(0xFFF0F9FF) to Color(0xFF075985)
+                    com.example.ui.components.ExamDates.Tone.LATER -> Color(0xFFF8FAFC) to Color(0xFF334155)
+                }
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = "📅 ${st.label}",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = fg,
+                    modifier = Modifier.background(bg, RoundedCornerShape(8.dp)).padding(horizontal = 8.dp, vertical = 4.dp)
                 )
             }
 
@@ -585,6 +603,7 @@ fun AddCommitteeDialog(
     var studentsCount by remember { mutableStateOf("") }
     var questionsCount by remember { mutableIntStateOf(5) }
     var isWomen by remember { mutableStateOf(false) }
+    var examDate by remember { mutableStateOf("") }
     var notes by remember { mutableStateOf("") }
     var members by remember { mutableStateOf(listOf("")) }
     var initialStage by remember { mutableStateOf("exam") }
@@ -600,8 +619,8 @@ fun AddCommitteeDialog(
         number = (allCommittees.filter { it.courseId == courseId }.maxOfOrNull { it.committeeNumber } ?: 0) + 1
     }
     val initialStages = listOf(
-        "exam" to "🟦 في انتظار الامتحان", "scoring" to "✅ تم الامتحان (في التصحيح)", "aggregation" to "🔵 في التجميع",
-        "sheet" to "🟣 كتابة الكشف", "review" to "🟡 في المراجعة", "announcement" to "📢 إعلان النتيجة", "ceremony" to "🟢 تم الحفل"
+        "exam" to "🟦 في انتظار الامتحان", "scoring" to "✅ تم الامتحان", "aggregation" to "🟠 تم التصحيح",
+        "review" to "🔵 تم التجميع", "sheet" to "🟡 تمت المراجعة", "announcement" to "📜 تم الاعتماد", "ceremony" to "🟢 تم الحفل"
     )
 
     AlertDialog(
@@ -640,6 +659,7 @@ fun AddCommitteeDialog(
                     )
                     OutlinedTextField(name, { name = it }, label = { Text("اسم اللجنة *") }, singleLine = true, modifier = Modifier.weight(2f))
                 }
+                com.example.ui.components.DateField(examDate, { examDate = it }, "ميعاد الامتحان (اختياري)", allowClear = true)
                 Text("المرحلة الحالية للجنة", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
                 Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     initialStages.forEach { (k, l) -> FilterChip(selected = initialStage == k, onClick = { initialStage = k }, label = { Text(l) }) }
@@ -667,6 +687,9 @@ fun AddCommitteeDialog(
                     }
                 }
                 TextButton(onClick = { members = members + "" }) { Text("+ إضافة عضو") }
+                com.example.ui.components.NameSuggestions("اختيار من قائمة المراقبين", com.example.data.remote.AppSettings.current.observers, members) { n ->
+                    members = members.filter { it.isNotBlank() } + n
+                }
                 Row(
                     modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(Color(0xFFF1F5F9)).clickable { isWomen = !isWomen }.padding(10.dp),
                     verticalAlignment = Alignment.CenterVertically
@@ -705,6 +728,7 @@ fun AddCommitteeDialog(
                         sheikhCountry = sheikhCountry.trim(),
                         studentsCount = studentsCount.toIntOrNull() ?: 0,
                         isWomenCommittee = isWomen,
+                        examDate = examDate.ifBlank { null },
                         courseId = courseId,
                         courseName = activeCourses.find { it.id == courseId }?.name ?: "",
                         stages = stages,

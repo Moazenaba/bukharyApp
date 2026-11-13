@@ -228,6 +228,23 @@ fun CeremoniesScreen(
                     if (Permissions.canOn("committees.update", c.id)) {
                         OutlinedButton(onClick = { onEditCommittee(c.id) }, modifier = Modifier.fillMaxWidth()) { Text("✏️ تعديل بيانات اللجنة") }
                     }
+                    // Opens WhatsApp with the invitation typed in; the user presses send (web: «دعوة على واتساب»).
+                    val waInvite = com.example.ui.components.WhatsApp.link(
+                        c.sheikhPhone,
+                        com.example.ui.components.WhatsApp.ceremonyInvitation(c, task, c.sheikhName.takeIf { it.isNotBlank() }?.let { "الشيخ $it" })
+                    )
+                    if (waInvite != null && !c.stages.ceremony.completed) {
+                        OutlinedButton(
+                            onClick = {
+                                try {
+                                    context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(waInvite)))
+                                } catch (e: android.content.ActivityNotFoundException) {
+                                    android.widget.Toast.makeText(context, "لا يوجد واتساب أو متصفح على هذا الجهاز", android.widget.Toast.LENGTH_SHORT).show()
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) { Text("💬 دعوة الشيخ للحفل على واتساب") }
+                    }
                     Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         if (canFinalize) {
                             OutlinedButton(onClick = { scheduling = c }) { Text(if (date.isNotBlank()) "تعديل الميعاد واليوم" else "جدولة الميعاد واليوم") }

@@ -383,6 +383,20 @@ fun ExamCard(
                 }
             }
 
+            // Web: «🔒 مقفول — تُتاح الورقة …» until shortly before the exam.
+            ExamLock.text(exam)?.let { (locked, text) ->
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = text,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = if (locked) Color(0xFF92400E) else Color(0xFF475569),
+                    modifier = Modifier.clip(RoundedCornerShape(8.dp))
+                        .background(if (locked) Color(0xFFFFFBEB) else Color(0xFFF8FAFC))
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                )
+            }
+
             Spacer(modifier = Modifier.height(10.dp))
 
             // Badges row

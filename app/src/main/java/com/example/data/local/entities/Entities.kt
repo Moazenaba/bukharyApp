@@ -90,7 +90,9 @@ data class CommitteeEntity(
     val createdAtTime: String = "",
     val updatedAt: String? = null,
     /** Committee heads and sheikhs on the committee (from the server, read-only here). */
-    val staff: List<CommitteeStaff> = emptyList()
+    val staff: List<CommitteeStaff> = emptyList(),
+    /** Exam day (YYYY-MM-DD); "" clears it on the server, null leaves it as it is. */
+    val examDate: String? = null
 ) {
     fun toDomain() = Committee(
         id = id,
@@ -108,6 +110,7 @@ data class CommitteeEntity(
         sheikhCountry = sheikhCountry,
         studentsCount = studentsCount,
         isWomenCommittee = isWomenCommittee,
+        examDate = examDate?.ifBlank { null },
         stages = stages,
         scoringDetails = scoringDetails,
         aggregationDetails = aggregationDetails,
@@ -137,6 +140,7 @@ data class CommitteeEntity(
             sheikhCountry = model.sheikhCountry,
             studentsCount = model.studentsCount,
             isWomenCommittee = model.isWomenCommittee,
+            examDate = model.examDate,
             stages = model.stages,
             scoringDetails = model.scoringDetails,
             aggregationDetails = model.aggregationDetails,
@@ -234,7 +238,9 @@ data class ExamEntity(
     val hasFile: Boolean = false,
     val uploadedAt: String = "",
     val sampleQuestions: List<String> = emptyList(),
-    val notes: String = ""
+    val notes: String = "",
+    val opensAt: String? = null,
+    val lockedUntil: String? = null
 ) {
     fun toDomain() = Exam(
         id = id,
@@ -249,7 +255,9 @@ data class ExamEntity(
         hasFile = hasFile,
         uploadedAt = uploadedAt,
         sampleQuestions = sampleQuestions,
-        notes = notes
+        notes = notes,
+        opensAt = opensAt,
+        lockedUntil = lockedUntil
     )
 
     companion object {
@@ -266,7 +274,9 @@ data class ExamEntity(
             hasFile = model.hasFile,
             uploadedAt = model.uploadedAt,
             sampleQuestions = model.sampleQuestions,
-            notes = model.notes
+            notes = model.notes,
+            opensAt = model.opensAt,
+            lockedUntil = model.lockedUntil
         )
     }
 }

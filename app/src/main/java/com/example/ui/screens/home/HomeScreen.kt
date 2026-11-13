@@ -93,8 +93,8 @@ fun HomeScreen(
     modifier: Modifier = Modifier
 ) {
     val totalCommittees = committees.size
-    // Web: committees whose current stage is the exam or scoring.
-    val activeCommittees = committees.count { com.example.ui.components.currentStageKey(it.stages) in setOf("exam", "scoring") }
+    // Web: committees waiting for their exam or whose exam is done and not yet scored.
+    val activeCommittees = committees.count { com.example.ui.components.currentStageKey(it.stages) in setOf("registration", "exam") }
     val completedCommittees = committees.count { it.stages.ceremony.completed }
     val totalStudents = committees.sumOf { it.studentsCount }
 
@@ -122,6 +122,7 @@ fun HomeScreen(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item { myCeremonies() }
+        item { com.example.ui.components.OverduePanel(committees, tasks, onOpenCommitteeDetail) }
         item {
             Spacer(modifier = Modifier.height(6.dp))
             // Hero Greeting Card
@@ -156,13 +157,13 @@ fun HomeScreen(
                         modifier = Modifier.weight(1f).clickable { onNavigateCommittees("all") }
                     )
                     KpiCard(
-                        title = "قيد الاختبار/التصحيح",
+                        title = "الامتحان (منتظر/تم)",
                         value = "$activeCommittees",
                         sub = "لجنة نشطة",
                         icon = Icons.Default.School,
                         color = Color(0xFF2563EB),
                         bgColor = Color(0xFFEFF6FF),
-                        modifier = Modifier.weight(1f).clickable { onNavigateCommittees("exam") }
+                        modifier = Modifier.weight(1f).clickable { onNavigateCommittees("registration") }
                     )
                 }
                 Spacer(modifier = Modifier.height(10.dp))

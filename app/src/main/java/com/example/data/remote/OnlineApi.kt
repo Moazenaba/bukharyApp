@@ -64,6 +64,14 @@ object OnlineApi {
         call("DELETE", "api/courses/${enc(id)}" + if (deleteSheetRows) "?deleteSheetRows=true" else "")
     }
 
+    // ---------------------------------------------------------------- settings
+
+    /** What admins set for everyone on the website («إعدادات النظام»). */
+    suspend fun settings(): AppSettings {
+        val raw = mapAdapter.fromJson(call("GET", "api/settings"))?.get("settings") as? Map<*, *> ?: return AppSettings()
+        return AppSettings.from(raw)
+    }
+
     // ---------------------------------------------------------------- books
 
     suspend fun books(): List<BookDto> = get("api/books", "books", BookDto::class.java)

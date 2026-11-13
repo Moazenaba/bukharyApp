@@ -72,6 +72,7 @@ fun CommitteeBaseDataTab(
     var sheikhCountry by remember { mutableStateOf(committee.sheikhCountry) }
     var students by remember { mutableStateOf(committee.studentsCount.toString()) }
     var isWomen by remember { mutableStateOf(committee.isWomenCommittee) }
+    var examDate by remember { mutableStateOf(committee.examDate.orEmpty()) }
     var courseId by remember { mutableStateOf(committee.courseId.ifBlank { courses.find { it.isDefault }?.id ?: "" }) }
     var members by remember { mutableStateOf(committee.members) }
     var newMember by remember { mutableStateOf("") }
@@ -99,6 +100,8 @@ fun CommitteeBaseDataTab(
                 students, { students = it.filter(Char::isDigit) }, label = { Text("عدد الطلاب") }, enabled = canEditBase, singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth()
             )
+            if (canEditBase) com.example.ui.components.DateField(examDate, { examDate = it }, "ميعاد الامتحان", allowClear = true)
+            else OutlinedTextField(examDate.ifBlank { "لم يُحدد" }, {}, label = { Text("ميعاد الامتحان") }, enabled = false, singleLine = true, modifier = Modifier.fillMaxWidth())
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("لجنة نسائية 🧕", modifier = Modifier.weight(1f))
                 Switch(isWomen, { isWomen = it }, enabled = canEditBase)
@@ -121,6 +124,9 @@ fun CommitteeBaseDataTab(
                     newMember = ""
                 }) { Text("إضافة") }
             }
+            if (canEditBase) com.example.ui.components.NameSuggestions("اختيار من قائمة المراقبين", com.example.data.remote.AppSettings.current.observers, members) { n ->
+                members = members + n
+            }
             OutlinedTextField(notes, { notes = it }, label = { Text("الملاحظات العامة") }, enabled = canEditBase, minLines = 3, modifier = Modifier.fillMaxWidth())
             if (canEditBase) {
                 Button(
@@ -132,6 +138,8 @@ fun CommitteeBaseDataTab(
                                 competitionBook = book.trim(), branch = branch.trim(), associationName = association.trim(),
                                 sheikhName = sheikhName.trim(), sheikhPhone = sheikhPhone.trim(), sheikhCountry = sheikhCountry.trim(),
                                 studentsCount = students.toIntOrNull() ?: 0, isWomenCommittee = isWomen,
+                                // "" clears the date on the server.
+                                examDate = examDate.trim(),
                                 courseId = courseId, courseName = courses.find { it.id == courseId }?.name ?: committee.courseName,
                                 members = members.map { it.trim() }.filter { it.isNotEmpty() }, generalNotes = notes
                             )

@@ -518,7 +518,8 @@ class MainActivity : ComponentActivity() {
                                         onDeleteTask = { viewModel.deleteTask(it) },
                                         onScheduleCeremony = { c, d -> viewModel.updateCeremony(c.id, d) },
                                         onNavigateCalendar = { viewModel.navigateTo(AppNavScreen.SCHEDULE) },
-                                        onNavigateCeremonies = { viewModel.navigateTo(AppNavScreen.CEREMONIES) }
+                                        onNavigateCeremonies = { viewModel.navigateTo(AppNavScreen.CEREMONIES) },
+                                        onOpenCommittee = { viewModel.openCommitteeDetail(it) }
                                     )
                                     AppNavScreen.AUDIT -> com.example.ui.screens.audit.AuditLogScreen(
                                         logs = auditLogs,

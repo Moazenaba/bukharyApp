@@ -26,7 +26,7 @@ object ReportSheets {
     val EXAM_WIDTHS = listOf(5, 10, 24, 24, 16, 11, 40, 12, 24, 20, 10)
 
     fun examInProgress(committees: List<Committee>) =
-        committees.filter { currentStageKey(it.stages) == "exam" }.sortedBy { it.committeeNumber }
+        committees.filter { com.example.ui.components.isAwaitingExam(it.stages) }.sortedBy { it.committeeNumber }
 
     /** One row per committee in the exam stage, then a totals row; empty when there are none. */
     fun examRows(committees: List<Committee>): List<List<Any?>> {

@@ -301,6 +301,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             if (result.online) {
                 // Lists that only the management screens use, loaded with the rest like on the web.
                 try { _books.value = OnlineApi.books() } catch (_: Exception) { }
+                try { com.example.data.remote.AppSettings.current = OnlineApi.settings() } catch (_: Exception) { }
                 if (com.example.data.remote.Permissions.can("users.read")) {
                     try { _staffUsers.value = OnlineApi.users() } catch (_: Exception) { }
                 }
