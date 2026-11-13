@@ -80,6 +80,8 @@ fun MenuScreen(
     onAddCommittee: () -> Unit,
     onExport: () -> Unit,
     onChangePassword: () -> Unit,
+    /** Switch to the simple look (sheikhs and committee heads); null hides the row. */
+    onTrySimple: (() -> Unit)? = null,
     onLogout: () -> Unit,
     /** The look the person chose (light until they pick another). */
     themeMode: ThemeMode = ThemeMode.LIGHT,
@@ -160,6 +162,7 @@ fun MenuScreen(
             }
         }
         item { Text("الحساب", style = MaterialTheme.typography.labelMedium, color = tFg(TextMuted), fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 8.dp)) }
+        onTrySimple?.let { go -> item { MenuRow("جرّب الواجهة المبسطة", Icons.Default.Key, null, onClick = go) } }
         item { MenuRow("تغيير كلمة المرور", Icons.Default.Key, null, onClick = onChangePassword) }
         item { ThemeChooser(themeMode, onThemeMode) }
         item { MenuRow("تسجيل الخروج", Icons.AutoMirrored.Filled.Logout, null, tint = tFg(Color(0xFFDC2626)), onClick = onLogout) }
