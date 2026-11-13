@@ -1,0 +1,90 @@
+name: Create signing key
+
+# One-time setup. Makes the key that signs the app and stores it, with its password, as GitHub
+# secrets, so nobody has to type or see them. Refuses to run when a key already exists, so a
+# working key can never be replaced by mistake. Needs the BUKHARY_PUSH_TOKEN secret (a token that
+# may write secrets on this repository; the default GITHUB_TOKEN cannot).
+#
+# It also uploads a backup of the key and its password as an artifact (kept 7 days): download it
+# once and keep it somewhere private. Without a copy, losing the secrets means losing the key.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: create-signing-key
+  cancel-in-progress: false
+
+jobs:
+  create:
+    name: Create the key and store it as secrets
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: github.ref == 'refs/heads/main'
+    env:
+      GH_TOKEN: ${{ secrets.BUKHARY_PUSH_TOKEN }}
+      REPO: ${{ github.repository }}
+    steps:
+      - name: Refuse to replace an existing key
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::error::Add the BUKHARY_PUSH_TOKEN secret first (Settings > Secrets and variables > Actions)."
+            exit 1
+          fi
+          names=$(gh secret list --repo "$REPO" --json name --jq '.[].name')
+          if echo "$names" | grep -qx KEYSTORE_BASE64; then
+            echo "::error::A signing key already exists (KEYSTORE_BASE64). Not replacing it: phones would refuse updates signed with a different key."
+            exit 1
+          fi
+
+      - name: Create the key
+        run: |
+          mkdir -p "$RUNNER_TEMP/key"
+          pass=$(openssl rand -hex 24)
+          echo "::add-mask::$pass"
+          # One password for the key store and the key (a PKCS12 store uses a single password).
+          keytool -genkeypair -alias upload -keyalg RSA -keysize 4096 -validity 10000 \
+            -keystore "$RUNNER_TEMP/key/bukhari-upload.jks" -storetype PKCS12 \
+            -storepass "$pass" -keypass "$pass" \
+            -dname "CN=Bukhari Competition, O=Imam Al-Bukhari Mosque, C=EG" >/dev/null 2>&1
+          sha=$(keytool -list -v -keystore "$RUNNER_TEMP/key/bukhari-upload.jks" -storepass "$pass" -alias upload 2>/dev/null \
+            | grep -m1 'SHA256:' | sed 's/.*SHA256: *//' | tr -d ':' | tr 'A-F' 'a-f')
+          if ! echo "$sha" | grep -qE '^[0-9a-f]{64}$'; then
+            echo "::error::Could not read the key's fingerprint."
+            exit 1
+          fi
+          printf '%s' "$pass" > "$RUNNER_TEMP/key/password.txt"
+          printf '%s' "$sha" > "$RUNNER_TEMP/key/sha256.txt"
+          echo "fingerprint=$sha" >> "$GITHUB_OUTPUT"
+        id: key
+
+      - name: Store the secrets
+        run: |
+          dir="$RUNNER_TEMP/key"
+          base64 -w0 "$dir/bukhari-upload.jks" | gh secret set KEYSTORE_BASE64 --repo "$REPO"
+          gh secret set STORE_PASSWORD --repo "$REPO" < "$dir/password.txt"
+          gh secret set KEY_PASSWORD --repo "$REPO" < "$dir/password.txt"
+          gh secret set ANDROID_SIGNER_SHA256 --repo "$REPO" < "$dir/sha256.txt"
+          {
+            echo "### Signing key created"
+            echo "Stored as secrets: KEYSTORE_BASE64, STORE_PASSWORD, KEY_PASSWORD, ANDROID_SIGNER_SHA256."
+            echo "Fingerprint (SHA-256): \`${{ steps.key.outputs.fingerprint }}\`"
+            echo ""
+            echo "**Download the artifact \`signing-key-backup\` below and keep it somewhere private.**"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Back up the key
+        uses: actions/upload-artifact@v4
+        with:
+          name: signing-key-backup
+          path: |
+            ${{ runner.temp }}/key/bukhari-upload.jks
+            ${{ runner.temp }}/key/password.txt
+          retention-days: 7
+          if-no-files-found: error
+
+      - name: Remove the key from the runner
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/key"

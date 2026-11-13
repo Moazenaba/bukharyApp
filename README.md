@@ -19,15 +19,16 @@
 2. من GitHub: **Actions > Publish Android > Run workflow**، واكتب «ما الجديد».
 3. الـ workflow بيبني نسخة موقّعة ويحطها في مستودع الموقع (`public/app`)، ولما الموقع يتنشر الأجهزة تاخد التحديث.
 
-الـ secrets المطلوبة في **Settings > Secrets and variables > Actions** (ما تتكتبش في أي مكان تاني):
-- `KEYSTORE_BASE64`: ملف المفتاح `bukhari-upload.jks` محوّل لنص (على Windows في PowerShell: `[Convert]::ToBase64String([IO.File]::ReadAllBytes("bukhari-upload.jks")) | Set-Clipboard` وبعدين الصق في الـ secret؛ على Linux: `base64 -w0 bukhari-upload.jks`).
-- `STORE_PASSWORD` و`KEY_PASSWORD`: كلمتا سر المفتاح.
-- `API_BASE_URL`: رابط الموقع الحقيقي، يبدأ بـ `https://` وينتهي بـ `/`.
-- `BUKHARY_PUSH_TOKEN`: token (Fine-grained) على مستودع الموقع `bukhary` بصلاحية `Contents: Read and write` فقط.
+### أول مرة (إعداد لمرة واحدة)
+1. اعمل token واحد في GitHub (Settings > Developer settings > Fine-grained tokens) على المستودعين `bukhary` و`bukharyApp`، بصلاحيتين: **Contents: Read and write** و**Secrets: Read and write**.
+2. في `bukharyApp` > Settings > Secrets and variables > Actions أضف سرّين:
+   - `BUKHARY_PUSH_TOKEN`: الـ token.
+   - `API_BASE_URL`: رابط الموقع الحقيقي، يبدأ بـ `https://` وينتهي بـ `/`.
+3. شغّل **Actions > Create signing key**. بيعمل مفتاح التوقيع وكلمة سره ويخزنهم كـ secrets لوحدهم (`KEYSTORE_BASE64` و`STORE_PASSWORD` و`KEY_PASSWORD` و`ANDROID_SIGNER_SHA256`)، ومحدش بيشوف كلمة السر. نزّل الـ artifact `signing-key-backup` واحتفظ بيه في مكان خاص، لأن من غيره ضياع الـ secrets يعني ضياع المفتاح. الـ workflow بيرفض يشتغل لو المفتاح موجود، فمستحيل يستبدل مفتاح شغّال بالغلط.
 
-لازم المفتاح يكون نفس مفتاح النسخ المثبّتة، وإلا أندرويد بيرفض التحديث (والنشر بيفشل قبل ما يوصل للأجهزة).
+**مهم:** أندرويد بيرفض أي تحديث موقّع بمفتاح غير المفتاح اللي اتثبّت بيه التطبيق. لو المفتاح اتغيّر، كل جهاز لازم يتمسح منه التطبيق ويتثبّت من جديد مرة واحدة (بعد ما يتأكد إن «حالة البيانات والمزامنة» ما فيهاش تعديلات غير مرسلة).
 
-
+## الاختبارات
 ```bash
 ./gradlew testDebugUnitTest
 ```

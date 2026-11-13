@@ -34,15 +34,16 @@ jobs:
       KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
       API_BASE_URL: ${{ secrets.API_BASE_URL }}
       BUKHARY_PUSH_TOKEN: ${{ secrets.BUKHARY_PUSH_TOKEN }}
+      ANDROID_SIGNER_SHA256: ${{ secrets.ANDROID_SIGNER_SHA256 }}
     steps:
       - name: Check the secrets are set
         run: |
           missing=""
-          for name in KEYSTORE_BASE64 STORE_PASSWORD KEY_PASSWORD API_BASE_URL BUKHARY_PUSH_TOKEN; do
+          for name in KEYSTORE_BASE64 STORE_PASSWORD KEY_PASSWORD ANDROID_SIGNER_SHA256 API_BASE_URL BUKHARY_PUSH_TOKEN; do
             if [ -z "${!name}" ]; then missing="$missing $name"; fi
           done
           if [ -n "$missing" ]; then
-            echo "::error::Missing secrets:$missing (Settings > Secrets and variables > Actions)"
+            echo "::error::Missing secrets:$missing (run \"Create signing key\" once for the key ones; the others: Settings > Secrets and variables > Actions)"
             exit 1
           fi
           case "$API_BASE_URL" in https://*/) ;; *) echo "::error::API_BASE_URL must start with https:// and end with /"; exit 1;; esac
@@ -91,6 +92,8 @@ jobs:
         working-directory: web
         env:
           NOTES: ${{ inputs.notes }}
+          # The script only accepts an APK signed with this key.
+          ANDROID_SIGNER_SHA256: ${{ secrets.ANDROID_SIGNER_SHA256 }}
         run: node scripts/publish-android.mjs "$GITHUB_WORKSPACE/app/build/outputs/apk/release/app-release.apk" "$NOTES"
 
       - name: Publish to the web app
