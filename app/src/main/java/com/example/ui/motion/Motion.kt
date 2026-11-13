@@ -16,12 +16,17 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import kotlinx.coroutines.delay
 import kotlin.math.min
 
 /**
@@ -99,5 +104,31 @@ fun Modifier.pressScale(source: MutableInteractionSource, enabled: Boolean = tru
     graphicsLayer {
         scaleX = scale
         scaleY = scale
+    }
+}
+
+/**
+ * A list item that fades and rises into place, one after another with its siblings. It plays once
+ * per item (remembered while scrolling), only for the first few items, and not at all when the
+ * device removes animations.
+ */
+@Composable
+fun Modifier.staggerIn(index: Int): Modifier {
+    val reduced = rememberReducedMotion()
+    var shown by rememberSaveable { mutableStateOf(reduced || index >= MotionSpec.STAGGER_MAX_ITEMS) }
+    LaunchedEffect(Unit) {
+        if (!shown) {
+            delay(MotionSpec.staggerDelay(index).toLong())
+            shown = true
+        }
+    }
+    val progress by animateFloatAsState(
+        targetValue = if (shown) 1f else 0f,
+        animationSpec = MotionSpec.enter(reduced),
+        label = "staggerIn"
+    )
+    return this.graphicsLayer {
+        alpha = progress
+        translationY = (1f - progress) * 28f
     }
 }
