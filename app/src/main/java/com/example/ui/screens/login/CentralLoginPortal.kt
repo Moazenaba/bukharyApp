@@ -1,5 +1,8 @@
 package com.example.ui.screens.login
 
+import com.example.ui.theme.tEdge
+import com.example.ui.theme.tBg
+import com.example.ui.theme.tFg
 import com.example.ui.theme.TextMuted
 import androidx.compose.ui.semantics.liveRegion
 
@@ -132,7 +135,7 @@ fun CentralLoginPortal(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(Color(0xFFF8F9FD))
+            .background(tBg(Color(0xFFF8F9FD)))
             .verticalScroll(rememberScrollState())
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -142,11 +145,11 @@ fun CentralLoginPortal(
             Text(
                 text = "لديك $unsentCount من التعديلات المحفوظة على هذا الجهاز لم تُرسل بعد. سجّل الدخول بنفس الحساب لإرسالها.",
                 style = MaterialTheme.typography.bodySmall,
-                color = Color(0xFF92400E),
+                color = tFg(Color(0xFF92400E)),
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(12.dp))
-                    .background(Color(0xFFFEF3C7))
+                    .background(tBg(Color(0xFFFEF3C7)))
                     .padding(12.dp)
             )
             Spacer(modifier = Modifier.height(12.dp))
@@ -155,8 +158,8 @@ fun CentralLoginPortal(
             modifier = Modifier
                 .size(76.dp)
                 .clip(RoundedCornerShape(22.dp))
-                .background(Primary800)
-                .border(2.dp, Primary100, RoundedCornerShape(22.dp)),
+                .background(tBg(Primary800))
+                .border(2.dp, tEdge(Primary100), RoundedCornerShape(22.dp)),
             contentAlignment = Alignment.Center
         ) {
             Text(text = "🕌", fontSize = 38.sp)
@@ -166,12 +169,12 @@ fun CentralLoginPortal(
             text = "مسجد الإمام البخاري",
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Black,
-            color = Primary900
+            color = tFg(Primary900)
         )
         Text(
             text = "منظومة إدارة المسابقات والدورات العلمية الشرعية",
             style = MaterialTheme.typography.bodyMedium,
-            color = TextMuted,
+            color = tFg(TextMuted),
             textAlign = TextAlign.Center
         )
         Spacer(modifier = Modifier.height(20.dp))
@@ -179,13 +182,13 @@ fun CentralLoginPortal(
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(containerColor = SurfacePure),
+            colors = CardDefaults.cardColors(containerColor = tBg(SurfacePure)),
             elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 TabRow(
                     selectedTabIndex = selectedTab,
-                    containerColor = Color(0xFFF1F5F9),
+                    containerColor = tBg(Color(0xFFF1F5F9)),
                     modifier = Modifier.clip(RoundedCornerShape(12.dp))
                 ) {
                     listOf(
@@ -201,7 +204,7 @@ fun CentralLoginPortal(
                                     label,
                                     fontSize = 13.sp,
                                     fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Medium,
-                                    color = if (selectedTab == index) Primary800 else TextMuted
+                                    color = if (selectedTab == index) tFg(Primary800) else tFg(TextMuted)
                                 )
                             },
                             modifier = Modifier.testTag(tag)
@@ -221,11 +224,11 @@ fun CentralLoginPortal(
                             Spacer(modifier = Modifier.height(10.dp))
                             Text(
                                 text = loginError,
-                                color = Color(0xFFB91C1C),
+                                color = tFg(Color(0xFFB91C1C)),
                                 style = MaterialTheme.typography.bodyMedium,
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .background(Color(0xFFFEF2F2), RoundedCornerShape(10.dp))
+                                    .background(tBg(Color(0xFFFEF2F2)), RoundedCornerShape(10.dp))
                                     .padding(12.dp)
                                     .semantics { liveRegion = LiveRegionMode.Polite }
                             )
@@ -292,7 +295,7 @@ private fun LoginForm(isSubmitting: Boolean, onLogin: (String, String) -> Unit, 
         value = identifier,
         onValueChange = { identifier = it.take(200) },
         label = { Text("رقم الهاتف أو البريد الإلكتروني") },
-        leadingIcon = { Icon(Icons.Default.Person, contentDescription = null, tint = Primary700) },
+        leadingIcon = { Icon(Icons.Default.Person, contentDescription = null, tint = tFg(Primary700)) },
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
         enabled = !isSubmitting,
         modifier = Modifier
@@ -306,7 +309,7 @@ private fun LoginForm(isSubmitting: Boolean, onLogin: (String, String) -> Unit, 
         value = password,
         onValueChange = { password = it.take(128) },
         label = { Text("كلمة المرور") },
-        leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null, tint = Primary700) },
+        leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null, tint = tFg(Primary700)) },
         trailingIcon = { PasswordToggle(passwordVisible) { passwordVisible = !passwordVisible } },
         visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
@@ -319,7 +322,7 @@ private fun LoginForm(isSubmitting: Boolean, onLogin: (String, String) -> Unit, 
         shape = RoundedCornerShape(12.dp)
     )
     TextButton(onClick = onForgotPassword, modifier = Modifier.testTag("btn_forgot_password")) {
-        Text("نسيت كلمة المرور؟", color = Primary700)
+        Text("نسيت كلمة المرور؟", color = tFg(Primary700))
     }
     Button(
         onClick = submit,
@@ -329,7 +332,7 @@ private fun LoginForm(isSubmitting: Boolean, onLogin: (String, String) -> Unit, 
             .height(50.dp)
             .testTag("btn_submit_login"),
         shape = RoundedCornerShape(12.dp),
-        colors = ButtonDefaults.buttonColors(containerColor = Primary700)
+        colors = ButtonDefaults.buttonColors(containerColor = tBg(Primary700))
     ) {
         Text(
             text = if (isSubmitting) "جاري تسجيل الدخول..." else "تسجيل الدخول للمنظومة",
@@ -429,10 +432,10 @@ private fun RegisterForm(
     Text(
         text = "تنضم كشيخ، والأدمن هو من يسند إليك اللجان والحفلات أو يجعلك رئيس لجنة.",
         style = MaterialTheme.typography.bodySmall,
-        color = TextMuted
+        color = tFg(TextMuted)
     )
     Spacer(modifier = Modifier.height(10.dp))
-    Text("بيانات اختيارية تساعد المشرف على المراجعة", style = MaterialTheme.typography.labelMedium, color = TextMuted)
+    Text("بيانات اختيارية تساعد المشرف على المراجعة", style = MaterialTheme.typography.labelMedium, color = tFg(TextMuted))
     Spacer(modifier = Modifier.height(6.dp))
     OutlinedTextField(whatsapp, { whatsapp = it.take(50) }, label = { Text("رقم الواتساب") }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
     Spacer(modifier = Modifier.height(8.dp))
@@ -456,7 +459,7 @@ private fun RegisterForm(
     )
     error?.let {
         Spacer(modifier = Modifier.height(8.dp))
-        Text(it, color = Color(0xFFB91C1C), style = MaterialTheme.typography.bodySmall, modifier = Modifier.testTag("reg_error"))
+        Text(it, color = tFg(Color(0xFFB91C1C)), style = MaterialTheme.typography.bodySmall, modifier = Modifier.testTag("reg_error"))
     }
     Spacer(modifier = Modifier.height(14.dp))
     Button(
@@ -486,7 +489,7 @@ private fun RegisterForm(
             .height(50.dp)
             .testTag("btn_submit_register"),
         shape = RoundedCornerShape(12.dp),
-        colors = ButtonDefaults.buttonColors(containerColor = Primary700)
+        colors = ButtonDefaults.buttonColors(containerColor = tBg(Primary700))
     ) {
         Text(
             text = if (isSubmitting) "جاري إرسال الطلب..." else "إرسال طلب الانضمام",
@@ -519,7 +522,7 @@ private fun TrackForm(
     Text(
         "أدخل كود الطلب الذي ظهر لك عند التسجيل (مثل REQ-2026-XXXXXXXX).",
         style = MaterialTheme.typography.bodySmall,
-        color = Color(0xFF475569)
+        color = tFg(Color(0xFF475569))
     )
     Spacer(modifier = Modifier.height(10.dp))
     OutlinedTextField(
@@ -544,7 +547,7 @@ private fun TrackForm(
             .height(48.dp)
             .testTag("btn_track"),
         shape = RoundedCornerShape(12.dp),
-        colors = ButtonDefaults.buttonColors(containerColor = Primary700)
+        colors = ButtonDefaults.buttonColors(containerColor = tBg(Primary700))
     ) {
         Text(if (searching) "جاري الاستعلام..." else "استعلام عن الطلب", color = Color.White, fontWeight = FontWeight.Bold)
     }
@@ -554,11 +557,11 @@ private fun TrackForm(
             it,
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Bold,
-            color = Primary900,
+            color = tFg(Primary900),
             modifier = Modifier.testTag("track_result")
         )
         if (it.startsWith("تم اعتماد")) {
-            TextButton(onClick = onGoToLogin) { Text("الانتقال لتسجيل الدخول", color = Primary700) }
+            TextButton(onClick = onGoToLogin) { Text("الانتقال لتسجيل الدخول", color = tFg(Primary700)) }
         }
     }
 }
@@ -578,14 +581,14 @@ private fun RequestReceiptDialog(code: String, onTrack: () -> Unit, onDismiss: (
                     code,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = Primary900,
+                    color = tFg(Primary900),
                     modifier = Modifier.testTag("receipt_code")
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     "احتفظ بهذا الكود: هو الطريقة الوحيدة لمتابعة حالة طلبك.",
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color(0xFF92400E),
+                    color = tFg(Color(0xFF92400E)),
                     fontWeight = FontWeight.Bold
                 )
                 Spacer(modifier = Modifier.height(8.dp))
@@ -608,7 +611,7 @@ private fun PasswordToggle(visible: Boolean, onToggle: () -> Unit) {
         Icon(
             imageVector = if (visible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
             contentDescription = if (visible) "إخفاء كلمة المرور" else "إظهار كلمة المرور",
-            tint = TextMuted
+            tint = tFg(TextMuted)
         )
     }
 }

@@ -42,20 +42,33 @@ private val LightColorScheme = lightColorScheme(
     outlineVariant = BorderActive
 )
 
+// Surfaces match DarkPalette.background(): the page is the dark counterpart of #F8F9FD and a card
+// that of white, so Material components and hand-colored ones sit on the same tones.
 private val DarkColorScheme = darkColorScheme(
     primary = Primary500,
     onPrimary = Primary900,
-    primaryContainer = Primary800,
+    primaryContainer = Color(0xFF0F3D38),
     onPrimaryContainer = Primary100,
     secondary = Primary200,
     onSecondary = Primary900,
-    background = Primary900,
-    onBackground = SurfacePure,
-    surface = Primary800,
-    onSurface = SurfacePure,
-    surfaceVariant = Color(0xFF002B27),
-    onSurfaceVariant = Color(0xFF94A3B8),
-    outline = Color(0xFF0F4D46)
+    secondaryContainer = Color(0xFF16332F),
+    onSecondaryContainer = Primary100,
+    tertiary = Color(0xFFFBBF24),
+    onTertiary = Color(0xFF3B2300),
+    background = Color(0xFF141B1A),
+    onBackground = Color(0xFFE3ECEA),
+    surface = Color(0xFF192221),
+    onSurface = Color(0xFFE3ECEA),
+    surfaceVariant = Color(0xFF1F2B29),
+    onSurfaceVariant = Color(0xFFA9BAB7),
+    outline = Color(0xFF8FA3A0),
+    outlineVariant = Color(0xFF3A4A47),
+    error = Color(0xFFFFB4AB),
+    onError = Color(0xFF690005),
+    errorContainer = Color(0xFF93000A),
+    onErrorContainer = Color(0xFFFFDAD6),
+    inverseSurface = Color(0xFFE3ECEA),
+    inverseOnSurface = Color(0xFF141B1A)
 )
 
 val BukhariShapes = Shapes(
@@ -68,7 +81,7 @@ val BukhariShapes = Shapes(
 
 @Composable
 fun BukhariTheme(
-    darkTheme: Boolean = false,
+    darkTheme: Boolean = ThemeState.dark,
     lightBackgroundBehindStatusBar: Boolean = false,
     content: @Composable () -> Unit
 ) {
@@ -77,7 +90,10 @@ fun BukhariTheme(
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = lightBackgroundBehindStatusBar
+            val controller = WindowCompat.getInsetsController(window, view)
+            // Dark icons only over a light background. The bars follow the app's look, not the phone's.
+            controller.isAppearanceLightStatusBars = lightBackgroundBehindStatusBar && !darkTheme
+            controller.isAppearanceLightNavigationBars = !darkTheme
         }
     }
 

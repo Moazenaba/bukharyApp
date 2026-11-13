@@ -1,5 +1,8 @@
 package com.example.ui.screens.ceremonies
 
+import com.example.ui.theme.tEdge
+import com.example.ui.theme.tBg
+import com.example.ui.theme.tFg
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -124,7 +127,7 @@ fun CeremoniesScreen(
     }
 
     LazyColumn(
-        modifier.fillMaxSize().background(Color(0xFFF8F9FD)),
+        modifier.fillMaxSize().background(tBg(Color(0xFFF8F9FD))),
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
@@ -146,12 +149,12 @@ fun CeremoniesScreen(
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 StatTile("إجمالي اللجان", "${committees.size}", Modifier.weight(1f))
-                StatTile("حفلات اليوم", "$todayCount", Modifier.weight(1f), tint = Color(0xFFB45309))
+                StatTile("حفلات اليوم", "$todayCount", Modifier.weight(1f), tint = tFg(Color(0xFFB45309)))
             }
             Spacer(Modifier.padding(4.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                StatTile("مجدولة قادمة", "$upcoming", Modifier.weight(1f), tint = Color(0xFF1D4ED8))
-                StatTile("تم الحفل (${if (committees.isEmpty()) 0 else done * 100 / committees.size}%)", "$done", Modifier.weight(1f), tint = Color(0xFF047857))
+                StatTile("مجدولة قادمة", "$upcoming", Modifier.weight(1f), tint = tFg(Color(0xFF1D4ED8)))
+                StatTile("تم الحفل (${if (committees.isEmpty()) 0 else done * 100 / committees.size}%)", "$done", Modifier.weight(1f), tint = tFg(Color(0xFF047857)))
             }
         }
         item {
@@ -173,7 +176,7 @@ fun CeremoniesScreen(
         if (shown.isEmpty()) item {
             Column(Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 Text("لا توجد حفلات مطابقة للبحث أو التصفية الحالية", fontWeight = FontWeight.Bold)
-                Text("اختر تصفية أخرى أو جدول موعد حفل لأي لجنة.", color = TextMuted, style = MaterialTheme.typography.bodySmall)
+                Text("اختر تصفية أخرى أو جدول موعد حفل لأي لجنة.", color = tFg(TextMuted), style = MaterialTheme.typography.bodySmall)
             }
         }
         items(shown, key = { it.id }) { c ->
@@ -183,21 +186,21 @@ fun CeremoniesScreen(
             val isToday = date == today
             val canFinalize = Permissions.canOn("committees.finalize", c.id)
             Card(
-                shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = Color.White),
+                shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = tBg(Color.White)),
                 border = BorderStroke(
                     if (isDone || isToday) 2.dp else 1.dp,
-                    when { isDone -> Color(0xFF6EE7B7); isToday -> Color(0xFFFBBF24); date.isNotBlank() -> Color(0xFFBFDBFE); else -> Color(0xFFE2E8F0) }
+                    when { isDone -> tEdge(Color(0xFF6EE7B7)); isToday -> tEdge(Color(0xFFFBBF24)); date.isNotBlank() -> tEdge(Color(0xFFBFDBFE)); else -> tEdge(Color(0xFFE2E8F0)) }
                 )
             ) {
                 Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             "#${c.committeeNumber}", color = Color.White, fontWeight = FontWeight.Black,
-                            modifier = Modifier.background(Color(0xFF047857), RoundedCornerShape(10.dp)).padding(horizontal = 8.dp, vertical = 4.dp)
+                            modifier = Modifier.background(tBg(Color(0xFF047857)), RoundedCornerShape(10.dp)).padding(horizontal = 8.dp, vertical = 4.dp)
                         )
                         Spacer(Modifier.width(8.dp))
                         Column(Modifier.weight(1f)) {
-                            Text(c.branch.ifBlank { "—" }, style = MaterialTheme.typography.labelSmall, color = TextMuted)
+                            Text(c.branch.ifBlank { "—" }, style = MaterialTheme.typography.labelSmall, color = tFg(TextMuted))
                             Text(c.committeeName, fontWeight = FontWeight.Black, maxLines = 2, overflow = TextOverflow.Ellipsis)
                         }
                     }
@@ -209,18 +212,18 @@ fun CeremoniesScreen(
                             else -> "بانتظار تحديد اليوم والموعد"
                         },
                         style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold,
-                        color = when { isDone -> Color(0xFF047857); isToday -> Color(0xFF92400E); date.isNotBlank() -> Color(0xFF1D4ED8); else -> TextMuted }
+                        color = when { isDone -> tFg(Color(0xFF047857)); isToday -> tFg(Color(0xFF92400E)); date.isNotBlank() -> tFg(Color(0xFF1D4ED8)); else -> tFg(TextMuted) }
                     )
                     Text("الكتاب: ${c.competitionBook} • الشيخ: ${c.sheikhName.ifBlank { "—" }}", style = MaterialTheme.typography.bodySmall)
                     Text("عدد الطلاب المكرمين: ${c.ceremonyDetails.honoreesCount.takeIf { it > 0 } ?: c.studentsCount} طالب", style = MaterialTheme.typography.bodySmall)
                     if (c.ceremonyDetails.attendees.isNotEmpty()) {
-                        Text("المدعوون: ${c.ceremonyDetails.attendees.joinToString("، ") { it.name }}", style = MaterialTheme.typography.bodySmall, color = TextMuted)
+                        Text("المدعوون: ${c.ceremonyDetails.attendees.joinToString("، ") { it.name }}", style = MaterialTheme.typography.bodySmall, color = tFg(TextMuted))
                     }
                     if (date.isNotBlank()) {
                         Text(
                             "الموعد: يوم ${arabicDayName(date)} ($date) — ${(task?.time ?: c.ceremonyDetails.time).ifBlank { "لم يحدد الوقت" }}",
-                            style = MaterialTheme.typography.bodySmall, color = Color(0xFF1E3A8A),
-                            modifier = Modifier.fillMaxWidth().background(Color(0xFFEFF6FF), RoundedCornerShape(8.dp)).padding(6.dp)
+                            style = MaterialTheme.typography.bodySmall, color = tFg(Color(0xFF1E3A8A)),
+                            modifier = Modifier.fillMaxWidth().background(tBg(Color(0xFFEFF6FF)), RoundedCornerShape(8.dp)).padding(6.dp)
                         )
                         val place = c.ceremonyDetails.venue.ifBlank { task?.notes ?: "" }
                         if (place.isNotBlank()) Text("📍 $place", style = MaterialTheme.typography.labelSmall)
@@ -251,7 +254,7 @@ fun CeremoniesScreen(
                             OutlinedButton(onClick = { scheduling = c }) { Text(if (date.isNotBlank()) "تعديل الميعاد واليوم" else "جدولة الميعاد واليوم") }
                             Button(
                                 onClick = { onToggleCeremonyDone(c) },
-                                colors = ButtonDefaults.buttonColors(containerColor = if (isDone) Color(0xFFD1FAE5) else Primary700, contentColor = if (isDone) Color(0xFF065F46) else Color.White)
+                                colors = ButtonDefaults.buttonColors(containerColor = if (isDone) tBg(Color(0xFFD1FAE5)) else tBg(Primary700), contentColor = if (isDone) tFg(Color(0xFF065F46)) else Color.White)
                             ) { Text(if (isDone) "إلغاء التمام" else "إتمام الحفل الآن") }
                         }
                         OutlinedButton(onClick = { honorRoll = c }) { Text("كشف التكريم والشهادات") }
@@ -276,12 +279,12 @@ fun CeremoniesScreen(
             title = { Text("جدولة حفل تكريم لجنة #${c.committeeNumber}") },
             text = {
                 Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("${c.committeeName} — ${c.competitionBook}", style = MaterialTheme.typography.bodySmall, color = TextMuted)
+                    Text("${c.committeeName} — ${c.competitionBook}", style = MaterialTheme.typography.bodySmall, color = tFg(TextMuted))
                     Text("اختر يوم الحفل *", fontWeight = FontWeight.Bold)
                     Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         ARABIC_DAYS.forEach { d -> FilterChip(selected = arabicDayName(date) == d, onClick = { date = nextDateForDay(d) }, label = { Text(d) }) }
                     }
-                    Text("✓ اليوم المحدد حالياً: يوم ${arabicDayName(date)}", style = MaterialTheme.typography.labelSmall, color = Color(0xFF047857))
+                    Text("✓ اليوم المحدد حالياً: يوم ${arabicDayName(date)}", style = MaterialTheme.typography.labelSmall, color = tFg(Color(0xFF047857)))
                     DateField(date, { date = it }, "تاريخ الحفل *")
                     OutlinedTextField(time, { time = it }, label = { Text("وقت وتوقيت الحفل *") }, placeholder = { Text("مثال: 08:00 م (بعد صلاة العشاء)") }, singleLine = true)
                     OutlinedTextField(place, { place = it }, label = { Text("مكان إقامة الحفل *") }, placeholder = { Text("مثال: القاعة الكبرى - مسجد الإمام البخاري") }, singleLine = true)
@@ -292,7 +295,7 @@ fun CeremoniesScreen(
                     OutlinedTextField(c.sheikhName, {}, readOnly = true, label = { Text("الشيخ المكرم") })
                     AttendeePicker(ceremonyCandidates, onLoadCandidates, attendees) { attendees = it }
                     OutlinedTextField(notes, { notes = it }, label = { Text("ملاحظات وترتيبات الحفل (اختياري)") }, minLines = 2)
-                    Text("يظهر الموعد تلقائياً في التنبيهات اليومية وتقويم المواعيد ليوم ($date).", style = MaterialTheme.typography.labelSmall, color = TextMuted)
+                    Text("يظهر الموعد تلقائياً في التنبيهات اليومية وتقويم المواعيد ليوم ($date).", style = MaterialTheme.typography.labelSmall, color = tFg(TextMuted))
                 }
             },
             confirmButton = {
@@ -315,7 +318,7 @@ fun CeremoniesScreen(
                 Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text("بِسْمِ اللَّـهِ الرَّحْمَـٰنِ الرَّحِيمِ", fontWeight = FontWeight.Bold)
                     Text("مسجد الإمام البخاري — الدورة العلمية المكثفة", style = MaterialTheme.typography.labelSmall)
-                    Text("شهادة تكريم وتقدير واجتياز", fontWeight = FontWeight.Black, color = Color(0xFF78350F))
+                    Text("شهادة تكريم وتقدير واجتياز", fontWeight = FontWeight.Black, color = tFg(Color(0xFF78350F)))
                     Text(
                         "يُشهد بأن طلاب لجنة (#${c.committeeNumber} - ${c.committeeName}) بإشراف فضيلة الشيخ ${c.sheikhName.ifBlank { "—" }} قد أتموا بنجاح اختبار كتاب:",
                         style = MaterialTheme.typography.bodySmall
@@ -349,15 +352,15 @@ private fun CeremoniesExportCard(committees: List<Committee>, tasks: List<Schedu
     val rows = ReportSheets.ceremonyRows(committees, tasks, period, anchor)
     val (from, to) = ReportSheets.periodRange(period, anchor)
     Card(
-        shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = Color.White),
-        border = BorderStroke(1.dp, Color(0xFFA7F3D0))
+        shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = tBg(Color.White)),
+        border = BorderStroke(1.dp, tEdge(Color(0xFFA7F3D0)))
     ) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("تصدير ومشاركة كشف الحفلات (Excel / PDF)", fontWeight = FontWeight.Black)
             Text(
                 "الموعد والمكان واسم الشيخ ومكانه وعدد الطلاب المكرمين والمشايخ والمدعوين ومراقبي اللجنة — " +
                     if (from == to) from else "من $from إلى $to",
-                style = MaterialTheme.typography.bodySmall, color = TextMuted
+                style = MaterialTheme.typography.bodySmall, color = tFg(TextMuted)
             )
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 ReportSheets.PERIOD_LABELS.forEach { (k, l) -> FilterChip(selected = period == k, onClick = { period = k }, label = { Text(l) }) }
@@ -414,14 +417,14 @@ fun CeremonyStatusReportCard(committees: List<Committee>, tasks: List<ScheduleTa
     val context = LocalContext.current
     val courseName = committees.firstOrNull()?.courseName
     Card(
-        shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = Color.White),
-        border = BorderStroke(1.dp, Color(0xFFFDE68A))
+        shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = tBg(Color.White)),
+        border = BorderStroke(1.dp, tEdge(Color(0xFFFDE68A)))
     ) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("كشف «لم يتم الحفل» و«تم الحفل» (PDF)", fontWeight = FontWeight.Black)
             Text(
                 "بنفس بيانات الكشوفات: اسم الشيخ، المكان، الكتاب، عدد الطلاب، وموعد ومكان الحفل، مع الإجمالي.",
-                style = MaterialTheme.typography.bodySmall, color = TextMuted
+                style = MaterialTheme.typography.bodySmall, color = tFg(TextMuted)
             )
             listOf("not_held", "held").forEach { status ->
                 val rows = ReportSheets.statusRows(committees, tasks, status)
@@ -429,7 +432,7 @@ fun CeremonyStatusReportCard(committees: List<Committee>, tasks: List<ScheduleTa
                 val label = ReportSheets.STATUS_LABEL.getValue(status)
                 val today = Dates.today()
                 val subtitle = ReportSheets.statusSubtitle(rows, courseName, today)
-                Text("$label ($count لجنة)", fontWeight = FontWeight.Bold, color = if (status == "held") Color(0xFF047857) else Color(0xFFC2410C))
+                Text("$label ($count لجنة)", fontWeight = FontWeight.Bold, color = if (status == "held") tFg(Color(0xFF047857)) else tFg(Color(0xFFC2410C)))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                     OutlinedButton(
                         onClick = { printHtml(context, ReportSheets.statusTitle(status), ReportSheets.statusPrintBody(rows, status, subtitle)) },

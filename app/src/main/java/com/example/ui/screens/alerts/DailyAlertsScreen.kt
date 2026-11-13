@@ -1,5 +1,8 @@
 package com.example.ui.screens.alerts
 
+import com.example.ui.theme.tEdge
+import com.example.ui.theme.tBg
+import com.example.ui.theme.tFg
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -137,7 +140,7 @@ fun DailyAlertsScreen(
     }.sortedWith(compareBy({ it.completed }, { it.date }, { it.time }))
 
     LazyColumn(
-        modifier.fillMaxSize().background(Color(0xFFF8F9FD)),
+        modifier.fillMaxSize().background(tBg(Color(0xFFF8F9FD))),
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
@@ -175,12 +178,12 @@ fun DailyAlertsScreen(
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 StatTile(if (allSchedule) "إجمالي المهام" else "مهام اليوم المحدد", "${viewTasks.size}", Modifier.weight(1f))
-                StatTile("قيد المتابعة", "$pending", Modifier.weight(1f), tint = Color(0xFFD97706))
-                StatTile("المنجز (${if (viewTasks.isEmpty()) 100 else done * 100 / viewTasks.size}%)", "$done", Modifier.weight(1f), tint = Color(0xFF059669))
+                StatTile("قيد المتابعة", "$pending", Modifier.weight(1f), tint = tFg(Color(0xFFD97706)))
+                StatTile("المنجز (${if (viewTasks.isEmpty()) 100 else done * 100 / viewTasks.size}%)", "$done", Modifier.weight(1f), tint = tFg(Color(0xFF059669)))
             }
         }
         if (ceremoniesToday.isNotEmpty()) item {
-            Card(colors = CardDefaults.cardColors(containerColor = Color(0xFFFBBF24)), shape = RoundedCornerShape(18.dp)) {
+            Card(colors = CardDefaults.cardColors(containerColor = tBg(Color(0xFFFBBF24))), shape = RoundedCornerShape(18.dp)) {
                 Column(Modifier.padding(14.dp)) {
                     Text("🎉 تنبيه حفل وتكريم اليوم", fontWeight = FontWeight.Black)
                     Text("اليوم موعد إقامة حفل تكريم وتوزيع جوائز (${ceremoniesToday.size}) لجنة!", fontWeight = FontWeight.Bold)
@@ -201,8 +204,8 @@ fun DailyAlertsScreen(
                                 )
                             },
                             enabled = rows.isNotEmpty()
-                        ) { Text("كشف حفلات اليوم Excel", color = Color(0xFF0F172A), fontWeight = FontWeight.Bold) }
-                        TextButton(onClick = onNavigateCeremonies) { Text("فتح تاب الحفلات والتكريم ↗", color = Color(0xFF0F172A)) }
+                        ) { Text("كشف حفلات اليوم Excel", color = tFg(Color(0xFF0F172A)), fontWeight = FontWeight.Bold) }
+                        TextButton(onClick = onNavigateCeremonies) { Text("فتح تاب الحفلات والتكريم ↗", color = tFg(Color(0xFF0F172A))) }
                     }
                 }
             }
@@ -230,10 +233,10 @@ fun DailyAlertsScreen(
         items(shown, key = { it.id }) { t ->
             val canToggle = (canWriteTasks || t.assignedAssistantId == currentUser?.id)
             Card(
-                shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Color.White),
+                shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = tBg(Color.White)),
                 border = BorderStroke(
                     if (t.type == "ceremony" && !t.completed) 2.dp else 1.dp,
-                    when { t.completed -> Color(0xFFA7F3D0); t.type == "ceremony" -> Color(0xFFFBBF24); t.priority == "urgent" -> Color(0xFFFDA4AF); else -> Color(0xFFE2E8F0) }
+                    when { t.completed -> tEdge(Color(0xFFA7F3D0)); t.type == "ceremony" -> tEdge(Color(0xFFFBBF24)); t.priority == "urgent" -> tEdge(Color(0xFFFDA4AF)); else -> tEdge(Color(0xFFE2E8F0)) }
                 )
             ) {
                 Row(Modifier.padding(12.dp), verticalAlignment = Alignment.Top) {
@@ -241,7 +244,7 @@ fun DailyAlertsScreen(
                         Icon(
                             if (t.completed) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
                             contentDescription = if (t.completed) "إلغاء تحديد «${t.title}» كمنجز" else "تحديد «${t.title}» كمنجز",
-                            tint = if (t.completed) Color(0xFF15803D) else TextMuted
+                            tint = if (t.completed) tFg(Color(0xFF15803D)) else tFg(TextMuted)
                         )
                     }
                     Spacer(Modifier.width(10.dp))
@@ -249,20 +252,20 @@ fun DailyAlertsScreen(
                         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text(typeLabel(t.type), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                             Text("📅 ${t.date}", style = MaterialTheme.typography.labelSmall)
-                            t.committeeNumber?.let { Text("لجنة #$it", style = MaterialTheme.typography.labelSmall, color = Color(0xFF0F766E)) }
-                            Text(t.time.ifBlank { "بدون وقت محدد" }, style = MaterialTheme.typography.labelSmall, color = TextMuted)
-                            if (t.priority == "urgent" && !t.completed) Text("⚠️ عاجل", style = MaterialTheme.typography.labelSmall, color = Color(0xFFBE123C))
+                            t.committeeNumber?.let { Text("لجنة #$it", style = MaterialTheme.typography.labelSmall, color = tFg(Color(0xFF0F766E))) }
+                            Text(t.time.ifBlank { "بدون وقت محدد" }, style = MaterialTheme.typography.labelSmall, color = tFg(TextMuted))
+                            if (t.priority == "urgent" && !t.completed) Text("⚠️ عاجل", style = MaterialTheme.typography.labelSmall, color = tFg(Color(0xFFBE123C)))
                         }
                         Text(
                             t.title, fontWeight = FontWeight.Bold,
                             textDecoration = if (t.completed) TextDecoration.LineThrough else null,
-                            color = if (t.completed) TextMuted else Color(0xFF0F172A)
+                            color = if (t.completed) tFg(TextMuted) else tFg(Color(0xFF0F172A))
                         )
                         if (t.deliverable.isNotBlank()) Text("📋 المطلوب: ${t.deliverable}", style = MaterialTheme.typography.bodySmall)
-                        if (t.notes.isNotBlank()) Text("💬 ${t.notes}", style = MaterialTheme.typography.bodySmall, color = TextMuted)
-                        Text("👤 المكلف: ${t.assignedAssistantName ?: "غير محدد"}", style = MaterialTheme.typography.labelSmall, color = TextMuted)
+                        if (t.notes.isNotBlank()) Text("💬 ${t.notes}", style = MaterialTheme.typography.bodySmall, color = tFg(TextMuted))
+                        Text("👤 المكلف: ${t.assignedAssistantName ?: "غير محدد"}", style = MaterialTheme.typography.labelSmall, color = tFg(TextMuted))
                     }
-                    if (canDeleteTasks && !t.id.startsWith("task-ceremony-")) IconButton(onClick = { deleting = t }) { Icon(Icons.Default.Delete, "حذف هذا التنبيه", tint = Color(0xFFEF4444)) }
+                    if (canDeleteTasks && !t.id.startsWith("task-ceremony-")) IconButton(onClick = { deleting = t }) { Icon(Icons.Default.Delete, "حذف هذا التنبيه", tint = tFg(Color(0xFFEF4444))) }
                 }
             }
         }
@@ -284,7 +287,7 @@ fun DailyAlertsScreen(
             onDismissRequest = { deleting = null },
             title = { Text("حذف التنبيه") },
             text = { Text("حذف «${t.title}»؟") },
-            confirmButton = { TextButton(onClick = { deleting = null; onDeleteTask(t.id) }) { Text("حذف", color = Color(0xFFDC2626)) } },
+            confirmButton = { TextButton(onClick = { deleting = null; onDeleteTask(t.id) }) { Text("حذف", color = tFg(Color(0xFFDC2626))) } },
             dismissButton = { TextButton(onClick = { deleting = null }) { Text("إلغاء") } }
         )
     }

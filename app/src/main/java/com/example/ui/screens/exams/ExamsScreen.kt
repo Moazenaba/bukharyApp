@@ -1,5 +1,8 @@
 package com.example.ui.screens.exams
 
+import com.example.ui.theme.tEdge
+import com.example.ui.theme.tBg
+import com.example.ui.theme.tFg
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.semantics.Role
 import com.example.ui.theme.TextMuted
@@ -130,14 +133,14 @@ fun ExamsScreen(
             if (tab == 0 && canManage) {
                 FloatingActionButton(
                     onClick = { showAddDialog = true },
-                    containerColor = Primary700,
+                    containerColor = tBg(Primary700),
                     contentColor = Color.White,
                     modifier = Modifier.testTag("fab_add_exam")
                 ) {
                     Icon(Icons.Default.Add, contentDescription = "إضافة امتحان ورفع PDF")
                 }
             } else if (tab == 1 && canEditBooks) {
-                FloatingActionButton(onClick = { showAddBook = true }, containerColor = Color(0xFFB45309), contentColor = Color.White) {
+                FloatingActionButton(onClick = { showAddBook = true }, containerColor = tBg(Color(0xFFB45309)), contentColor = Color.White) {
                     Icon(Icons.Default.Add, contentDescription = "إضافة كتاب مقرر")
                 }
             }
@@ -147,7 +150,7 @@ fun ExamsScreen(
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color(0xFFF8F9FD))
+                .background(tBg(Color(0xFFF8F9FD)))
                 .padding(innerPadding)
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
@@ -159,7 +162,7 @@ fun ExamsScreen(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = Primary800)
+                colors = CardDefaults.cardColors(containerColor = tBg(Primary800))
             ) {
                 Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                     Box(
@@ -171,7 +174,7 @@ fun ExamsScreen(
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
                         Text("📚 الامتحانات ونماذج PDF", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black, color = Color.White)
-                        Text("نماذج الاختبارات المعتمدة والكتب والمتون المقررة", style = MaterialTheme.typography.bodySmall, color = Primary100)
+                        Text("نماذج الاختبارات المعتمدة والكتب والمتون المقررة", style = MaterialTheme.typography.bodySmall, color = tFg(Primary100))
                     }
                 }
             }
@@ -183,7 +186,7 @@ fun ExamsScreen(
                 MiniStat("ملفات PDF", "${exams.count { it.hasFile }}", Modifier.weight(1f))
             }
             Spacer(modifier = Modifier.height(10.dp))
-            TabRow(selectedTabIndex = tab, containerColor = Color.White) {
+            TabRow(selectedTabIndex = tab, containerColor = tBg(Color.White)) {
                 Tab(selected = tab == 0, onClick = { tab = 0 }, text = { Text("نماذج الامتحانات وPDF") })
                 Tab(selected = tab == 1, onClick = { tab = 1 }, text = { Text("الكتب والمتون المقررة") })
             }
@@ -192,8 +195,8 @@ fun ExamsScreen(
             if (examScope != null && tab == 0) {
                 Text(
                     "نطاق الصلاحية المخصص: تفتح ملفات الامتحانات المصرح لك بها فقط (${examScope.size}).",
-                    style = MaterialTheme.typography.labelSmall, color = Color(0xFF92400E),
-                    modifier = Modifier.fillMaxWidth().background(Color(0xFFFEF3C7), RoundedCornerShape(8.dp)).padding(8.dp)
+                    style = MaterialTheme.typography.labelSmall, color = tFg(Color(0xFF92400E)),
+                    modifier = Modifier.fillMaxWidth().background(tBg(Color(0xFFFEF3C7)), RoundedCornerShape(8.dp)).padding(8.dp)
                 )
                 Spacer(modifier = Modifier.height(8.dp))
             }
@@ -202,7 +205,7 @@ fun ExamsScreen(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
                 placeholder = { Text(if (tab == 0) "بحث في الامتحانات بالاسم أو الكتاب أو الفرع..." else "بحث في الكتب والمتون المقررة...") },
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Primary700) },
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = tFg(Primary700)) },
                 modifier = Modifier.fillMaxWidth().testTag("input_exam_search"),
                 singleLine = true,
                 shape = RoundedCornerShape(14.dp)
@@ -220,7 +223,7 @@ fun ExamsScreen(
                 if (filtered.isEmpty()) {
                     item {
                     Box(modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp), contentAlignment = Alignment.Center) {
-                        Text("لا توجد امتحانات مطابقة للبحث", style = MaterialTheme.typography.bodyMedium, color = TextMuted)
+                        Text("لا توجد امتحانات مطابقة للبحث", style = MaterialTheme.typography.bodyMedium, color = tFg(TextMuted))
                     }
                     }
                 } else {
@@ -240,25 +243,25 @@ fun ExamsScreen(
             } else {
                 val shownBooks = bookNames.filter { searchQuery.isBlank() || it.contains(searchQuery, ignoreCase = true) }
                 run {
-                    if (shownBooks.isEmpty()) item { Text("لا توجد كتب مقررة مطابقة", color = TextMuted, modifier = Modifier.padding(16.dp)) }
+                    if (shownBooks.isEmpty()) item { Text("لا توجد كتب مقررة مطابقة", color = tFg(TextMuted), modifier = Modifier.padding(16.dp)) }
                     items(shownBooks, key = { it }) { name ->
                         val dto = books.find { it.name == name }
                         Card(
                             shape = RoundedCornerShape(14.dp),
-                            colors = CardDefaults.cardColors(containerColor = Color(0xFFFFFBEB)),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFDE68A))
+                            colors = CardDefaults.cardColors(containerColor = tBg(Color(0xFFFFFBEB))),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, tEdge(Color(0xFFFDE68A)))
                         ) {
                             Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.AutoMirrored.Filled.MenuBook, null, tint = Color(0xFFB45309))
+                                Icon(Icons.AutoMirrored.Filled.MenuBook, null, tint = tFg(Color(0xFFB45309)))
                                 Spacer(Modifier.width(10.dp))
                                 Column(Modifier.weight(1f)) {
-                                    Text(name, fontWeight = FontWeight.Bold, color = Color(0xFF78350F))
-                                    Text("نماذج الامتحانات المرفوعة: ${exams.count { it.book == name }} • متون علمية معتمدة", style = MaterialTheme.typography.labelSmall, color = Color(0xFF92400E))
+                                    Text(name, fontWeight = FontWeight.Bold, color = tFg(Color(0xFF78350F)))
+                                    Text("نماذج الامتحانات المرفوعة: ${exams.count { it.book == name }} • متون علمية معتمدة", style = MaterialTheme.typography.labelSmall, color = tFg(Color(0xFF92400E)))
                                 }
                                 TextButton(onClick = { tab = 0; bookFilter = name; searchQuery = "" }) { Text("الامتحانات") }
                                 if (canEditBooks && dto != null) {
                                     IconButton(onClick = { confirmDeleteBook = dto }) {
-                                        Icon(Icons.Default.Delete, contentDescription = "حذف هذا الكتاب", tint = Color(0xFFEF4444))
+                                        Icon(Icons.Default.Delete, contentDescription = "حذف هذا الكتاب", tint = tFg(Color(0xFFEF4444)))
                                     }
                                 }
                             }
@@ -299,7 +302,7 @@ fun ExamsScreen(
             onDismissRequest = { confirmDeleteExam = null },
             title = { Text("حذف الامتحان") },
             text = { Text("هل تريد حذف «${e.title}» نهائياً؟") },
-            confirmButton = { TextButton(onClick = { confirmDeleteExam = null; onDeleteExam(e.id) }) { Text("حذف", color = Color(0xFFDC2626)) } },
+            confirmButton = { TextButton(onClick = { confirmDeleteExam = null; onDeleteExam(e.id) }) { Text("حذف", color = tFg(Color(0xFFDC2626))) } },
             dismissButton = { TextButton(onClick = { confirmDeleteExam = null }) { Text("إلغاء") } }
         )
     }
@@ -308,7 +311,7 @@ fun ExamsScreen(
             onDismissRequest = { confirmDeleteBook = null },
             title = { Text("حذف الكتاب") },
             text = { Text("هل تريد حذف «${b.name}» من الكتب المقررة؟") },
-            confirmButton = { TextButton(onClick = { confirmDeleteBook = null; onDeleteBook(b) }) { Text("حذف", color = Color(0xFFDC2626)) } },
+            confirmButton = { TextButton(onClick = { confirmDeleteBook = null; onDeleteBook(b) }) { Text("حذف", color = tFg(Color(0xFFDC2626))) } },
             dismissButton = { TextButton(onClick = { confirmDeleteBook = null }) { Text("إلغاء") } }
         )
     }
@@ -320,9 +323,9 @@ fun ExamsScreen(
 
 @Composable
 private fun MiniStat(title: String, value: String, modifier: Modifier) {
-    Column(modifier.background(Color.White, RoundedCornerShape(12.dp)).border(1.dp, Color(0xFFE2E8F0), RoundedCornerShape(12.dp)).padding(8.dp)) {
-        Text(title, style = MaterialTheme.typography.labelSmall, color = TextMuted)
-        Text(value, fontWeight = FontWeight.Bold, color = Primary700)
+    Column(modifier.background(tBg(Color.White), RoundedCornerShape(12.dp)).border(1.dp, tEdge(Color(0xFFE2E8F0)), RoundedCornerShape(12.dp)).padding(8.dp)) {
+        Text(title, style = MaterialTheme.typography.labelSmall, color = tFg(TextMuted))
+        Text(value, fontWeight = FontWeight.Bold, color = tFg(Primary700))
     }
 }
 
@@ -340,8 +343,8 @@ fun ExamCard(
             .clickable(role = Role.Button, onClick = onPreview)
             .testTag("exam_card_${exam.id}"),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = SurfacePure),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0)),
+        colors = CardDefaults.cardColors(containerColor = tBg(SurfacePure)),
+        border = androidx.compose.foundation.BorderStroke(1.dp, tEdge(Color(0xFFE2E8F0))),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -355,13 +358,13 @@ fun ExamCard(
                         modifier = Modifier
                             .size(38.dp)
                             .clip(RoundedCornerShape(10.dp))
-                            .background(Color(0xFFFEE2E2)),
+                            .background(tBg(Color(0xFFFEE2E2))),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = Icons.Default.PictureAsPdf,
                             contentDescription = null,
-                            tint = Color(0xFFDC2626),
+                            tint = tFg(Color(0xFFDC2626)),
                             modifier = Modifier.size(20.dp)
                         )
                     }
@@ -373,14 +376,14 @@ fun ExamCard(
                             overflow = TextOverflow.Ellipsis,
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold,
-                            color = Primary900
+                            color = tFg(Primary900)
                         )
                         Text(
                             text = exam.book,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             style = MaterialTheme.typography.bodySmall,
-                            color = Color(0xFF0F766E),
+                            color = tFg(Color(0xFF0F766E)),
                             fontWeight = FontWeight.SemiBold
                         )
                     }
@@ -388,7 +391,7 @@ fun ExamCard(
 
                 if (canDelete) {
                     IconButton(onClick = onDelete, modifier = Modifier.size(48.dp)) {
-                        Icon(Icons.Default.Delete, contentDescription = "حذف", tint = Color(0xFFEF4444), modifier = Modifier.size(16.dp))
+                        Icon(Icons.Default.Delete, contentDescription = "حذف", tint = tFg(Color(0xFFEF4444)), modifier = Modifier.size(16.dp))
                     }
                 }
             }
@@ -400,9 +403,9 @@ fun ExamCard(
                     text = text,
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Bold,
-                    color = if (locked) Color(0xFF92400E) else Color(0xFF475569),
+                    color = if (locked) tFg(Color(0xFF92400E)) else tFg(Color(0xFF475569)),
                     modifier = Modifier.clip(RoundedCornerShape(8.dp))
-                        .background(if (locked) Color(0xFFFFFBEB) else Color(0xFFF8FAFC))
+                        .background(if (locked) tBg(Color(0xFFFFFBEB)) else tBg(Color(0xFFF8FAFC)))
                         .padding(horizontal = 8.dp, vertical = 4.dp)
                 )
             }
@@ -418,50 +421,50 @@ fun ExamCard(
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(6.dp))
-                        .background(Color(0xFFF1F5F9))
+                        .background(tBg(Color(0xFFF1F5F9)))
                         .padding(horizontal = 8.dp, vertical = 3.dp)
                 ) {
                     Text(
                         text = "الدرجة: ${exam.totalMarks}",
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF334155)
+                        color = tFg(Color(0xFF334155))
                     )
                 }
 
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(6.dp))
-                        .background(Color(0xFFEFF6FF))
+                        .background(tBg(Color(0xFFEFF6FF)))
                         .padding(horizontal = 8.dp, vertical = 3.dp)
                 ) {
                     Text(
                         text = "المدة: ${exam.durationMinutes} دقيقة",
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF1D4ED8)
+                        color = tFg(Color(0xFF1D4ED8))
                     )
                 }
 
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(6.dp))
-                        .background(Color(0xFFFEF3C7))
+                        .background(tBg(Color(0xFFFEF3C7)))
                         .padding(horizontal = 8.dp, vertical = 3.dp)
                 ) {
                     Text(
                         text = "${exam.questionsCount} أسئلة",
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFFB45309)
+                        color = tFg(Color(0xFFB45309))
                     )
                 }
             }
 
             if (exam.branch.isNotBlank() || exam.notes.isNotBlank()) {
                 Spacer(modifier = Modifier.height(6.dp))
-                if (exam.branch.isNotBlank()) Text("الفرع: ${exam.branch}", style = MaterialTheme.typography.labelSmall, color = Color(0xFF475569))
-                if (exam.notes.isNotBlank()) Text("تعليمات: ${exam.notes}", style = MaterialTheme.typography.labelSmall, color = Color(0xFF475569))
+                if (exam.branch.isNotBlank()) Text("الفرع: ${exam.branch}", style = MaterialTheme.typography.labelSmall, color = tFg(Color(0xFF475569)))
+                if (exam.notes.isNotBlank()) Text("تعليمات: ${exam.notes}", style = MaterialTheme.typography.labelSmall, color = tFg(Color(0xFF475569)))
             }
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -476,11 +479,11 @@ fun ExamCard(
                         text = if (exam.hasFile) "📄 ${exam.pdfFileName.ifBlank { "نموذج_امتحان.pdf" }} ${exam.pdfFileSize}" else "لا يوجد ملف PDF بعد",
                         style = MaterialTheme.typography.bodySmall,
                         fontSize = 12.sp,
-                        color = TextMuted
+                        color = tFg(TextMuted)
                     )
                     if (onUpload != null) {
                         TextButton(onClick = onUpload, contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
-                            Text(if (exam.hasFile) "استبدال ملف PDF" else "⬆ رفع ملف PDF", style = MaterialTheme.typography.labelSmall, color = Color(0xFF2563EB))
+                            Text(if (exam.hasFile) "استبدال ملف PDF" else "⬆ رفع ملف PDF", style = MaterialTheme.typography.labelSmall, color = tFg(Color(0xFF2563EB)))
                         }
                     }
                 }
@@ -488,7 +491,7 @@ fun ExamCard(
                 Button(
                     onClick = onPreview,
                     shape = RoundedCornerShape(8.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Primary700),
+                    colors = ButtonDefaults.buttonColors(containerColor = tBg(Primary700)),
                     contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 8.dp)
                 ) {
                     Text("معاينة الأسئلة 👁️", style = MaterialTheme.typography.labelSmall, color = Color.White)
@@ -513,12 +516,12 @@ fun ExamPreviewDialog(
                     overflow = TextOverflow.Ellipsis,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Black,
-                    color = Primary900
+                    color = tFg(Primary900)
                 )
                 Text(
                     text = "الكتاب: ${exam.book} • الدرجة الكلية: ${exam.totalMarks}",
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color(0xFF0F766E)
+                    color = tFg(Color(0xFF0F766E))
                 )
             }
         },
@@ -533,27 +536,27 @@ fun ExamPreviewDialog(
                     text = "📋 بنك الأسئلة المعتمد للنموذج:",
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Bold,
-                    color = Primary800
+                    color = tFg(Primary800)
                 )
 
                 if (exam.sampleQuestions.isEmpty()) {
                     Text(
                         text = "النموذج متاح كملف PDF ورقي تم توزيعه على اللجان.",
                         style = MaterialTheme.typography.bodySmall,
-                        color = TextMuted
+                        color = tFg(TextMuted)
                     )
                 } else {
                     exam.sampleQuestions.forEach { question ->
                         Surface(
                             shape = RoundedCornerShape(8.dp),
-                            color = Color(0xFFF8FAFC),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0)),
+                            color = tBg(Color(0xFFF8FAFC)),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, tEdge(Color(0xFFE2E8F0))),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Text(
                                 text = question,
                                 style = MaterialTheme.typography.bodySmall,
-                                color = Color(0xFF1E293B),
+                                color = tFg(Color(0xFF1E293B)),
                                 modifier = Modifier.padding(10.dp)
                             )
                         }
@@ -564,19 +567,19 @@ fun ExamPreviewDialog(
 
                 Surface(
                     shape = RoundedCornerShape(8.dp),
-                    color = Color(0xFFDCFCE7),
+                    color = tBg(Color(0xFFDCFCE7)),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
                         modifier = Modifier.padding(8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(Icons.Default.Download, contentDescription = null, tint = Color(0xFF16A34A), modifier = Modifier.size(16.dp))
+                        Icon(Icons.Default.Download, contentDescription = null, tint = tFg(Color(0xFF16A34A)), modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
                             text = "ملف PDF جاهز للطباعة وتوزيعه على قاعات الاختبار",
                             style = MaterialTheme.typography.labelSmall,
-                            color = Color(0xFF15803D),
+                            color = tFg(Color(0xFF15803D)),
                             fontWeight = FontWeight.Bold
                         )
                     }
@@ -586,7 +589,7 @@ fun ExamPreviewDialog(
         confirmButton = {
             Button(
                 onClick = onDismiss,
-                colors = ButtonDefaults.buttonColors(containerColor = Primary700)
+                colors = ButtonDefaults.buttonColors(containerColor = tBg(Primary700))
             ) {
                 Text("إغلاق")
             }
@@ -621,7 +624,7 @@ fun AddExamDialog(
                 text = "➕ رفع وإضافة نموذج امتحان جديد",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
-                color = Primary900
+                color = tFg(Primary900)
             )
         },
         text = {
@@ -660,7 +663,7 @@ fun AddExamDialog(
                     text = "الفرع المستهدف:",
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Bold,
-                    color = Primary800
+                    color = tFg(Primary800)
                 )
 
                 Row(
@@ -674,7 +677,7 @@ fun AddExamDialog(
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(8.dp))
-                                .background(if (isSel) Primary700 else Color(0xFFF1F5F9))
+                                .background(if (isSel) tBg(Primary700) else tBg(Color(0xFFF1F5F9)))
                                 .minimumInteractiveComponentSize().clickable { branch = bName }
                                 .padding(horizontal = 10.dp, vertical = 6.dp),
                             contentAlignment = Alignment.Center
@@ -683,7 +686,7 @@ fun AddExamDialog(
                                 text = bName,
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = if (isSel) FontWeight.Bold else FontWeight.Normal,
-                                color = if (isSel) Color.White else Color(0xFF475569)
+                                color = if (isSel) Color.White else tFg(Color(0xFF475569))
                             )
                         }
                     }
@@ -723,18 +726,18 @@ fun AddExamDialog(
                 // The question PDF is uploaded right after the exam is saved, as on the web.
                 Surface(
                     shape = RoundedCornerShape(10.dp),
-                    color = Color(0xFFEFF6FF),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFBFDBFE)),
+                    color = tBg(Color(0xFFEFF6FF)),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, tEdge(Color(0xFFBFDBFE))),
                     modifier = Modifier.fillMaxWidth().clickable(role = Role.Button) { pickPdf.launch("application/pdf") }
                 ) {
                     Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.PictureAsPdf, contentDescription = null, tint = Color(0xFF2563EB), modifier = Modifier.size(20.dp))
+                        Icon(Icons.Default.PictureAsPdf, contentDescription = null, tint = tFg(Color(0xFF2563EB)), modifier = Modifier.size(20.dp))
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = if (pdf != null) "تم اختيار ملف PDF ✓ (اضغط للتغيير)" else "اختيار ملف الأسئلة PDF (اختياري)",
                             style = MaterialTheme.typography.bodySmall,
                             fontWeight = FontWeight.Bold,
-                            color = Color(0xFF1D4ED8)
+                            color = tFg(Color(0xFF1D4ED8))
                         )
                     }
                 }
@@ -777,7 +780,7 @@ fun AddExamDialog(
                         onSave(exam, pdf)
                     }
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = Primary700)
+                colors = ButtonDefaults.buttonColors(containerColor = tBg(Primary700))
             ) {
                 Text("حفظ النموذج")
             }

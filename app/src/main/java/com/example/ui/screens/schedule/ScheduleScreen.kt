@@ -1,5 +1,8 @@
 package com.example.ui.screens.schedule
 
+import com.example.ui.theme.tEdge
+import com.example.ui.theme.tBg
+import com.example.ui.theme.tFg
 import androidx.compose.ui.text.style.TextOverflow
 import com.example.ui.theme.TextMuted
 import androidx.compose.foundation.selection.selectable
@@ -129,7 +132,7 @@ fun ScheduleScreen(
             if (canManage) {
                 FloatingActionButton(
                     onClick = { showAddDialog = true },
-                    containerColor = Primary700,
+                    containerColor = tBg(Primary700),
                     contentColor = Color.White,
                     modifier = Modifier.testTag("fab_add_task")
                 ) {
@@ -142,7 +145,7 @@ fun ScheduleScreen(
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color(0xFFF8F9FD))
+                .background(tBg(Color(0xFFF8F9FD)))
                 .padding(innerPadding)
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -155,7 +158,7 @@ fun ScheduleScreen(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = Primary800)
+                colors = CardDefaults.cardColors(containerColor = tBg(Primary800))
             ) {
                 Row(
                     modifier = Modifier.padding(16.dp),
@@ -186,7 +189,7 @@ fun ScheduleScreen(
                         Text(
                             text = "$pendingCount مهمة قيد التنفيذ • $completedCount مهمة مكتملة",
                             style = MaterialTheme.typography.bodySmall,
-                            color = Primary100
+                            color = tFg(Primary100)
                         )
                     }
                 }
@@ -207,7 +210,7 @@ fun ScheduleScreen(
             selectedDate?.let {
                 Text(
                     "مهام يوم ${com.example.ui.components.arabicDayName(it)} ($it): ${dayTasks.size}",
-                    style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = Primary800,
+                    style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = tFg(Primary800),
                     modifier = Modifier.padding(top = 6.dp)
                 )
             }
@@ -231,8 +234,8 @@ fun ScheduleScreen(
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(10.dp))
-                            .background(if (isSel) Primary700 else SurfacePure)
-                            .border(1.dp, if (isSel) Primary800 else Color(0xFFE2E8F0), RoundedCornerShape(10.dp))
+                            .background(if (isSel) tBg(Primary700) else tBg(SurfacePure))
+                            .border(1.dp, if (isSel) tEdge(Primary800) else tEdge(Color(0xFFE2E8F0)), RoundedCornerShape(10.dp))
                             .minimumInteractiveComponentSize()
                             .selectable(selected = isSel, role = androidx.compose.ui.semantics.Role.Tab) { selectedFilter = key }
                             .padding(vertical = 8.dp, horizontal = 12.dp),
@@ -242,7 +245,7 @@ fun ScheduleScreen(
                             text = label,
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = if (isSel) FontWeight.Bold else FontWeight.Medium,
-                            color = if (isSel) Color.White else Color(0xFF475569)
+                            color = if (isSel) Color.White else tFg(Color(0xFF475569))
                         )
                     }
                 }
@@ -263,7 +266,7 @@ fun ScheduleScreen(
                     Text(
                         text = "لا توجد مهام مطابقة للتصفية المحددة",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = TextMuted
+                        color = tFg(TextMuted)
                     )
                 }
             }
@@ -319,9 +322,9 @@ fun ScheduleTaskCard(
     canDelete: Boolean
 ) {
     val (badgeBg, badgeText, badgeDot) = when (task.priority) {
-        "urgent" -> Triple(PriorityUrgentBg, PriorityUrgentText, PriorityUrgentDot)
-        "high" -> Triple(PriorityHighBg, PriorityHighText, PriorityHighDot)
-        else -> Triple(PriorityNormalBg, PriorityNormalText, PriorityNormalDot)
+        "urgent" -> Triple(tBg(PriorityUrgentBg), tFg(PriorityUrgentText), PriorityUrgentDot)
+        "high" -> Triple(tBg(PriorityHighBg), tFg(PriorityHighText), PriorityHighDot)
+        else -> Triple(tBg(PriorityNormalBg), tFg(PriorityNormalText), PriorityNormalDot)
     }
 
     val typeLabel = when (task.type) {
@@ -340,9 +343,9 @@ fun ScheduleTaskCard(
             .testTag("schedule_task_${task.id}"),
         shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (task.completed) Color(0xFFF8FAFC) else SurfacePure
+            containerColor = if (task.completed) tBg(Color(0xFFF8FAFC)) else tBg(SurfacePure)
         ),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0)),
+        border = androidx.compose.foundation.BorderStroke(1.dp, tEdge(Color(0xFFE2E8F0))),
         elevation = CardDefaults.cardElevation(defaultElevation = if (task.completed) 0.dp else 1.dp)
     ) {
         Row(
@@ -357,7 +360,7 @@ fun ScheduleTaskCard(
                 Icon(
                     imageVector = if (task.completed) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
                     contentDescription = if (task.completed) "إلغاء تحديد «${task.title}» كمنجز" else "تحديد «${task.title}» كمنجز",
-                    tint = if (task.completed) Color(0xFF15803D) else TextMuted,
+                    tint = if (task.completed) tFg(Color(0xFF15803D)) else tFg(TextMuted),
                     modifier = Modifier.size(24.dp)
                 )
             }
@@ -391,7 +394,7 @@ fun ScheduleTaskCard(
                         Text(
                             text = typeLabel,
                             style = MaterialTheme.typography.labelSmall,
-                            color = Color(0xFF0F766E),
+                            color = tFg(Color(0xFF0F766E)),
                             fontWeight = FontWeight.Bold,
                             fontSize = 12.sp
                         )
@@ -401,7 +404,7 @@ fun ScheduleTaskCard(
                             Text(
                                 text = "• لجنة ($it)",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = Primary700,
+                                color = tFg(Primary700),
                                 fontWeight = FontWeight.Bold
                             )
                         }
@@ -409,7 +412,7 @@ fun ScheduleTaskCard(
 
                     if (canDelete) {
                         IconButton(onClick = onDelete, modifier = Modifier.size(48.dp)) {
-                            Icon(Icons.Default.Delete, contentDescription = "حذف", tint = Color(0xFFEF4444), modifier = Modifier.size(16.dp))
+                            Icon(Icons.Default.Delete, contentDescription = "حذف", tint = tFg(Color(0xFFEF4444)), modifier = Modifier.size(16.dp))
                         }
                     }
                 }
@@ -422,14 +425,14 @@ fun ScheduleTaskCard(
                     overflow = TextOverflow.Ellipsis,
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
-                    color = if (task.completed) TextMuted else Primary900
+                    color = if (task.completed) tFg(TextMuted) else tFg(Primary900)
                 )
 
                 if (task.deliverable.isNotBlank()) {
                     Text(
                         text = "📦 المطلوب تسليمه: ${task.deliverable}",
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color(0xFF334155),
+                        color = tFg(Color(0xFF334155)),
                         fontSize = 12.sp
                     )
                 }
@@ -438,7 +441,7 @@ fun ScheduleTaskCard(
                     Text(
                         text = "المعاون المسؤول: ${task.assignedAssistantName}",
                         style = MaterialTheme.typography.bodySmall,
-                        color = TextMuted,
+                        color = tFg(TextMuted),
                         fontSize = 12.sp
                     )
                 }
@@ -453,7 +456,7 @@ fun ScheduleTaskCard(
                     Text(
                         text = "📅 ${task.date} • ⏰ ${task.time}",
                         style = MaterialTheme.typography.labelSmall,
-                        color = Color(0xFF475569),
+                        color = tFg(Color(0xFF475569)),
                         fontWeight = FontWeight.Bold
                     )
 
@@ -461,7 +464,7 @@ fun ScheduleTaskCard(
                         Text(
                             text = "اكتمل في: ${task.completedAt}",
                             style = MaterialTheme.typography.labelSmall,
-                            color = Color(0xFF15803D),
+                            color = tFg(Color(0xFF15803D)),
                             fontSize = 12.sp
                         )
                     }
@@ -509,7 +512,7 @@ fun AddTaskDialog(
                 text = "➕ جدولة مهمة ميدانية جديدة",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
-                color = Primary900
+                color = tFg(Primary900)
             )
         },
         text = {
@@ -574,7 +577,7 @@ fun AddTaskDialog(
                     text = "أولوية المهمة:",
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Bold,
-                    color = Primary800
+                    color = tFg(Primary800)
                 )
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -586,8 +589,8 @@ fun AddTaskDialog(
                             modifier = Modifier
                                 .weight(1f)
                                 .clip(RoundedCornerShape(8.dp))
-                                .background(if (isSel) Primary100 else Color(0xFFF1F5F9))
-                                .border(1.dp, if (isSel) Primary700 else Color(0xFFCBD5E1), RoundedCornerShape(8.dp))
+                                .background(if (isSel) tBg(Primary100) else tBg(Color(0xFFF1F5F9)))
+                                .border(1.dp, if (isSel) tEdge(Primary700) else tEdge(Color(0xFFCBD5E1)), RoundedCornerShape(8.dp))
                                 .minimumInteractiveComponentSize().clickable { priority = key }
                                 .padding(vertical = 6.dp),
                             contentAlignment = Alignment.Center
@@ -596,7 +599,7 @@ fun AddTaskDialog(
                                 text = label,
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = if (isSel) FontWeight.Bold else FontWeight.Normal,
-                                color = if (isSel) Primary800 else Color(0xFF475569)
+                                color = if (isSel) tFg(Primary800) else tFg(Color(0xFF475569))
                             )
                         }
                     }
@@ -606,7 +609,7 @@ fun AddTaskDialog(
                     text = "نوع المهمة:",
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Bold,
-                    color = Primary800
+                    color = tFg(Primary800)
                 )
                 Row(
                     modifier = Modifier
@@ -619,7 +622,7 @@ fun AddTaskDialog(
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(8.dp))
-                                .background(if (isSel) Primary700 else Color(0xFFF1F5F9))
+                                .background(if (isSel) tBg(Primary700) else tBg(Color(0xFFF1F5F9)))
                                 .minimumInteractiveComponentSize().clickable { type = key }
                                 .padding(horizontal = 10.dp, vertical = 6.dp),
                             contentAlignment = Alignment.Center
@@ -628,7 +631,7 @@ fun AddTaskDialog(
                                 text = label,
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = if (isSel) FontWeight.Bold else FontWeight.Normal,
-                                color = if (isSel) Color.White else Color(0xFF475569)
+                                color = if (isSel) Color.White else tFg(Color(0xFF475569))
                             )
                         }
                     }
@@ -653,7 +656,7 @@ fun AddTaskDialog(
                         onSave(task)
                     }
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = Primary700)
+                colors = ButtonDefaults.buttonColors(containerColor = tBg(Primary700))
             ) {
                 Text("جدولة المهمة")
             }

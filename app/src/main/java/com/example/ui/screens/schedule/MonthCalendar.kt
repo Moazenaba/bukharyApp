@@ -1,5 +1,8 @@
 package com.example.ui.screens.schedule
 
+import com.example.ui.theme.tEdge
+import com.example.ui.theme.tBg
+import com.example.ui.theme.tFg
 import com.example.ui.theme.TextMuted
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -54,7 +57,7 @@ fun MonthCalendar(tasks: List<ScheduleTask>, selectedDate: String?, onSelect: (S
     val days = first.getActualMaximum(Calendar.DAY_OF_MONTH)
     val byDate = tasks.groupBy { it.date }
 
-    Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
+    Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = tBg(Color.White))) {
         Column(Modifier.padding(10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = { if (month == 0) { month = 11; year-- } else month-- }) { Icon(Icons.Filled.ChevronRight, "الشهر السابق") }
@@ -70,7 +73,7 @@ fun MonthCalendar(tasks: List<ScheduleTask>, selectedDate: String?, onSelect: (S
                 modifier = Modifier.align(Alignment.CenterHorizontally)
             ) { Text("الذهاب لليوم الحالي") }
             Row(Modifier.fillMaxWidth()) {
-                listOf("سبت", "أحد", "اثنين", "ثلاثاء", "أربعاء", "خميس", "جمعة").forEach { d -> Text(d, maxLines = 1, softWrap = false, style = MaterialTheme.typography.labelSmall, color = TextMuted, modifier = Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.Center) }
+                listOf("سبت", "أحد", "اثنين", "ثلاثاء", "أربعاء", "خميس", "جمعة").forEach { d -> Text(d, maxLines = 1, softWrap = false, style = MaterialTheme.typography.labelSmall, color = tFg(TextMuted), modifier = Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.Center) }
             }
             val cells = offset + days
             val rows = (cells + 6) / 7
@@ -85,18 +88,18 @@ fun MonthCalendar(tasks: List<ScheduleTask>, selectedDate: String?, onSelect: (S
                                 val selected = iso == selectedDate
                                 Column(
                                     Modifier.fillMaxWidth().aspectRatio(1f)
-                                        .background(if (selected) Primary700 else if (iso == today) Color(0xFFECFDF5) else Color.Transparent, RoundedCornerShape(8.dp))
-                                        .border(1.dp, if (iso == today) Color(0xFF10B981) else Color.Transparent, RoundedCornerShape(8.dp))
+                                        .background(if (selected) tBg(Primary700) else if (iso == today) tBg(Color(0xFFECFDF5)) else Color.Transparent, RoundedCornerShape(8.dp))
+                                        .border(1.dp, if (iso == today) tEdge(Color(0xFF10B981)) else Color.Transparent, RoundedCornerShape(8.dp))
                                         .clickable { onSelect(iso) },
                                     horizontalAlignment = Alignment.CenterHorizontally,
                                     verticalArrangement = Arrangement.Center
                                 ) {
-                                    Text("$dayNum", style = MaterialTheme.typography.labelMedium, color = if (selected) Color.White else Color(0xFF0F172A))
+                                    Text("$dayNum", style = MaterialTheme.typography.labelMedium, color = if (selected) Color.White else tFg(Color(0xFF0F172A)))
                                     if (dayTasks.isNotEmpty()) {
                                         Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                                            if (dayTasks.any { it.type == "ceremony" }) Box(Modifier.size(5.dp).background(Color(0xFFF59E0B), CircleShape))
-                                            if (dayTasks.any { it.type != "ceremony" && !it.completed }) Box(Modifier.size(5.dp).background(if (selected) Color.White else Color(0xFFEF4444), CircleShape))
-                                            if (dayTasks.all { it.completed }) Box(Modifier.size(5.dp).background(Color(0xFF10B981), CircleShape))
+                                            if (dayTasks.any { it.type == "ceremony" }) Box(Modifier.size(5.dp).background(tBg(Color(0xFFF59E0B)), CircleShape))
+                                            if (dayTasks.any { it.type != "ceremony" && !it.completed }) Box(Modifier.size(5.dp).background(if (selected) tBg(Color.White) else tBg(Color(0xFFEF4444)), CircleShape))
+                                            if (dayTasks.all { it.completed }) Box(Modifier.size(5.dp).background(tBg(Color(0xFF10B981)), CircleShape))
                                         }
                                     }
                                 }

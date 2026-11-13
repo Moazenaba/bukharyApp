@@ -1,5 +1,8 @@
 package com.example.ui.components
 
+import com.example.ui.theme.tEdge
+import com.example.ui.theme.tBg
+import com.example.ui.theme.tFg
 import com.example.ui.theme.TextMuted
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
@@ -61,9 +64,9 @@ fun InteractiveStageStepper(
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        color = SurfacePure,
+        color = tBg(SurfacePure),
         tonalElevation = 2.dp,
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0))
+        border = androidx.compose.foundation.BorderStroke(1.dp, tEdge(Color(0xFFE2E8F0)))
     ) {
         Column(
             modifier = Modifier.padding(16.dp)
@@ -77,12 +80,12 @@ fun InteractiveStageStepper(
                     text = "مسار المراحل التسع للجنة",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = Primary700
+                    color = tFg(Primary700)
                 )
                 Text(
                     text = "${stages.getCompletedCount()} من 9 مكتملة (${(stages.progressFraction * 100).toInt()}%)",
                     style = MaterialTheme.typography.labelSmall,
-                    color = Color(0xFF0F766E),
+                    color = tFg(Color(0xFF0F766E)),
                     fontWeight = FontWeight.Bold
                 )
             }
@@ -98,10 +101,10 @@ fun InteractiveStageStepper(
                         .fillMaxWidth()
                         .padding(vertical = 4.dp)
                         .clip(RoundedCornerShape(12.dp))
-                        .background(if (stageItem.completed) stageSet?.bg ?: Color(0xFFF0FDF4) else Color(0xFFFAFAFA))
+                        .background(if (stageItem.completed) stageSet?.bg?.let { tBg(it) } ?: tBg(Color(0xFFF0FDF4)) else tBg(Color(0xFFFAFAFA)))
                         .border(
                             1.dp,
-                            if (stageItem.completed) stageSet?.border ?: Color(0xFFBBF7D0) else Color(0xFFEEEEEE),
+                            if (stageItem.completed) stageSet?.border?.let { tEdge(it) } ?: tEdge(Color(0xFFBBF7D0)) else tEdge(Color(0xFFEEEEEE)),
                             RoundedCornerShape(12.dp)
                         )
                         .clickable(enabled = canEditStage(key)) {
@@ -117,7 +120,7 @@ fun InteractiveStageStepper(
                             .size(28.dp)
                             .clip(CircleShape)
                             .background(
-                                if (stageItem.completed) stageSet?.dot ?: Primary700 else Color(0xFFE2E8F0)
+                                if (stageItem.completed) stageSet?.dot ?: Primary700 else tBg(Color(0xFFE2E8F0))
                             ),
                         contentAlignment = Alignment.Center
                     ) {
@@ -133,7 +136,7 @@ fun InteractiveStageStepper(
                                 text = "${index + 1}",
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = TextMuted
+                                color = tFg(TextMuted)
                             )
                         }
                     }
@@ -149,7 +152,7 @@ fun InteractiveStageStepper(
                             Icon(
                                 imageVector = stageIcon(key),
                                 contentDescription = null,
-                                tint = if (stageItem.completed) stageSet?.dot ?: TextMuted else TextMuted,
+                                tint = if (stageItem.completed) stageSet?.dot?.let { tFg(it) } ?: tFg(TextMuted) else tFg(TextMuted),
                                 modifier = Modifier.size(16.dp)
                             )
                             Spacer(modifier = Modifier.width(6.dp))
@@ -157,7 +160,7 @@ fun InteractiveStageStepper(
                                 text = title,
                                 style = MaterialTheme.typography.bodyMedium,
                                 fontWeight = if (stageItem.completed) FontWeight.Bold else FontWeight.Medium,
-                                color = if (stageItem.completed) stageSet?.text ?: Color(0xFF0F172A) else Color(0xFF475569)
+                                color = if (stageItem.completed) stageSet?.text?.let { tFg(it) } ?: tFg(Color(0xFF0F172A)) else tFg(Color(0xFF475569))
                             )
                         }
 
@@ -166,7 +169,7 @@ fun InteractiveStageStepper(
                                 text = "تم الإنجاز في: ${Dates.displayTime(stageItem.completedAt)}",
                                 style = MaterialTheme.typography.bodySmall,
                                 fontSize = 12.sp,
-                                color = stageSet?.text?.copy(alpha = 0.8f) ?: TextMuted
+                                color = stageSet?.text?.let { tFg(it) }?.copy(alpha = 0.8f) ?: tFg(TextMuted)
                             )
                         }
                     }
@@ -178,7 +181,7 @@ fun InteractiveStageStepper(
                             style = MaterialTheme.typography.labelSmall,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
-                            color = if (stageItem.completed) stageSet?.text ?: Primary700 else TextMuted
+                            color = if (stageItem.completed) stageSet?.text?.let { tFg(it) } ?: tFg(Primary700) else tFg(TextMuted)
                         )
                     }
                 }

@@ -1,5 +1,8 @@
 package com.example.ui.screens.notifications
 
+import com.example.ui.theme.tEdge
+import com.example.ui.theme.tBg
+import com.example.ui.theme.tFg
 import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -62,7 +65,7 @@ fun NotificationsScreen(
     val unread = notifications.count { !it.read }
 
     LazyColumn(
-        modifier.fillMaxSize().background(Color(0xFFF8F9FD)),
+        modifier.fillMaxSize().background(tBg(Color(0xFFF8F9FD))),
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
@@ -74,7 +77,7 @@ fun NotificationsScreen(
                 }
             }
         }
-        if (notifications.isEmpty()) item { Text("لا توجد إشعارات حتى الآن", color = TextMuted, modifier = Modifier.padding(20.dp)) }
+        if (notifications.isEmpty()) item { Text("لا توجد إشعارات حتى الآن", color = tFg(TextMuted), modifier = Modifier.padding(20.dp)) }
         items(notifications, key = { it.id }) { n ->
             Card(
                 Modifier.fillMaxWidth().clickable(role = Role.Button) {
@@ -82,18 +85,18 @@ fun NotificationsScreen(
                     n.committeeId?.let { id -> if (committees.any { it.id == id }) onOpenCommittee(id) }
                 },
                 shape = RoundedCornerShape(14.dp),
-                colors = CardDefaults.cardColors(containerColor = if (n.read) Color.White else Color(0xFFEFF6FF)),
-                border = BorderStroke(1.dp, when (n.type) { "urgent" -> Color(0xFFFCA5A5); "success" -> Color(0xFF86EFAC); else -> Color(0xFFE2E8F0) })
+                colors = CardDefaults.cardColors(containerColor = if (n.read) tBg(Color.White) else tBg(Color(0xFFEFF6FF))),
+                border = BorderStroke(1.dp, when (n.type) { "urgent" -> tEdge(Color(0xFFFCA5A5)); "success" -> tEdge(Color(0xFF86EFAC)); else -> tEdge(Color(0xFFE2E8F0)) })
             ) {
                 Column(Modifier.padding(12.dp)) {
                     Text(
                         (if (!n.read) "● " else "") + n.title, fontWeight = FontWeight.Bold,
-                        color = if (n.type == "urgent") Color(0xFFB91C1C) else Color(0xFF0F172A)
+                        color = if (n.type == "urgent") tFg(Color(0xFFB91C1C)) else tFg(Color(0xFF0F172A))
                     )
-                    if (n.description.isNotBlank()) Text(n.description, style = MaterialTheme.typography.bodySmall, color = Color(0xFF475569))
+                    if (n.description.isNotBlank()) Text(n.description, style = MaterialTheme.typography.bodySmall, color = tFg(Color(0xFF475569)))
                     Row {
-                        Text(Dates.displayTime(n.createdAt), style = MaterialTheme.typography.labelSmall, color = TextMuted, modifier = Modifier.weight(1f))
-                        n.committeeId?.let { id -> committees.find { it.id == id }?.let { Text("لجنة #${it.committeeNumber} ↗", style = MaterialTheme.typography.labelSmall, color = Color(0xFF0F766E)) } }
+                        Text(Dates.displayTime(n.createdAt), style = MaterialTheme.typography.labelSmall, color = tFg(TextMuted), modifier = Modifier.weight(1f))
+                        n.committeeId?.let { id -> committees.find { it.id == id }?.let { Text("لجنة #${it.committeeNumber} ↗", style = MaterialTheme.typography.labelSmall, color = tFg(Color(0xFF0F766E))) } }
                     }
                 }
             }
@@ -127,7 +130,7 @@ fun NotificationsScreen(
                             )
                         }
                     }
-                    Text("يصل التنبيه أيضاً كإشعار على هواتف المستخدمين.", style = MaterialTheme.typography.labelSmall, color = TextMuted)
+                    Text("يصل التنبيه أيضاً كإشعار على هواتف المستخدمين.", style = MaterialTheme.typography.labelSmall, color = tFg(TextMuted))
                 }
             },
             confirmButton = {

@@ -1,5 +1,8 @@
 package com.example.ui.screens.committees
 
+import com.example.ui.theme.tEdge
+import com.example.ui.theme.tBg
+import com.example.ui.theme.tFg
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
@@ -79,9 +82,9 @@ fun CommitteeBaseDataTab(
     var notes by remember { mutableStateOf(committee.generalNotes) }
     var confirmDelete by remember { mutableStateOf(false) }
 
-    Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Color.White), border = BorderStroke(1.dp, Color(0xFFE2E8F0))) {
+    Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = tBg(Color.White)), border = BorderStroke(1.dp, tEdge(Color(0xFFE2E8F0)))) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("بيانات اللجنة (كما أُدخلت عند الإضافة)", fontWeight = FontWeight.Bold, color = Primary800)
+            Text("بيانات اللجنة (كما أُدخلت عند الإضافة)", fontWeight = FontWeight.Bold, color = tFg(Primary800))
             OutlinedTextField(
                 number, { number = it.filter(Char::isDigit) }, label = { Text("رقم اللجنة") }, enabled = canEditBase, singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth()
@@ -145,10 +148,10 @@ fun CommitteeBaseDataTab(
                             )
                         )
                     },
-                    modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Primary700)
+                    modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = tBg(Primary700))
                 ) { Text("حفظ بيانات اللجنة") }
-            } else Text("تعديل البيانات الأساسية غير متاح لدورك.", style = MaterialTheme.typography.labelSmall, color = TextMuted)
-            if (canDelete) OutlinedButton(onClick = { confirmDelete = true }, modifier = Modifier.fillMaxWidth()) { Text("حذف اللجنة", color = Color(0xFFB91C1C)) }
+            } else Text("تعديل البيانات الأساسية غير متاح لدورك.", style = MaterialTheme.typography.labelSmall, color = tFg(TextMuted))
+            if (canDelete) OutlinedButton(onClick = { confirmDelete = true }, modifier = Modifier.fillMaxWidth()) { Text("حذف اللجنة", color = tFg(Color(0xFFB91C1C))) }
         }
     }
     if (confirmDelete) {
@@ -156,7 +159,7 @@ fun CommitteeBaseDataTab(
             onDismissRequest = { confirmDelete = false },
             title = { Text("حذف اللجنة رقم ${committee.committeeNumber}؟") },
             text = { Text("سيتم حذف لجنة ${committee.committeeName} ومراحلها ودرجاتها نهائياً، ولا يمكن التراجع.") },
-            confirmButton = { TextButton(onClick = { confirmDelete = false; onDelete() }) { Text("حذف", color = Color(0xFFB91C1C)) } },
+            confirmButton = { TextButton(onClick = { confirmDelete = false; onDelete() }) { Text("حذف", color = tFg(Color(0xFFB91C1C))) } },
             dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text("إلغاء") } }
         )
     }
@@ -171,14 +174,14 @@ fun QuestionScorersSection(
 ) {
     val questions = committee.scoringDetails.questions.sortedBy { it.questionNumber }
     if (questions.isEmpty()) return
-    Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Color.White), border = BorderStroke(1.dp, Color(0xFFFDE68A))) {
+    Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = tBg(Color.White)), border = BorderStroke(1.dp, tEdge(Color(0xFFFDE68A)))) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("المصححون والدرجة لكل سؤال", fontWeight = FontWeight.Bold, color = Color(0xFF92400E))
+            Text("المصححون والدرجة لكل سؤال", fontWeight = FontWeight.Bold, color = tFg(Color(0xFF92400E)))
             questions.forEach { q ->
                 var newScorer by remember(q.id) { mutableStateOf("") }
                 var score by remember(q.id, q.score) { mutableStateOf(q.score?.let { if (it % 1.0 == 0.0) it.toInt().toString() else it.toString() } ?: "") }
                 var qNotes by remember(q.id, q.notes) { mutableStateOf(q.notes ?: "") }
-                Column(Modifier.fillMaxWidth().background(Color(0xFFFFFBEB), RoundedCornerShape(10.dp)).padding(8.dp)) {
+                Column(Modifier.fillMaxWidth().background(tBg(Color(0xFFFFFBEB)), RoundedCornerShape(10.dp)).padding(8.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Checkbox(q.completed, { if (canScore) onUpdate(q.id, it, q.scorers, q.score, q.notes) }, enabled = canScore)
                         Text(q.label.ifBlank { "السؤال ${q.questionNumber}" }, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
@@ -187,7 +190,7 @@ fun QuestionScorersSection(
                         q.scorers.forEach { s ->
                             InputChip(selected = false, enabled = canScore, onClick = { onUpdate(q.id, q.completed, q.scorers - s, q.score, q.notes) }, label = { Text(if (canScore) "$s ✕" else s) })
                         }
-                        if (q.scorers.isEmpty()) Text("لا يوجد مصححون بعد", style = MaterialTheme.typography.labelSmall, color = TextMuted)
+                        if (q.scorers.isEmpty()) Text("لا يوجد مصححون بعد", style = MaterialTheme.typography.labelSmall, color = tFg(TextMuted))
                     }
                     if (canScore) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -260,12 +263,12 @@ fun CommitteeSheetTab(
         }
     }
 
-    Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Color.White), border = BorderStroke(1.dp, Color(0xFFE9D5FF))) {
+    Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = tBg(Color.White)), border = BorderStroke(1.dp, tEdge(Color(0xFFE9D5FF)))) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("🟣 كتابة الكشف وكشف الدرجات", fontWeight = FontWeight.Bold, color = Color(0xFF6B21A8))
+            Text("🟣 كتابة الكشف وكشف الدرجات", fontWeight = FontWeight.Bold, color = tFg(Color(0xFF6B21A8)))
             Text(
                 if (sheet.completed) "✓ مكتملة${sheet.completedAt?.let { " — ${Dates.displayTime(it)}" } ?: ""}${sheet.completedBy?.let { " — $it" } ?: ""}" else "لم تكتمل مرحلة كتابة الكشف بعد",
-                style = MaterialTheme.typography.bodySmall, color = if (sheet.completed) Color(0xFF047857) else TextMuted
+                style = MaterialTheme.typography.bodySmall, color = if (sheet.completed) tFg(Color(0xFF047857)) else tFg(TextMuted)
             )
             sheet.notes?.takeIf { it.isNotBlank() }?.let { Text("📎 $it", style = MaterialTheme.typography.bodySmall) }
             if (canFinalize) Button(onClick = { pick.launch("*/*") }, modifier = Modifier.fillMaxWidth()) { Text("استيراد كشف الدرجات من Excel") }

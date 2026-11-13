@@ -1,5 +1,8 @@
 package com.example.ui.screens.committees
 
+import com.example.ui.theme.tEdge
+import com.example.ui.theme.tBg
+import com.example.ui.theme.tFg
 import androidx.compose.ui.text.style.TextOverflow
 import com.example.ui.theme.TextMuted
 import androidx.compose.ui.text.input.ImeAction
@@ -164,7 +167,7 @@ fun CommitteeDetailModal(
         modifier = modifier
             .fillMaxSize()
             .testTag("committee_detail_modal"),
-        color = Color(0xFFF8F9FD)
+        color = tBg(Color(0xFFF8F9FD))
     ) {
         Column(
             modifier = Modifier
@@ -183,7 +186,7 @@ fun CommitteeDetailModal(
                         modifier = Modifier
                             .size(38.dp)
                             .clip(CircleShape)
-                            .background(Primary700),
+                            .background(tBg(Primary700)),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
@@ -201,12 +204,12 @@ fun CommitteeDetailModal(
                             overflow = TextOverflow.Ellipsis,
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
-                            color = Primary900
+                            color = tFg(Primary900)
                         )
                         Text(
                             text = "الدورة: ${committee.courseName}",
                             style = MaterialTheme.typography.bodySmall,
-                            color = TextMuted,
+                            color = tFg(TextMuted),
                             fontSize = 12.sp
                         )
                     }
@@ -216,10 +219,10 @@ fun CommitteeDetailModal(
                     onClick = onClose,
                     modifier = Modifier
                         .clip(CircleShape)
-                        .background(Color(0xFFE2E8F0))
+                        .background(tBg(Color(0xFFE2E8F0)))
                         .testTag("btn_close_detail_modal")
                 ) {
-                    Icon(Icons.Default.Close, contentDescription = "إغلاق", tint = Primary900)
+                    Icon(Icons.Default.Close, contentDescription = "إغلاق", tint = tFg(Primary900))
                 }
             }
 
@@ -229,15 +232,15 @@ fun CommitteeDetailModal(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = SurfacePure),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0))
+                colors = CardDefaults.cardColors(containerColor = tBg(SurfacePure)),
+                border = androidx.compose.foundation.BorderStroke(1.dp, tEdge(Color(0xFFE2E8F0)))
             ) {
                 Column(modifier = Modifier.padding(14.dp)) {
                     Text(
                         text = "📖 الكتاب: ${committee.competitionBook}",
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF0F766E)
+                        color = tFg(Color(0xFF0F766E))
                     )
                     Spacer(modifier = Modifier.height(6.dp))
                     Row(
@@ -253,13 +256,13 @@ fun CommitteeDetailModal(
                             text = "${committee.studentsCount} طالباً",
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Bold,
-                            color = Color(0xFFB45309)
+                            color = tFg(Color(0xFFB45309))
                         )
                     }
                     Text(
                         text = "المكان: ${committee.sheikhCountry.ifBlank { committee.branch.ifBlank { "—" } }} • ${if (committee.isWomenCommittee) "مصلى الأخوات" else "مصلى الرجال"}",
                         style = MaterialTheme.typography.bodySmall,
-                        color = TextMuted
+                        color = tFg(TextMuted)
                     )
                     if (inScope && Permissions.can("committees.update")) {
                         androidx.compose.material3.TextButton(
@@ -277,7 +280,7 @@ fun CommitteeDetailModal(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(12.dp))
-                    .background(Color(0xFFE2E8F0))
+                    .background(tBg(Color(0xFFE2E8F0)))
                     .horizontalScroll(rememberScrollState())
                     .padding(4.dp),
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
@@ -294,7 +297,7 @@ fun CommitteeDetailModal(
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(8.dp))
-                            .background(if (isSel) Primary700 else Color.Transparent)
+                            .background(if (isSel) tBg(Primary700) else Color.Transparent)
                             .minimumInteractiveComponentSize()
                             .selectable(selected = isSel, role = androidx.compose.ui.semantics.Role.Tab) { activeTab = idx }
                             .padding(vertical = 8.dp, horizontal = 10.dp),
@@ -305,7 +308,7 @@ fun CommitteeDetailModal(
                             style = MaterialTheme.typography.labelSmall,
                             fontSize = 12.sp,
                             fontWeight = if (isSel) FontWeight.Bold else FontWeight.Medium,
-                            color = if (isSel) Color.White else Color(0xFF475569)
+                            color = if (isSel) Color.White else tFg(Color(0xFF475569))
                         )
                     }
                 }
@@ -348,22 +351,22 @@ fun CommitteeDetailModal(
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = SurfacePure),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0))
+                    colors = CardDefaults.cardColors(containerColor = tBg(SurfacePure)),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, tEdge(Color(0xFFE2E8F0)))
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text(
                             text = "🤝 توثيق استلام المعاون الميداني للجنة",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
-                            color = Primary800
+                            color = tFg(Primary800)
                         )
 
                         if (committee.receivedByAssistant != null) {
                             Spacer(modifier = Modifier.height(8.dp))
                             Surface(
                                 shape = RoundedCornerShape(10.dp),
-                                color = Color(0xFFF0FDF4),
+                                color = tBg(Color(0xFFF0FDF4)),
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Column(modifier = Modifier.padding(10.dp)) {
@@ -371,12 +374,12 @@ fun CommitteeDetailModal(
                                         text = "✓ تم توثيق استلام: ${committee.receivedByAssistant.receivedByName}",
                                         style = MaterialTheme.typography.bodyMedium,
                                         fontWeight = FontWeight.Bold,
-                                        color = Color(0xFF15803D)
+                                        color = tFg(Color(0xFF15803D))
                                     )
                                     Text(
                                         text = "التوقيت: ${com.example.ui.components.Dates.displayTime(committee.receivedByAssistant.receivedAt)} • هاتف: ${committee.receivedByAssistant.phone}",
                                         style = MaterialTheme.typography.bodySmall,
-                                        color = Color(0xFF166534)
+                                        color = tFg(Color(0xFF166534))
                                     )
                                 }
                             }
@@ -398,7 +401,7 @@ fun CommitteeDetailModal(
                         if (canReception) Button(
                             onClick = { onAssistantReception(asstPhone, false) },
                             modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.buttonColors(containerColor = Primary700),
+                            colors = ButtonDefaults.buttonColors(containerColor = tBg(Primary700)),
                             shape = RoundedCornerShape(10.dp)
                         ) {
                             Text(if (committee.receivedByAssistant != null) "تحديث توثيق الاستلام 📥" else "توثيق واعتماد الاستلام الميداني 📥")
@@ -414,14 +417,14 @@ fun CommitteeDetailModal(
                             text = "📝 اعتماد جاهزية وتوزيع الامتحان",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
-                            color = Primary800
+                            color = tFg(Primary800)
                         )
 
                         if (committee.examApprovedBy != null) {
                             Spacer(modifier = Modifier.height(8.dp))
                             Surface(
                                 shape = RoundedCornerShape(10.dp),
-                                color = Color(0xFFEFF6FF),
+                                color = tBg(Color(0xFFEFF6FF)),
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Column(modifier = Modifier.padding(10.dp)) {
@@ -429,12 +432,12 @@ fun CommitteeDetailModal(
                                         text = "✓ تم اعتماد جاهزية القاعة والأسئلة بواسطة: ${committee.examApprovedBy.approvedByName}",
                                         style = MaterialTheme.typography.bodyMedium,
                                         fontWeight = FontWeight.Bold,
-                                        color = Color(0xFF1D4ED8)
+                                        color = tFg(Color(0xFF1D4ED8))
                                     )
                                     Text(
                                         text = "التوقيت: ${com.example.ui.components.Dates.displayTime(committee.examApprovedBy.approvedAt)}",
                                         style = MaterialTheme.typography.bodySmall,
-                                        color = Color(0xFF1E40AF)
+                                        color = tFg(Color(0xFF1E40AF))
                                     )
                                 }
                             }
@@ -445,7 +448,7 @@ fun CommitteeDetailModal(
                         if (canReception && committee.examApprovedBy == null) Button(
                             onClick = { onApproveExam(false) },
                             modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2563EB)),
+                            colors = ButtonDefaults.buttonColors(containerColor = tBg(Color(0xFF2563EB))),
                             shape = RoundedCornerShape(10.dp)
                         ) {
                             Text("اعتماد بدء وتوزيع الامتحان 🟦")
@@ -463,15 +466,15 @@ fun CommitteeDetailModal(
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = SurfacePure),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0))
+                    colors = CardDefaults.cardColors(containerColor = tBg(SurfacePure)),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, tEdge(Color(0xFFE2E8F0)))
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text(
                             text = "✏️ تفاصيل مرحلة التصحيح ورصد الأسئلة",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
-                            color = Primary800
+                            color = tFg(Primary800)
                         )
 
                         Spacer(modifier = Modifier.height(10.dp))
@@ -500,7 +503,7 @@ fun CommitteeDetailModal(
                             text = "قائمة إنجاز تصحيح الأسئلة:",
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold,
-                            color = Primary900
+                            color = tFg(Primary900)
                         )
 
                         Spacer(modifier = Modifier.height(6.dp))
@@ -511,7 +514,7 @@ fun CommitteeDetailModal(
                                     .fillMaxWidth()
                                     .padding(vertical = 3.dp)
                                     .clip(RoundedCornerShape(8.dp))
-                                    .background(if (done) Color(0xFFFEF3C7) else Color(0xFFF8FAFC))
+                                    .background(if (done) tBg(Color(0xFFFEF3C7)) else tBg(Color(0xFFF8FAFC)))
                                     .clickable(enabled = canScoring) {
                                         val newMap = questionsState.toMutableMap()
                                         newMap[qKey] = !done
@@ -543,13 +546,13 @@ fun CommitteeDetailModal(
                                     Text(
                                         text = if (done) "مصحح ✓" else "قيد التصحيح",
                                         style = MaterialTheme.typography.labelSmall,
-                                        color = if (done) Color(0xFFB45309) else TextMuted
+                                        color = if (done) tFg(Color(0xFFB45309)) else tFg(TextMuted)
                                     )
                                     if (canScoring && questionsState.size > 1) {
                                         IconButton(onClick = {
                                             questionsState = questionsState.toMutableMap().apply { remove(qKey) }
                                         }) {
-                                            Icon(Icons.Default.Delete, contentDescription = "حذف $qKey", tint = Color(0xFFEF4444))
+                                            Icon(Icons.Default.Delete, contentDescription = "حذف $qKey", tint = tFg(Color(0xFFEF4444)))
                                         }
                                     }
                                 }
@@ -560,7 +563,7 @@ fun CommitteeDetailModal(
                             Text(
                                 text = "لم تُضف أسئلة لهذه اللجنة بعد.",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = TextMuted
+                                color = tFg(TextMuted)
                             )
                         }
                         if (canScoring) {
@@ -597,7 +600,7 @@ fun CommitteeDetailModal(
                                 )
                             },
                             modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD97706)),
+                            colors = ButtonDefaults.buttonColors(containerColor = tBg(Color(0xFFD97706))),
                             shape = RoundedCornerShape(10.dp)
                         ) {
                             Text("حفظ أسماء المصححين والأسئلة الجديدة 🟠")
@@ -609,7 +612,7 @@ fun CommitteeDetailModal(
                             text = "🔵 تجميع ومطابقة الدرجات الكلية",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
-                            color = Primary800
+                            color = tFg(Primary800)
                         )
 
                         Spacer(modifier = Modifier.height(10.dp))
@@ -647,7 +650,7 @@ fun CommitteeDetailModal(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(8.dp))
-                                .background(Color(0xFFEEF2FF))
+                                .background(tBg(Color(0xFFEEF2FF)))
                                 .clickable { confirmedMatch = !confirmedMatch }
                                 .padding(8.dp),
                             verticalAlignment = Alignment.CenterVertically
@@ -662,7 +665,7 @@ fun CommitteeDetailModal(
                                 text = "تأكيد مطابقة التجميع النهائي لكافة الكشوفات",
                                 style = MaterialTheme.typography.bodyMedium,
                                 fontWeight = FontWeight.Bold,
-                                color = Color(0xFF4338CA)
+                                color = tFg(Color(0xFF4338CA))
                             )
                         }
 
@@ -682,7 +685,7 @@ fun CommitteeDetailModal(
                                 )
                             },
                             modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4338CA)),
+                            colors = ButtonDefaults.buttonColors(containerColor = tBg(Color(0xFF4338CA))),
                             shape = RoundedCornerShape(10.dp)
                         ) {
                             Text("توثيق واعتماد تجميع الدرجات 🔵")
@@ -701,15 +704,15 @@ fun CommitteeDetailModal(
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = SurfacePure),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0))
+                    colors = CardDefaults.cardColors(containerColor = tBg(SurfacePure)),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, tEdge(Color(0xFFE2E8F0)))
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text(
                             text = "🎓 تفاصيل حفل التكريم والختام",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
-                            color = Primary800
+                            color = tFg(Primary800)
                         )
 
                         Spacer(modifier = Modifier.height(10.dp))
@@ -781,7 +784,7 @@ fun CommitteeDetailModal(
                                 )
                             },
                             modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF16A34A)),
+                            colors = ButtonDefaults.buttonColors(containerColor = tBg(Color(0xFF16A34A))),
                             shape = RoundedCornerShape(10.dp)
                         ) {
                             Text("حفظ وجدولة حفل التكريم بالتقويم 🎓")
@@ -789,7 +792,7 @@ fun CommitteeDetailModal(
                         if (canFinalize) Text(
                             text = "يظهر الموعد في التقويم تلقائياً. إتمام مرحلة الحفل يتم من تبويب المراحل.",
                             style = MaterialTheme.typography.bodySmall,
-                            color = TextMuted,
+                            color = tFg(TextMuted),
                             modifier = Modifier.padding(top = 6.dp)
                         )
                     }

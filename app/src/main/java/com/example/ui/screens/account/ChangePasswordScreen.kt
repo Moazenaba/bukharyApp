@@ -1,5 +1,6 @@
 package com.example.ui.screens.account
 
+import com.example.ui.theme.tFg
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -62,7 +63,7 @@ fun ChangePasswordScreen(
             Text(
                 "أعاد المشرف العام تعيين كلمة مرورك. أدخل كلمة المرور المؤقتة التي أعطاك إياها، ثم اختر كلمة مرور جديدة لا يعرفها غيرك.",
                 style = MaterialTheme.typography.bodyMedium,
-                color = Color(0xFF475569)
+                color = tFg(Color(0xFF475569))
             )
         }
         OutlinedTextField(
@@ -92,7 +93,7 @@ fun ChangePasswordScreen(
             singleLine = true,
             modifier = Modifier.fillMaxWidth()
         )
-        error?.let { Text(it, color = Color(0xFFB91C1C), style = MaterialTheme.typography.bodySmall) }
+        error?.let { Text(it, color = tFg(Color(0xFFB91C1C)), style = MaterialTheme.typography.bodySmall) }
         Button(
             enabled = !isSubmitting,
             onClick = {

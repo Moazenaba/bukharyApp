@@ -1,5 +1,8 @@
 package com.example.ui.screens.assistants
 
+import com.example.ui.theme.tEdge
+import com.example.ui.theme.tBg
+import com.example.ui.theme.tFg
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -159,26 +162,26 @@ fun UsersManagementScreen(
         mutableMapOf("id" to u.id, "name" to u.name, "phone" to u.phone, "email" to u.email.ifBlank { null }, "expectedUpdatedAt" to u.updatedAt)
 
     LazyColumn(
-        modifier = modifier.fillMaxSize().background(Color(0xFFF8F9FD)),
+        modifier = modifier.fillMaxSize().background(tBg(Color(0xFFF8F9FD))),
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         item {
             Column(
                 Modifier.fillMaxWidth()
-                    .background(Brush.horizontalGradient(listOf(Primary800, Color(0xFF065F46))), RoundedCornerShape(20.dp))
+                    .background(Brush.horizontalGradient(listOf(tBg(Primary800), tBg(Color(0xFF065F46)))), RoundedCornerShape(20.dp))
                     .padding(16.dp)
             ) {
                 Text("الشيوخ والصلاحيات", color = Color.White, fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleMedium)
                 Text(
                     "إدارة المستخدمين المعتمدين، طلبات الانضمام والمقابلات، وبناء بروفايلات الصلاحيات.",
-                    color = Color(0xFFD1FAE5), style = MaterialTheme.typography.bodySmall
+                    color = tFg(Color(0xFFD1FAE5)), style = MaterialTheme.typography.bodySmall
                 )
                 Row(Modifier.padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     if (canManage) {
                         Button(
                             onClick = { adding = true },
-                            colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Primary800),
+                            colors = ButtonDefaults.buttonColors(containerColor = tBg(Color.White), contentColor = tFg(Primary800)),
                             shape = RoundedCornerShape(12.dp)
                         ) {
                             Icon(Icons.Default.PersonAdd, null)
@@ -193,7 +196,7 @@ fun UsersManagementScreen(
             }
         }
         item {
-            TabRow(selectedTabIndex = tab, containerColor = Color.White) {
+            TabRow(selectedTabIndex = tab, containerColor = tBg(Color.White)) {
                 Tab(selected = tab == 0, onClick = { tab = 0 }, text = { Text("المستخدمون (${approved.size})") })
                 if (canReadProfiles) Tab(selected = tab == 1, onClick = { tab = 1 }, text = { Text("البروفايلات (${profiles.size})") })
                 Tab(
@@ -211,13 +214,13 @@ fun UsersManagementScreen(
             )
             if (isLoading) Row(Modifier.padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                 CircularProgressIndicator(Modifier.padding(end = 8.dp))
-                Text("جارٍ تحميل المستخدمين من الخادم...", color = TextMuted)
+                Text("جارٍ تحميل المستخدمين من الخادم...", color = tFg(TextMuted))
             }
         }
 
         when (tab) {
             0 -> {
-                if (shownApproved.isEmpty() && !isLoading) item { Text("لا يوجد مستخدمون مطابقون", color = TextMuted) }
+                if (shownApproved.isEmpty() && !isLoading) item { Text("لا يوجد مستخدمون مطابقون", color = tFg(TextMuted)) }
                 items(shownApproved, key = { it.id }) { u ->
                     val profile = profiles.find { it.id == u.profileId }
                     val canEditUser = canGrant || (u.role == "sheikh" && canManage) || u.id == me.id
@@ -226,21 +229,21 @@ fun UsersManagementScreen(
                     val canPlace = (u.role == "sheikh" || (u.role == "committee_head" && canGrant)) &&
                         (Permissions.can("committees.members") || Permissions.can("committees.finalize"))
                     Card(
-                        shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Color.White),
-                        border = BorderStroke(1.dp, if (u.role == "super_admin") Color(0xFFFCD34D) else Color(0xFFE2E8F0))
+                        shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = tBg(Color.White)),
+                        border = BorderStroke(1.dp, if (u.role == "super_admin") tEdge(Color(0xFFFCD34D)) else tEdge(Color(0xFFE2E8F0)))
                     ) {
                         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Column(Modifier.weight(1f)) {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Text(u.name, fontWeight = FontWeight.Bold, color = Primary900, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                        if (u.role == "super_admin") Text("  👑 سوبر أدمن", style = MaterialTheme.typography.labelSmall, color = Color(0xFF92400E))
+                                        Text(u.name, fontWeight = FontWeight.Bold, color = tFg(Primary900), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                        if (u.role == "super_admin") Text("  👑 سوبر أدمن", style = MaterialTheme.typography.labelSmall, color = tFg(Color(0xFF92400E)))
                                     }
-                                    Text("📞 ${u.phone} • ${roleLabel(u.role)}", style = MaterialTheme.typography.bodySmall, color = TextMuted)
-                                    if (u.mustChangePassword) Text("بانتظار تغيير كلمة المرور المؤقتة", style = MaterialTheme.typography.labelSmall, color = Color(0xFFB45309))
+                                    Text("📞 ${u.phone} • ${roleLabel(u.role)}", style = MaterialTheme.typography.bodySmall, color = tFg(TextMuted))
+                                    if (u.mustChangePassword) Text("بانتظار تغيير كلمة المرور المؤقتة", style = MaterialTheme.typography.labelSmall, color = tFg(Color(0xFFB45309)))
                                 }
-                                if (canEditUser) IconButton(onClick = { editing = u }) { Icon(Icons.Default.Edit, "تعديل ${u.name}", tint = Primary700) }
-                                if (u.role != "super_admin" && u.id != me.id && canDelete) IconButton(onClick = { deleting = u }) { Icon(Icons.Default.Delete, "حذف الحساب", tint = Danger) }
+                                if (canEditUser) IconButton(onClick = { editing = u }) { Icon(Icons.Default.Edit, "تعديل ${u.name}", tint = tFg(Primary700)) }
+                                if (u.role != "super_admin" && u.id != me.id && canDelete) IconButton(onClick = { deleting = u }) { Icon(Icons.Default.Delete, "حذف الحساب", tint = tFg(Danger)) }
                             }
                             InfoLine(
                                 "نظام الصلاحية المطبق:",
@@ -253,7 +256,7 @@ fun UsersManagementScreen(
                             if (u.role != "super_admin" && u.permissions.isNotEmpty()) {
                                 Text(
                                     u.permissions.joinToString(" • ") { p -> SystemPermissions.ALL_PERMISSIONS.find { it.first == p }?.second ?: p },
-                                    style = MaterialTheme.typography.labelSmall, color = Color(0xFF0F766E)
+                                    style = MaterialTheme.typography.labelSmall, color = tFg(Color(0xFF0F766E))
                                 )
                             }
                             InfoLine(
@@ -287,11 +290,11 @@ fun UsersManagementScreen(
                                 }
                                 if (isSuperAdmin && u.id != me.id) {
                                     if (u.role == "super_admin") {
-                                        OutlinedButton(onClick = { demoting = u }) { Text("تنزيل من سوبر أدمن", color = Danger) }
+                                        OutlinedButton(onClick = { demoting = u }) { Text("تنزيل من سوبر أدمن", color = tFg(Danger)) }
                                     } else {
                                         OutlinedButton(onClick = {
                                             onSaveUser(u, identity(u).apply { put("role", "super_admin") }, "تم تحديث الرتبة بنجاح.") {}
-                                        }) { Text("ترقية إلى سوبر أدمن", color = Color(0xFF92400E)) }
+                                        }) { Text("ترقية إلى سوبر أدمن", color = tFg(Color(0xFF92400E))) }
                                     }
                                 }
                             }
@@ -302,26 +305,26 @@ fun UsersManagementScreen(
             1 -> {
                 item {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("مركز بناء بروفايلات الصلاحيات", fontWeight = FontWeight.Bold, color = Color(0xFF134E4A), modifier = Modifier.weight(1f))
-                        if (canWriteProfiles) Button(onClick = { profileCreating = true }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0F766E))) { Text("+ بروفايل جديد") }
+                        Text("مركز بناء بروفايلات الصلاحيات", fontWeight = FontWeight.Bold, color = tFg(Color(0xFF134E4A)), modifier = Modifier.weight(1f))
+                        if (canWriteProfiles) Button(onClick = { profileCreating = true }, colors = ButtonDefaults.buttonColors(containerColor = tBg(Color(0xFF0F766E)))) { Text("+ بروفايل جديد") }
                     }
                 }
-                if (profiles.isEmpty() && !isLoading) item { Text("لا توجد بروفايلات بعد", color = TextMuted) }
+                if (profiles.isEmpty() && !isLoading) item { Text("لا توجد بروفايلات بعد", color = tFg(TextMuted)) }
                 items(profiles, key = { it.id }) { p ->
-                    Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Color.White), border = BorderStroke(1.dp, Color(0xFF99F6E4))) {
+                    Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = tBg(Color.White)), border = BorderStroke(1.dp, tEdge(Color(0xFF99F6E4)))) {
                         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(p.name, fontWeight = FontWeight.Black, modifier = Modifier.weight(1f))
-                                if (p.isDefault) Text("افتراضي", style = MaterialTheme.typography.labelSmall, color = Color(0xFF0F766E))
+                                if (p.isDefault) Text("افتراضي", style = MaterialTheme.typography.labelSmall, color = tFg(Color(0xFF0F766E)))
                             }
-                            if (p.description.isNotBlank()) Text(p.description, style = MaterialTheme.typography.bodySmall, color = TextMuted)
+                            if (p.description.isNotBlank()) Text(p.description, style = MaterialTheme.typography.bodySmall, color = tFg(TextMuted))
                             InfoLine("الصلاحيات:", p.permissions.joinToString("، ") { id -> SystemPermissions.ALL_PERMISSIONS.find { it.first == id }?.second ?: id }.ifBlank { "بدون" })
                             InfoLine("اللجان:", if (p.allCommitteesAllowed) "كل اللجان" else committeeLabel(p.allowedCommitteeIds).ifBlank { "لا توجد" })
                             InfoLine("الامتحانات:", if (p.allExamsAllowed) "كل الامتحانات" else "${p.allowedExamIds.size} امتحان")
-                            Text("المستخدمون المطبق عليهم: ${users.count { it.profileId == p.id }}", style = MaterialTheme.typography.labelSmall, color = TextMuted)
+                            Text("المستخدمون المطبق عليهم: ${users.count { it.profileId == p.id }}", style = MaterialTheme.typography.labelSmall, color = tFg(TextMuted))
                             if (canWriteProfiles) Row {
                                 TextButton(onClick = { profileEditing = p }) { Text("تعديل") }
-                                if (!p.isDefault) TextButton(onClick = { profileDeleting = p }) { Text("حذف", color = Danger) }
+                                if (!p.isDefault) TextButton(onClick = { profileDeleting = p }) { Text("حذف", color = tFg(Danger)) }
                             }
                         }
                     }
@@ -338,24 +341,24 @@ fun UsersManagementScreen(
                         ).forEach { (k, l) -> FilterChip(selected = requestsFilter == k, onClick = { requestsFilter = k }, label = { Text(l) }) }
                     }
                 }
-                if (shownRequests.isEmpty() && !isLoading) item { Text("لا توجد طلبات في هذا التصنيف", color = TextMuted) }
+                if (shownRequests.isEmpty() && !isLoading) item { Text("لا توجد طلبات في هذا التصنيف", color = tFg(TextMuted)) }
                 items(shownRequests, key = { it.id }) { u ->
-                    Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Color.White), border = BorderStroke(1.dp, Color(0xFFE2E8F0))) {
+                    Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = tBg(Color.White)), border = BorderStroke(1.dp, tEdge(Color(0xFFE2E8F0)))) {
                         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(u.name, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                                Text(statusLabel(u.status), style = MaterialTheme.typography.labelSmall, color = if (u.status == "rejected") Danger else Color(0xFF1D4ED8))
+                                Text(statusLabel(u.status), style = MaterialTheme.typography.labelSmall, color = if (u.status == "rejected") tFg(Danger) else tFg(Color(0xFF1D4ED8)))
                             }
-                            Text("📞 ${u.phone} • الدور المطلوب: ${roleLabel(u.role)}", style = MaterialTheme.typography.bodySmall, color = TextMuted)
+                            Text("📞 ${u.phone} • الدور المطلوب: ${roleLabel(u.role)}", style = MaterialTheme.typography.bodySmall, color = tFg(TextMuted))
                             u.requestCode?.let { Text("كود الطلب: $it", style = MaterialTheme.typography.labelSmall) }
                             u.quranLevel?.let { InfoLine("الحفظ:", it) }
                             if (u.status == "interview") u.interviewDate?.let { InfoLine("موعد المقابلة:", it) }
                             if (u.status == "rejected") u.rejectionReason?.let { InfoLine("سبب الاعتذار:", it) }
                             if (canManage) Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                Button(onClick = { approving = u }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF059669))) { Text("اعتماد") }
+                                Button(onClick = { approving = u }, colors = ButtonDefaults.buttonColors(containerColor = tBg(Color(0xFF059669)))) { Text("اعتماد") }
                                 OutlinedButton(onClick = { interviewing = u }) { Text("تحديد مقابلة") }
                                 OutlinedButton(onClick = { dossier = u }) { Text("الملف") }
-                                if (u.status != "rejected") OutlinedButton(onClick = { rejecting = u }) { Text("اعتذار", color = Danger) }
+                                if (u.status != "rejected") OutlinedButton(onClick = { rejecting = u }) { Text("اعتذار", color = tFg(Danger)) }
                             } else Row { OutlinedButton(onClick = { dossier = u }) { Text("الملف") } }
                         }
                     }
@@ -425,7 +428,7 @@ fun UsersManagementScreen(
             confirmButton = {
                 Button(onClick = {
                     onSaveUser(u, identity(u).apply { put("status", "rejected"); put("rejectionReason", reason) }, "تم تسجيل الاعتذار عن الطلب") { ok -> if (ok) rejecting = null }
-                }, colors = ButtonDefaults.buttonColors(containerColor = Danger)) { Text("تأكيد الاعتذار") }
+                }, colors = ButtonDefaults.buttonColors(containerColor = tBg(Danger))) { Text("تأكيد الاعتذار") }
             },
             dismissButton = { TextButton(onClick = { rejecting = null }) { Text("إلغاء") } }
         )
@@ -465,7 +468,7 @@ fun UsersManagementScreen(
             onDismissRequest = { deleting = null },
             title = { Text("تأكيد حذف الحساب") },
             text = { Text("سيتم حذف حساب «${u.name}» نهائياً وإنهاء جلساته. هل أنت متأكد؟") },
-            confirmButton = { TextButton(onClick = { deleting = null; onDeleteUser(u) }) { Text("حذف نهائي", color = Danger) } },
+            confirmButton = { TextButton(onClick = { deleting = null; onDeleteUser(u) }) { Text("حذف نهائي", color = tFg(Danger)) } },
             dismissButton = { TextButton(onClick = { deleting = null }) { Text("إلغاء") } }
         )
     }
@@ -495,7 +498,7 @@ fun UsersManagementScreen(
             confirmButton = {
                 TextButton(onClick = {
                     onSaveUser(u, identity(u).apply { put("role", to) }, "تم تحديث الرتبة بنجاح.") { ok -> if (ok) demoting = null }
-                }) { Text("تأكيد التنزيل", color = Danger) }
+                }) { Text("تأكيد التنزيل", color = tFg(Danger)) }
             },
             dismissButton = { TextButton(onClick = { demoting = null }) { Text("إلغاء") } }
         )
@@ -511,11 +514,11 @@ fun UsersManagementScreen(
                             Modifier.fillMaxWidth().padding(vertical = 4.dp).clickable {
                                 onSaveUser(u, identity(u).apply { put("profileId", p.id) }, "تم تطبيق البروفايل") { ok -> if (ok) assigningProfile = null }
                             },
-                            border = BorderStroke(1.dp, if (u.profileId == p.id) Color(0xFF0F766E) else Color(0xFFE2E8F0))
+                            border = BorderStroke(1.dp, if (u.profileId == p.id) tEdge(Color(0xFF0F766E)) else tEdge(Color(0xFFE2E8F0)))
                         ) {
                             Column(Modifier.padding(10.dp)) {
                                 Text(p.name, fontWeight = FontWeight.Bold)
-                                if (p.description.isNotBlank()) Text(p.description, style = MaterialTheme.typography.labelSmall, color = TextMuted)
+                                if (p.description.isNotBlank()) Text(p.description, style = MaterialTheme.typography.labelSmall, color = tFg(TextMuted))
                             }
                         }
                     }
@@ -536,7 +539,7 @@ fun UsersManagementScreen(
             onDismissRequest = { profileDeleting = null },
             title = { Text("حذف البروفايل") },
             text = { Text("حذف بروفايل «${p.name}»؟ لا يغيّر صلاحيات من طُبّق عليهم.") },
-            confirmButton = { TextButton(onClick = { profileDeleting = null; onDeleteProfile(p) }) { Text("حذف", color = Danger) } },
+            confirmButton = { TextButton(onClick = { profileDeleting = null; onDeleteProfile(p) }) { Text("حذف", color = tFg(Danger)) } },
             dismissButton = { TextButton(onClick = { profileDeleting = null }) { Text("إلغاء") } }
         )
     }
@@ -545,7 +548,7 @@ fun UsersManagementScreen(
 @Composable
 private fun InfoLine(label: String, value: String) {
     Row {
-        Text(label, style = MaterialTheme.typography.labelSmall, color = TextMuted, modifier = Modifier.padding(end = 4.dp))
+        Text(label, style = MaterialTheme.typography.labelSmall, color = tFg(TextMuted), modifier = Modifier.padding(end = 4.dp))
         Text(value, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold)
     }
 }
@@ -583,7 +586,7 @@ fun CommitteeMultiPicker(
     Column {
         Text("$label (${selectedIds.size})", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
         OutlinedTextField(filter, { filter = it }, placeholder = { Text("بحث برقم اللجنة أو الاسم") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-        if (options.isEmpty()) Text("لا توجد لجان متاحة للإسناد", style = MaterialTheme.typography.labelSmall, color = TextMuted)
+        if (options.isEmpty()) Text("لا توجد لجان متاحة للإسناد", style = MaterialTheme.typography.labelSmall, color = tFg(TextMuted))
         Column(Modifier.heightIn(max = 220.dp).verticalScroll(rememberScrollState())) {
             options.forEach { c ->
                 Row(
@@ -679,7 +682,7 @@ private fun UserAccessDialog(
         title = { Text(title, fontWeight = FontWeight.Bold) },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                error?.let { Text(it, color = Danger) }
+                error?.let { Text(it, color = tFg(Danger)) }
                 OutlinedTextField(name, { name = it }, label = { Text("الاسم الكامل *") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 OutlinedTextField(
                     phone, { phone = it }, label = { Text("رقم الهاتف (اسم الدخول) *") }, singleLine = true,
@@ -720,7 +723,7 @@ private fun UserAccessDialog(
                 }
                 if (onResetPassword != null) {
                     HorizontalDivider()
-                    Text("إعادة تعيين كلمة المرور", fontWeight = FontWeight.Bold, color = Color(0xFF92400E))
+                    Text("إعادة تعيين كلمة المرور", fontWeight = FontWeight.Bold, color = tFg(Color(0xFF92400E)))
                     OutlinedTextField(reset, { reset = it }, label = { Text("كلمة المرور المؤقتة") }, placeholder = { Text("8 أحرف على الأقل، حروف وأرقام") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                     Row {
                         TextButton(onClick = { reset = temporaryPassword() }) { Text("توليد") }
@@ -825,7 +828,7 @@ private fun ApproveDialog(
                 } else access["assignedCommitteeIds"] = committeeIds
                 saving = true
                 onApprove(access) { saving = false }
-            }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF059669))) { Text("اعتماد الحساب") }
+            }, colors = ButtonDefaults.buttonColors(containerColor = tBg(Color(0xFF059669)))) { Text("اعتماد الحساب") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("إلغاء") } }
     )

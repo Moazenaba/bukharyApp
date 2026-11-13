@@ -1,5 +1,7 @@
 package com.example.ui.screens.database
 
+import com.example.ui.theme.tBg
+import com.example.ui.theme.tFg
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -63,12 +65,12 @@ fun DatabaseInspectorScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(Color(0xFFF8F9FD))
+            .background(tBg(Color(0xFFF8F9FD)))
             .verticalScroll(rememberScrollState())
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Text("حالة البيانات والمزامنة", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = Primary900)
+        Text("حالة البيانات والمزامنة", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = tFg(Primary900))
 
         if (databaseStatus == null) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -95,7 +97,7 @@ fun DatabaseInspectorScreen(
             if (databaseStatus.failedWrites.isNotEmpty()) {
                 Spacer(Modifier.height(6.dp))
                 databaseStatus.failedWrites.forEach { f ->
-                    Text("• ${f.label}: ${f.error ?: "خطأ في الخادم"}", style = MaterialTheme.typography.bodySmall, color = Color(0xFFB91C1C))
+                    Text("• ${f.label}: ${f.error ?: "خطأ في الخادم"}", style = MaterialTheme.typography.bodySmall, color = tFg(Color(0xFFB91C1C)))
                 }
                 Spacer(Modifier.height(8.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -111,11 +113,11 @@ fun DatabaseInspectorScreen(
                 Text(
                     "رفض الخادم هذه التعديلات، غالباً لأن البيانات عُدّلت من مكان آخر أو تغيّرت صلاحياتك. أعد الإرسال بعد التحديث، أو احذفها لتعود بيانات الخادم.",
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color(0xFF475569)
+                    color = tFg(Color(0xFF475569))
                 )
                 databaseStatus.refusedWrites.forEach { r ->
                     Spacer(Modifier.height(8.dp))
-                    Text("• ${r.label}: ${r.message ?: "رفض الخادم التعديل"}${r.httpCode?.let { " (HTTP $it)" } ?: ""}", style = MaterialTheme.typography.bodySmall, color = Color(0xFFB91C1C))
+                    Text("• ${r.label}: ${r.message ?: "رفض الخادم التعديل"}${r.httpCode?.let { " (HTTP $it)" } ?: ""}", style = MaterialTheme.typography.bodySmall, color = tFg(Color(0xFFB91C1C)))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(onClick = { onRetryRefused(r.id) }, modifier = Modifier.weight(1f)) { Text("إعادة الإرسال") }
                         OutlinedButton(onClick = { refusedToDiscard = r.id }, modifier = Modifier.weight(1f)) { Text("حذف") }
@@ -155,7 +157,7 @@ fun DatabaseInspectorScreen(
                 TextButton(onClick = {
                     confirmDiscard = false
                     onDiscardFailed()
-                }) { Text("تجاهل", color = Color(0xFFB91C1C)) }
+                }) { Text("تجاهل", color = tFg(Color(0xFFB91C1C))) }
             },
             dismissButton = { TextButton(onClick = { confirmDiscard = false }) { Text("إلغاء") } }
         )
@@ -170,7 +172,7 @@ fun DatabaseInspectorScreen(
                 TextButton(onClick = {
                     refusedToDiscard = null
                     onDiscardRefused(id)
-                }) { Text("حذف", color = Color(0xFFB91C1C)) }
+                }) { Text("حذف", color = tFg(Color(0xFFB91C1C))) }
             },
             dismissButton = { TextButton(onClick = { refusedToDiscard = null }) { Text("إلغاء") } }
         )
@@ -182,10 +184,10 @@ private fun Section(title: String, content: @Composable () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White)
+        colors = CardDefaults.cardColors(containerColor = tBg(Color.White))
     ) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Primary900)
+            Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = tFg(Primary900))
             Spacer(Modifier.height(4.dp))
             content()
         }
@@ -195,7 +197,7 @@ private fun Section(title: String, content: @Composable () -> Unit) {
 @Composable
 private fun Line(label: String, value: String) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        Text(label, style = MaterialTheme.typography.bodySmall, color = Color(0xFF475569))
+        Text(label, style = MaterialTheme.typography.bodySmall, color = tFg(Color(0xFF475569)))
         Text(value, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
     }
 }

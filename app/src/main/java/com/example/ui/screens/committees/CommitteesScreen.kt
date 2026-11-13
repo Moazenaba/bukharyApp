@@ -1,5 +1,8 @@
 package com.example.ui.screens.committees
 
+import com.example.ui.theme.tEdge
+import com.example.ui.theme.tBg
+import com.example.ui.theme.tFg
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.semantics.Role
 import com.example.ui.theme.TextMuted
@@ -145,7 +148,7 @@ fun CommitteesScreen(
             if (canAdd) {
                 FloatingActionButton(
                     onClick = { showAddDialog = true },
-                    containerColor = Primary700,
+                    containerColor = tBg(Primary700),
                     contentColor = Color.White,
                     modifier = Modifier.testTag("fab_add_committee")
                 ) {
@@ -158,7 +161,7 @@ fun CommitteesScreen(
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color(0xFFF8F9FD))
+                .background(tBg(Color(0xFFF8F9FD)))
                 .padding(innerPadding)
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -170,12 +173,12 @@ fun CommitteesScreen(
             // Assigned-committees bar (web) for committee heads and sheikhs.
             if (currentUser?.role == com.example.data.model.UserRole.SHEIKH || currentUser?.role == com.example.data.model.UserRole.COMMITTEE_HEAD) {
                 Column(
-                    Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Color(0xFFECFDF5)).padding(10.dp)
+                    Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(tBg(Color(0xFFECFDF5))).padding(10.dp)
                 ) {
                     Text(
                         "اللجان المسندة إليك: " + if (currentUser.allCommitteesAllowed) "كل اللجان"
                         else currentUser.assignedCommittees.joinToString("، ") { "#$it" }.ifBlank { "لم تُسند إليك لجان بعد" },
-                        style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold, color = Color(0xFF065F46)
+                        style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold, color = tFg(Color(0xFF065F46))
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         FilterChip(selected = filters.mineOnly, onClick = { onFiltersChange(filters.copy(mineOnly = !filters.mineOnly, needsScoring = false)) }, label = { Text("لجاني فقط") })
@@ -188,8 +191,8 @@ fun CommitteesScreen(
             // Hero stats (web: HeroStats)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 com.example.ui.components.StatTile("إجمالي اللجان", "${allCommittees.size}", Modifier.weight(1f))
-                com.example.ui.components.StatTile("لجان نشطة", "${allCommittees.count { !it.stages.ceremony.completed }}", Modifier.weight(1f), tint = Color(0xFF1D4ED8))
-                com.example.ui.components.StatTile("تم الحفل", "${allCommittees.count { it.stages.ceremony.completed }}", Modifier.weight(1f), tint = Color(0xFF047857))
+                com.example.ui.components.StatTile("لجان نشطة", "${allCommittees.count { !it.stages.ceremony.completed }}", Modifier.weight(1f), tint = tFg(Color(0xFF1D4ED8)))
+                com.example.ui.components.StatTile("تم الحفل", "${allCommittees.count { it.stages.ceremony.completed }}", Modifier.weight(1f), tint = tFg(Color(0xFF047857)))
             }
             Spacer(modifier = Modifier.height(10.dp))
 
@@ -198,7 +201,7 @@ fun CommitteesScreen(
                 value = searchQuery,
                 onValueChange = onSearchChange,
                 placeholder = { Text("بحث برقم اللجنة أو الاسم أو الشيخ", maxLines = 1) },
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Primary700) },
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = tFg(Primary700)) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .testTag("committees_search_bar"),
@@ -270,7 +273,7 @@ fun CommitteesScreen(
                 listOf("all" to "الكل", "men" to "رجال", "women" to "نسائية").forEach { (k, l) ->
                     FilterChip(selected = filters.gender == k, onClick = { onFiltersChange(filters.copy(gender = k)) }, label = { Text(l) })
                 }
-                Text("|", color = Color(0xFFCBD5E1), modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp))
+                Text("|", color = tFg(Color(0xFFCBD5E1)), modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp))
                 listOf("newest" to "الأحدث", "oldest" to "الأقدم", "committeeNumber" to "رقم اللجنة", "book" to "الكتاب").forEach { (k, l) ->
                     FilterChip(selected = filters.sortBy == k, onClick = { onFiltersChange(filters.copy(sortBy = k)) }, label = { Text(l) })
                 }
@@ -293,14 +296,14 @@ fun CommitteesScreen(
                         Icon(
                             imageVector = Icons.Default.Search,
                             contentDescription = null,
-                            tint = TextMuted,
+                            tint = tFg(TextMuted),
                             modifier = Modifier.size(40.dp)
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             text = "لا توجد لجان مطابقة للبحث أو التصفية الحالية",
                             style = MaterialTheme.typography.titleMedium,
-                            color = TextMuted
+                            color = tFg(TextMuted)
                         )
                         if (searchQuery.isNotBlank() || selectedStageFilter != "all") {
                             TextButton(onClick = {
@@ -331,7 +334,7 @@ fun CommitteesScreen(
                         Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
                                 "عرض ${if (committees.isEmpty()) 0 else (current - 1) * pageSize + 1} إلى ${minOf(current * pageSize, committees.size)} من إجمالي ${committees.size} لجنة مسجلة",
-                                style = MaterialTheme.typography.labelSmall, color = TextMuted
+                                style = MaterialTheme.typography.labelSmall, color = tFg(TextMuted)
                             )
                             if (pages > 1) Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                                 TextButton(onClick = { page = current - 1 }, enabled = current > 1) { Text("السابق") }
@@ -384,8 +387,8 @@ fun CommitteeCard(
             .clickable(role = Role.Button, onClick = onOpenDetail)
             .testTag("committee_card_${committee.id}"),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = SurfacePure),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0)),
+        colors = CardDefaults.cardColors(containerColor = tBg(SurfacePure)),
+        border = androidx.compose.foundation.BorderStroke(1.dp, tEdge(Color(0xFFE2E8F0))),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
@@ -394,7 +397,7 @@ fun CommitteeCard(
                     modifier = Modifier
                         .size(36.dp)
                         .clip(CircleShape)
-                        .background(Primary700),
+                        .background(tBg(Primary700)),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
@@ -412,18 +415,18 @@ fun CommitteeCard(
                         overflow = TextOverflow.Ellipsis,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = Primary900
+                        color = tFg(Primary900)
                     )
                     Text(
                         text = "${committee.branch} • ${if (committee.isWomenCommittee) "مصلى الأخوات" else "مصلى الرجال"} • ${committee.studentsCount} طالباً",
                         style = MaterialTheme.typography.bodySmall,
-                        color = TextMuted
+                        color = tFg(TextMuted)
                     )
                 }
                 // ✏️ Edit the committee's data (what was entered when it was added).
                 if (onEdit != null) {
                     IconButton(onClick = onEdit, modifier = Modifier.testTag("btn_edit_committee_${committee.id}")) {
-                        Icon(Icons.Default.Edit, contentDescription = "تعديل بيانات اللجنة", tint = Primary700)
+                        Icon(Icons.Default.Edit, contentDescription = "تعديل بيانات اللجنة", tint = tFg(Primary700))
                     }
                 }
             }
@@ -434,7 +437,7 @@ fun CommitteeCard(
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.MenuBook,
                     contentDescription = "كتاب المسابقة",
-                    tint = TextMuted,
+                    tint = tFg(TextMuted),
                     modifier = Modifier.size(18.dp)
                 )
                 Spacer(modifier = Modifier.width(6.dp))
@@ -444,17 +447,17 @@ fun CommitteeCard(
                     overflow = TextOverflow.Ellipsis,
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.SemiBold,
-                    color = Primary900
+                    color = tFg(Primary900)
                 )
             }
 
             // Web: «الامتحان النهارده» / «بكرة» / «فات ميعاده» while the exam is not recorded.
             com.example.ui.components.ExamDates.status(committee)?.let { st ->
                 val (bg, fg) = when (st.tone) {
-                    com.example.ui.components.ExamDates.Tone.LATE -> Color(0xFFFFF1F2) to Color(0xFF9F1239)
-                    com.example.ui.components.ExamDates.Tone.TODAY -> Color(0xFFFFFBEB) to Color(0xFF92400E)
-                    com.example.ui.components.ExamDates.Tone.SOON -> Color(0xFFF0F9FF) to Color(0xFF075985)
-                    com.example.ui.components.ExamDates.Tone.LATER -> Color(0xFFF8FAFC) to Color(0xFF334155)
+                    com.example.ui.components.ExamDates.Tone.LATE -> tBg(Color(0xFFFFF1F2)) to tFg(Color(0xFF9F1239))
+                    com.example.ui.components.ExamDates.Tone.TODAY -> tBg(Color(0xFFFFFBEB)) to tFg(Color(0xFF92400E))
+                    com.example.ui.components.ExamDates.Tone.SOON -> tBg(Color(0xFFF0F9FF)) to tFg(Color(0xFF075985))
+                    com.example.ui.components.ExamDates.Tone.LATER -> tBg(Color(0xFFF8FAFC)) to tFg(Color(0xFF334155))
                 }
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
@@ -475,7 +478,7 @@ fun CommitteeCard(
                     Text(
                         text = "الشيخ: ${committee.sheikhName}",
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color(0xFF334155)
+                        color = tFg(Color(0xFF334155))
                     )
                     if (committee.sheikhPhone.isNotBlank()) {
                         TextButton(onClick = {
@@ -518,15 +521,15 @@ fun CommitteeCard(
                     Text(
                         text = "$doneCount من $totalStages",
                         style = MaterialTheme.typography.labelMedium,
-                        color = TextMuted
+                        color = tFg(TextMuted)
                     )
                 }
                 Spacer(modifier = Modifier.height(8.dp))
                 LinearProgressIndicator(
                     progress = { doneCount / totalStages.toFloat() },
                     modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)),
-                    color = Primary700,
-                    trackColor = Color(0xFFE2E8F0)
+                    color = tFg(Primary700),
+                    trackColor = tBg(Color(0xFFE2E8F0))
                 )
             }
 
@@ -546,8 +549,8 @@ fun CommitteeCard(
                         }
                     }
                 }
-                committee.receivedByAssistant?.let { Text("استلمها: ${it.receivedByName} — ${com.example.ui.components.Dates.displayTime(it.receivedAt)}", style = MaterialTheme.typography.labelSmall, color = Color(0xFF047857)) }
-                committee.examApprovedBy?.let { Text("اعتمد الجاهزية: ${it.approvedByName} — ${com.example.ui.components.Dates.displayTime(it.approvedAt)}", style = MaterialTheme.typography.labelSmall, color = Color(0xFF1D4ED8)) }
+                committee.receivedByAssistant?.let { Text("استلمها: ${it.receivedByName} — ${com.example.ui.components.Dates.displayTime(it.receivedAt)}", style = MaterialTheme.typography.labelSmall, color = tFg(Color(0xFF047857))) }
+                committee.examApprovedBy?.let { Text("اعتمد الجاهزية: ${it.approvedByName} — ${com.example.ui.components.Dates.displayTime(it.approvedAt)}", style = MaterialTheme.typography.labelSmall, color = tFg(Color(0xFF1D4ED8))) }
             }
 
             Row(
@@ -560,7 +563,7 @@ fun CommitteeCard(
                         Icon(
                             imageVector = Icons.Default.Delete,
                             contentDescription = "حذف اللجنة",
-                            tint = Color(0xFFB91C1C),
+                            tint = tFg(Color(0xFFB91C1C)),
                             modifier = Modifier.size(20.dp)
                         )
                     }
@@ -590,7 +593,7 @@ fun CommitteeCard(
                 TextButton(onClick = {
                     confirmDelete = false
                     onDelete()
-                }) { Text("حذف", color = Color(0xFFB91C1C), fontWeight = FontWeight.Bold) }
+                }) { Text("حذف", color = tFg(Color(0xFFB91C1C)), fontWeight = FontWeight.Bold) }
             },
             dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text("إلغاء") } }
         )
@@ -652,11 +655,11 @@ fun AddCommitteeDialog(
         onDismissRequest = onDismiss,
         properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)
     ) {
-      Surface(modifier = Modifier.fillMaxSize(), color = SurfacePure) {
+      Surface(modifier = Modifier.fillMaxSize(), color = tBg(SurfacePure)) {
         Column(Modifier.fillMaxSize()) {
           Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onDismiss) { Icon(Icons.Default.Close, contentDescription = "إغلاق") }
-            Text("إضافة لجنة جديدة", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = Primary900, modifier = Modifier.weight(1f))
+            Text("إضافة لجنة جديدة", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = tFg(Primary900), modifier = Modifier.weight(1f))
           }
           androidx.compose.material3.HorizontalDivider()
           run {
@@ -682,7 +685,7 @@ fun AddCommitteeDialog(
                         }) { Text("إنشاء") }
                     }
                 } else if (activeCourses.isEmpty()) {
-                    Text("لا توجد دورات. أضف دورة أولاً.", style = MaterialTheme.typography.bodySmall, color = Color(0xFFB91C1C))
+                    Text("لا توجد دورات. أضف دورة أولاً.", style = MaterialTheme.typography.bodySmall, color = tFg(Color(0xFFB91C1C)))
                 }
 
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -739,7 +742,7 @@ fun AddCommitteeDialog(
                     members = members.filter { it.isNotBlank() } + n
                 }
                 Row(
-                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(Color(0xFFF1F5F9)).clickable { isWomen = !isWomen }.padding(10.dp),
+                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(tBg(Color(0xFFF1F5F9))).clickable { isWomen = !isWomen }.padding(10.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     androidx.compose.material3.Checkbox(checked = isWomen, onCheckedChange = { isWomen = it })
@@ -752,7 +755,7 @@ fun AddCommitteeDialog(
           androidx.compose.material3.HorizontalDivider()
           Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
             if (problem != null) {
-                Text(problem, color = Color(0xFFB91C1C), style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(bottom = 6.dp))
+                Text(problem, color = tFg(Color(0xFFB91C1C)), style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(bottom = 6.dp))
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
             Button(
@@ -801,7 +804,7 @@ fun AddCommitteeDialog(
                     )
                     onSave(newCommittee)
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = Primary700)
+                colors = ButtonDefaults.buttonColors(containerColor = tBg(Primary700))
             ) { Text("حفظ وتسجيل اللجنة") }
             TextButton(onClick = onDismiss) { Text("إلغاء") }
             }

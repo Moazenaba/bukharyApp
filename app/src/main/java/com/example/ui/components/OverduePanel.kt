@@ -1,5 +1,8 @@
 package com.example.ui.components
 
+import com.example.ui.theme.tEdge
+import com.example.ui.theme.tBg
+import com.example.ui.theme.tFg
 import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -35,34 +38,34 @@ fun OverduePanel(committees: List<Committee>, tasks: List<ScheduleTask>, onOpen:
     if (items.isEmpty()) {
         Text(
             "لا توجد لجان متأخرة (المهلة $days أيام لكل مرحلة).",
-            style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = Color(0xFF065F46),
-            modifier = Modifier.fillMaxWidth().background(Color(0xFFECFDF5), shape).border(1.dp, Color(0xFFA7F3D0), shape).padding(12.dp)
+            style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = tFg(Color(0xFF065F46)),
+            modifier = Modifier.fillMaxWidth().background(tBg(Color(0xFFECFDF5)), shape).border(1.dp, tEdge(Color(0xFFA7F3D0)), shape).padding(12.dp)
         )
         return
     }
     Column(
-        Modifier.fillMaxWidth().background(Color(0xFFFFF1F2), shape).border(1.dp, Color(0xFFFECDD3), shape).padding(12.dp),
+        Modifier.fillMaxWidth().background(tBg(Color(0xFFFFF1F2)), shape).border(1.dp, tEdge(Color(0xFFFECDD3)), shape).padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        Text("لجان متأخرة (${items.size})", fontWeight = FontWeight.Black, color = Color(0xFF881337))
+        Text("لجان متأخرة (${items.size})", fontWeight = FontWeight.Black, color = tFg(Color(0xFF881337)))
         items.take(limit).forEach { item ->
             Row(
-                Modifier.fillMaxWidth().background(Color.White, RoundedCornerShape(12.dp)).clickable(role = Role.Button) { onOpen(item.committee.id) }.padding(8.dp),
+                Modifier.fillMaxWidth().background(tBg(Color.White), RoundedCornerShape(12.dp)).clickable(role = Role.Button) { onOpen(item.committee.id) }.padding(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Box(Modifier.size(32.dp).background(Color(0xFFE11D48), RoundedCornerShape(8.dp)), contentAlignment = Alignment.Center) {
+                Box(Modifier.size(32.dp).background(tBg(Color(0xFFE11D48)), RoundedCornerShape(8.dp)), contentAlignment = Alignment.Center) {
                     Text("${item.committee.committeeNumber}", color = Color.White, fontWeight = FontWeight.Black, style = MaterialTheme.typography.labelMedium)
                 }
                 Spacer(Modifier.width(8.dp))
                 Column {
                     Text(
                         item.committee.committeeName + (item.committee.sheikhName.takeIf { s -> s.isNotBlank() }?.let { s -> " — $s" } ?: ""),
-                        fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodySmall, color = Color(0xFF0F172A)
+                        fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodySmall, color = tFg(Color(0xFF0F172A))
                     )
-                    Text(item.reason, style = MaterialTheme.typography.labelSmall, color = Color(0xFF9F1239))
+                    Text(item.reason, style = MaterialTheme.typography.labelSmall, color = tFg(Color(0xFF9F1239)))
                 }
             }
         }
-        if (items.size > limit) Text("و ${items.size - limit} لجنة أخرى…", style = MaterialTheme.typography.labelSmall, color = Color(0xFF9F1239))
+        if (items.size > limit) Text("و ${items.size - limit} لجنة أخرى…", style = MaterialTheme.typography.labelSmall, color = tFg(Color(0xFF9F1239)))
     }
 }
