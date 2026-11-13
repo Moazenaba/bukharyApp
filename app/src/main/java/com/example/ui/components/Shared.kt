@@ -1,5 +1,8 @@
 package com.example.ui.components
 
+import com.example.ui.theme.tEdge
+import com.example.ui.theme.tBg
+import com.example.ui.theme.tFg
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import com.example.ui.theme.TextMuted
@@ -110,13 +113,13 @@ fun ScreenBanner(title: String, subtitle: String, icon: ImageVector, colors: Lis
 }
 
 @Composable
-fun StatTile(title: String, value: String, modifier: Modifier = Modifier, tint: Color = Color(0xFF0F172A), background: Color = Color.White) {
+fun StatTile(title: String, value: String, modifier: Modifier = Modifier, tint: Color = tFg(Color(0xFF0F172A)), background: Color = tBg(Color.White)) {
     Column(
         modifier.background(background, RoundedCornerShape(14.dp))
-            .border(1.dp, Color(0xFFE2E8F0), RoundedCornerShape(14.dp))
+            .border(1.dp, tEdge(Color(0xFFE2E8F0)), RoundedCornerShape(14.dp))
             .padding(10.dp)
     ) {
-        Text(title, style = MaterialTheme.typography.labelSmall, color = TextMuted)
+        Text(title, style = MaterialTheme.typography.labelSmall, color = tFg(TextMuted))
         Text(value, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black, color = tint)
     }
 }

@@ -1,5 +1,8 @@
 package com.example.ui.screens.home
 
+import com.example.ui.theme.tEdge
+import com.example.ui.theme.tBg
+import com.example.ui.theme.tFg
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.semantics.Role
 import com.example.ui.theme.TextMuted
@@ -120,7 +123,7 @@ fun HomeScreen(
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
-            .background(Color(0xFFF8F9FD))
+            .background(tBg(Color(0xFFF8F9FD)))
             .padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
@@ -143,7 +146,7 @@ fun HomeScreen(
                     text = "📊 إحصائيات المؤشرات الميدانية (Live KPIs)",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = Primary900
+                    color = tFg(Primary900)
                 )
                 Spacer(modifier = Modifier.height(10.dp))
                 Row(
@@ -155,8 +158,8 @@ fun HomeScreen(
                         value = "$totalCommittees",
                         sub = "لجنة ميدانية",
                         icon = Icons.Default.Groups,
-                        color = Color(0xFF0F766E),
-                        bgColor = Color(0xFFF0FDFA),
+                        color = tFg(Color(0xFF0F766E)),
+                        bgColor = tBg(Color(0xFFF0FDFA)),
                         modifier = Modifier.weight(1f).clickable(role = Role.Button) { onNavigateCommittees("all") }
                     )
                     KpiCard(
@@ -164,8 +167,8 @@ fun HomeScreen(
                         value = "$activeCommittees",
                         sub = "لجنة نشطة",
                         icon = Icons.Default.School,
-                        color = Color(0xFF2563EB),
-                        bgColor = Color(0xFFEFF6FF),
+                        color = tFg(Color(0xFF2563EB)),
+                        bgColor = tBg(Color(0xFFEFF6FF)),
                         modifier = Modifier.weight(1f).clickable(role = Role.Button) { onNavigateCommittees("registration") }
                     )
                 }
@@ -179,8 +182,8 @@ fun HomeScreen(
                         value = "$completedCommittees",
                         sub = "لجنة مكرّمة",
                         icon = Icons.Default.WorkspacePremium,
-                        color = Color(0xFF15803D),
-                        bgColor = Color(0xFFF0FDF4),
+                        color = tFg(Color(0xFF15803D)),
+                        bgColor = tBg(Color(0xFFF0FDF4)),
                         modifier = Modifier.weight(1f).clickable(role = Role.Button) { onNavigateCommittees("ceremony") }
                     )
                     KpiCard(
@@ -188,8 +191,8 @@ fun HomeScreen(
                         value = "$totalStudents",
                         sub = "طالباً وطالبة",
                         icon = Icons.Default.Person,
-                        color = Color(0xFFB45309),
-                        bgColor = Color(0xFFFFFBEB),
+                        color = tFg(Color(0xFFB45309)),
+                        bgColor = tBg(Color(0xFFFFFBEB)),
                         modifier = Modifier.weight(1f).clickable(role = Role.Button) { onNavigateCommittees("all") }
                     )
                 }
@@ -203,7 +206,7 @@ fun HomeScreen(
                     text = "⚡ الإجراءات والوصول السريع",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = Primary900
+                    color = tFg(Primary900)
                 )
                 Spacer(modifier = Modifier.height(10.dp))
                 Row(
@@ -216,7 +219,7 @@ fun HomeScreen(
                             subtitle = "تسجيل لجنة جديدة",
                             icon = Icons.Default.Add,
                             onClick = onOpenAddCommittee,
-                            containerColor = Primary700,
+                            containerColor = tBg(Primary700),
                             contentColor = Color.White,
                             modifier = Modifier.weight(1f)
                         )
@@ -226,8 +229,8 @@ fun HomeScreen(
                         subtitle = "مصفوفة المتابعة",
                         icon = Icons.Default.TableChart,
                         onClick = { onNavigate(AppNavScreen.COURSE_TRACKER) },
-                        containerColor = Color.White,
-                        contentColor = Primary800,
+                        containerColor = tBg(Color.White),
+                        contentColor = tFg(Primary800),
                         modifier = Modifier.weight(if (canAddCommittee) 1f else 2f)
                     )
                 }
@@ -241,8 +244,8 @@ fun HomeScreen(
                         subtitle = "نماذج الـ PDF والأسئلة",
                         icon = Icons.AutoMirrored.Filled.MenuBook,
                         onClick = { onNavigate(AppNavScreen.EXAMS) },
-                        containerColor = Color.White,
-                        contentColor = Primary800,
+                        containerColor = tBg(Color.White),
+                        contentColor = tFg(Primary800),
                         modifier = Modifier.weight(1f)
                     )
                     QuickActionButton(
@@ -250,8 +253,8 @@ fun HomeScreen(
                         subtitle = "المهام والتسليم",
                         icon = Icons.Default.CalendarMonth,
                         onClick = { onNavigate(AppNavScreen.SCHEDULE) },
-                        containerColor = Color.White,
-                        contentColor = Primary800,
+                        containerColor = tBg(Color.White),
+                        contentColor = tFg(Primary800),
                         modifier = Modifier.weight(1f)
                     )
                 }
@@ -270,7 +273,7 @@ fun HomeScreen(
                         Icon(
                             imageVector = Icons.Default.NotificationsActive,
                             contentDescription = null,
-                            tint = Color(0xFFDC2626),
+                            tint = tFg(Color(0xFFDC2626)),
                             modifier = Modifier.size(20.dp)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
@@ -278,13 +281,13 @@ fun HomeScreen(
                             text = "مهام التسليم والاستلام الميداني لليوم",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
-                            color = Primary900
+                            color = tFg(Primary900)
                         )
                     }
                     Text(
                         text = "عرض الكل (${urgentTasks.size})",
                         style = MaterialTheme.typography.labelSmall,
-                        color = Primary700,
+                        color = tFg(Primary700),
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.clickable(role = Role.Button) { onNavigate(AppNavScreen.SCHEDULE) }
                     )
@@ -296,7 +299,7 @@ fun HomeScreen(
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color(0xFFF0FDF4))
+                        colors = CardDefaults.cardColors(containerColor = tBg(Color(0xFFF0FDF4)))
                     ) {
                         Row(
                             modifier = Modifier.padding(16.dp),
@@ -305,13 +308,13 @@ fun HomeScreen(
                             Icon(
                                 imageVector = Icons.Default.CheckCircle,
                                 contentDescription = null,
-                                tint = Color(0xFF16A34A)
+                                tint = tFg(Color(0xFF16A34A))
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 text = "تم إنجاز كافة المهام الميدانية المقررة لليوم بنجاح! 🎉",
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = Color(0xFF166534),
+                                color = tFg(Color(0xFF166534)),
                                 fontWeight = FontWeight.Bold
                             )
                         }
@@ -332,7 +335,7 @@ fun HomeScreen(
                     text = "🎓 حفلات التكريم والختام المقررة",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = Primary900
+                    color = tFg(Primary900)
                 )
                 Spacer(modifier = Modifier.height(8.dp))
 
@@ -340,7 +343,7 @@ fun HomeScreen(
                     Text(
                         text = "لم يتم جدولة مواعيد حفلات قادمة بعد.",
                         style = MaterialTheme.typography.bodySmall,
-                        color = TextMuted
+                        color = tFg(TextMuted)
                     )
                 } else {
                     Row(
@@ -377,7 +380,7 @@ fun HeroGreetingCard(
             .fillMaxWidth()
             .testTag("hero_greeting_card"),
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = Primary800),
+        colors = CardDefaults.cardColors(containerColor = tBg(Primary800)),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Box(
@@ -399,7 +402,7 @@ fun HeroGreetingCard(
                         Text(
                             text = "مرحباً بك،",
                             style = MaterialTheme.typography.bodySmall,
-                            color = Primary200
+                            color = tFg(Primary200)
                         )
                         Text(
                             text = user?.name ?: "المشرف العام",
@@ -446,7 +449,7 @@ fun HeroGreetingCard(
                             Text(
                                 text = "الدورة النشطة الحالية 🌟",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = GoldPrimary,
+                                color = tFg(GoldPrimary),
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
@@ -460,7 +463,7 @@ fun HeroGreetingCard(
                         Text(
                             text = "فتح الكشف ⬅",
                             style = MaterialTheme.typography.labelSmall,
-                            color = Primary100,
+                            color = tFg(Primary100),
                             fontWeight = FontWeight.Bold
                         )
                     }
@@ -483,8 +486,8 @@ fun KpiCard(
     Card(
         modifier = modifier.testTag("kpi_card_$title"),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = SurfacePure),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0)),
+        colors = CardDefaults.cardColors(containerColor = tBg(SurfacePure)),
+        border = androidx.compose.foundation.BorderStroke(1.dp, tEdge(Color(0xFFE2E8F0))),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
@@ -496,7 +499,7 @@ fun KpiCard(
                 Text(
                     text = title,
                     style = MaterialTheme.typography.labelMedium,
-                    color = TextMuted
+                    color = tFg(TextMuted)
                 )
                 Box(
                     modifier = Modifier
@@ -520,7 +523,7 @@ fun KpiCard(
                 text = value,
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Black,
-                color = Primary900
+                color = tFg(Primary900)
             )
 
             Text(
@@ -550,7 +553,7 @@ fun QuickActionButton(
             .testTag("btn_quick_action_$title"),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = containerColor),
-        border = if (containerColor == Color.White) androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0)) else null,
+        border = if (containerColor == tBg(Color.White)) androidx.compose.foundation.BorderStroke(1.dp, tEdge(Color(0xFFE2E8F0))) else null,
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
@@ -561,13 +564,13 @@ fun QuickActionButton(
                 modifier = Modifier
                     .size(36.dp)
                     .clip(CircleShape)
-                    .background(if (containerColor == Color.White) Primary100 else Color.White.copy(alpha = 0.2f)),
+                    .background(if (containerColor == tBg(Color.White)) tBg(Primary100) else Color.White.copy(alpha = 0.2f)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    tint = if (containerColor == Color.White) Primary700 else Color.White,
+                    tint = if (containerColor == tBg(Color.White)) tFg(Primary700) else Color.White,
                     modifier = Modifier.size(20.dp)
                 )
             }
@@ -583,7 +586,7 @@ fun QuickActionButton(
                     text = subtitle,
                     style = MaterialTheme.typography.bodySmall,
                     fontSize = 12.sp,
-                    color = if (containerColor == Color.White) TextMuted else Color.White.copy(alpha = 0.8f)
+                    color = if (containerColor == tBg(Color.White)) tFg(TextMuted) else Color.White.copy(alpha = 0.8f)
                 )
             }
         }
@@ -596,9 +599,9 @@ fun HomeTaskItem(
     onToggle: () -> Unit
 ) {
     val (badgeBg, badgeText, badgeDot) = when (task.priority) {
-        "urgent" -> Triple(PriorityUrgentBg, PriorityUrgentText, PriorityUrgentDot)
-        "high" -> Triple(PriorityHighBg, PriorityHighText, PriorityHighDot)
-        else -> Triple(PriorityNormalBg, PriorityNormalText, PriorityNormalDot)
+        "urgent" -> Triple(tBg(PriorityUrgentBg), tFg(PriorityUrgentText), PriorityUrgentDot)
+        "high" -> Triple(tBg(PriorityHighBg), tFg(PriorityHighText), PriorityHighDot)
+        else -> Triple(tBg(PriorityNormalBg), tFg(PriorityNormalText), PriorityNormalDot)
     }
 
     Card(
@@ -606,8 +609,8 @@ fun HomeTaskItem(
             .fillMaxWidth()
             .testTag("task_item_${task.id}"),
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = SurfacePure),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0))
+        colors = CardDefaults.cardColors(containerColor = tBg(SurfacePure)),
+        border = androidx.compose.foundation.BorderStroke(1.dp, tEdge(Color(0xFFE2E8F0)))
     ) {
         Row(
             modifier = Modifier.padding(12.dp),
@@ -617,7 +620,7 @@ fun HomeTaskItem(
                 Icon(
                     imageVector = if (task.completed) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
                     contentDescription = if (task.completed) "إلغاء تحديد «${task.title}» كمنجز" else "تحديد «${task.title}» كمنجز",
-                    tint = if (task.completed) Color(0xFF15803D) else TextMuted
+                    tint = if (task.completed) tFg(Color(0xFF15803D)) else tFg(TextMuted)
                 )
             }
 
@@ -642,7 +645,7 @@ fun HomeTaskItem(
                         Text(
                             text = "لجنة ($it)",
                             style = MaterialTheme.typography.labelSmall,
-                            color = Primary700,
+                            color = tFg(Primary700),
                             fontWeight = FontWeight.Bold
                         )
                     }
@@ -656,7 +659,7 @@ fun HomeTaskItem(
                     overflow = TextOverflow.Ellipsis,
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Bold,
-                    color = Primary900
+                    color = tFg(Primary900)
                 )
 
                 if (task.deliverable.isNotBlank()) {
@@ -664,7 +667,7 @@ fun HomeTaskItem(
                         text = "التسليم: ${task.deliverable}",
                         style = MaterialTheme.typography.bodySmall,
                         fontSize = 12.sp,
-                        color = TextMuted
+                        color = tFg(TextMuted)
                     )
                 }
             }
@@ -672,7 +675,7 @@ fun HomeTaskItem(
             Text(
                 text = task.time,
                 style = MaterialTheme.typography.labelSmall,
-                color = TextMuted,
+                color = tFg(TextMuted),
                 fontWeight = FontWeight.Bold
             )
         }
@@ -691,8 +694,8 @@ fun CeremonyCard(
             .clickable(role = Role.Button, onClick = onClick)
             .testTag("ceremony_card_${committee.id}"),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFFF0FDF4)),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFBBF7D0))
+        colors = CardDefaults.cardColors(containerColor = tBg(Color(0xFFF0FDF4))),
+        border = androidx.compose.foundation.BorderStroke(1.dp, tEdge(Color(0xFFBBF7D0)))
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
             Row(
@@ -704,12 +707,12 @@ fun CeremonyCard(
                     text = "لجنة (${committee.committeeNumber})",
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF15803D)
+                    color = tFg(Color(0xFF15803D))
                 )
                 Text(
                     text = "🎓 حفل تكريم",
                     style = MaterialTheme.typography.labelSmall,
-                    color = Color(0xFF166534),
+                    color = tFg(Color(0xFF166534)),
                     fontWeight = FontWeight.Bold
                 )
             }
@@ -720,7 +723,7 @@ fun CeremonyCard(
                 text = committee.committeeName,
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold,
-                color = Primary900,
+                color = tFg(Primary900),
                 maxLines = 1
             )
 
@@ -728,7 +731,7 @@ fun CeremonyCard(
                 text = "الموعد: ${committee.ceremonyDetails.date} • ${committee.ceremonyDetails.time}",
                 style = MaterialTheme.typography.bodySmall,
                 fontSize = 12.sp,
-                color = Color(0xFF15803D),
+                color = tFg(Color(0xFF15803D)),
                 fontWeight = FontWeight.Bold
             )
 
@@ -736,7 +739,7 @@ fun CeremonyCard(
                 text = "المكان: ${committee.ceremonyDetails.venue}",
                 style = MaterialTheme.typography.bodySmall,
                 fontSize = 12.sp,
-                color = Color(0xFF475569),
+                color = tFg(Color(0xFF475569)),
                 maxLines = 1
             )
         }

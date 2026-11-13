@@ -1,5 +1,6 @@
 package com.example.ui.screens.export
 
+import com.example.ui.theme.tFg
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -60,7 +61,7 @@ fun ExportDialog(
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
                     "تصدير كشف شامل لكافة لجان المسابقة (${committees.size} لجنة) بجميع مراحلها وملاحظاتها لطباعتها أو فتحها في Excel و Google Sheets.",
-                    style = MaterialTheme.typography.bodySmall, color = TextMuted
+                    style = MaterialTheme.typography.bodySmall, color = tFg(TextMuted)
                 )
                 Button(onClick = {
                     shareFile(context, SimpleXlsx.csv(header, rows()), "كشوفات_مسابقات_مسجد_البخاري_${Dates.today()}.csv", "text/csv")
@@ -89,7 +90,7 @@ fun ExportDialog(
                         shareFile(context, SimpleXlsx.csv(SheetRules.EXPORT_HEADER, SheetRules.exportRows(merged, false)), "متابعة_كشف_الدورة_${Dates.today()}.csv", "text/csv")
                     }, modifier = Modifier.fillMaxWidth()) { Text("كشف الدورة CSV") }
                 }
-                if (courses.isEmpty()) Text("لا توجد دورات بعد", style = MaterialTheme.typography.labelSmall, color = TextMuted)
+                if (courses.isEmpty()) Text("لا توجد دورات بعد", style = MaterialTheme.typography.labelSmall, color = tFg(TextMuted))
             }
         },
         confirmButton = { TextButton(onClick = onDismiss) { Text("إغلاق") } }

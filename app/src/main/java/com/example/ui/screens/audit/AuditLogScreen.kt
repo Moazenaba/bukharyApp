@@ -1,5 +1,7 @@
 package com.example.ui.screens.audit
 
+import com.example.ui.theme.tBg
+import com.example.ui.theme.tFg
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -57,7 +59,7 @@ fun AuditLogScreen(
     LaunchedEffect(entity) { onLoad(entity, true) }
 
     LazyColumn(
-        modifier.fillMaxSize().background(Color(0xFFF8F9FD)),
+        modifier.fillMaxSize().background(tBg(Color(0xFFF8F9FD))),
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
@@ -69,18 +71,18 @@ fun AuditLogScreen(
                 ENTITIES.forEach { (k, l) -> FilterChip(selected = entity == k, onClick = { entity = k }, label = { Text(l) }) }
             }
         }
-        if (logs.isEmpty() && !isLoading) item { Text("لا توجد سجلات", color = TextMuted, modifier = Modifier.padding(20.dp)) }
+        if (logs.isEmpty() && !isLoading) item { Text("لا توجد سجلات", color = tFg(TextMuted), modifier = Modifier.padding(20.dp)) }
         items(logs, key = { it.id }) { l ->
-            Card(shape = RoundedCornerShape(12.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
+            Card(shape = RoundedCornerShape(12.dp), colors = CardDefaults.cardColors(containerColor = tBg(Color.White))) {
                 Column(Modifier.padding(10.dp).fillMaxWidth()) {
                     Row {
                         Text(l.action, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                        Text(Dates.displayTime(l.timestamp), style = MaterialTheme.typography.labelSmall, color = TextMuted)
+                        Text(Dates.displayTime(l.timestamp), style = MaterialTheme.typography.labelSmall, color = tFg(TextMuted))
                     }
-                    Text("${l.user ?: "—"}${l.role?.let { " (${roleLabel(it)})" } ?: ""}", style = MaterialTheme.typography.bodySmall, color = Color(0xFF0F766E))
-                    if (!l.entity.isNullOrBlank()) Text("العنصر: ${l.entity}${l.entityId?.let { " • $it" } ?: ""}", style = MaterialTheme.typography.labelSmall, color = TextMuted)
+                    Text("${l.user ?: "—"}${l.role?.let { " (${roleLabel(it)})" } ?: ""}", style = MaterialTheme.typography.bodySmall, color = tFg(Color(0xFF0F766E)))
+                    if (!l.entity.isNullOrBlank()) Text("العنصر: ${l.entity}${l.entityId?.let { " • $it" } ?: ""}", style = MaterialTheme.typography.labelSmall, color = tFg(TextMuted))
                     if (l.details.isNotBlank()) Text(l.details, style = MaterialTheme.typography.labelSmall, maxLines = 4)
-                    if (l.status.isNotBlank() && l.status != "success") Text(l.status, style = MaterialTheme.typography.labelSmall, color = Color(0xFFDC2626))
+                    if (l.status.isNotBlank() && l.status != "success") Text(l.status, style = MaterialTheme.typography.labelSmall, color = tFg(Color(0xFFDC2626)))
                 }
             }
         }

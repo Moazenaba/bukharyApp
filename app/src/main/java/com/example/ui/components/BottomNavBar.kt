@@ -1,5 +1,7 @@
 package com.example.ui.components
 
+import com.example.ui.theme.tBg
+import com.example.ui.theme.tFg
 import com.example.ui.theme.TextMuted
 import androidx.compose.foundation.verticalScroll
 
@@ -85,7 +87,7 @@ fun BukhariBottomNavBar(
         modifier = modifier
             .navigationBarsPadding()
             .testTag("bottom_nav_bar"),
-        containerColor = Color.White,
+        containerColor = tBg(Color.White),
         tonalElevation = 8.dp
     ) {
         accessibleItems.forEach { item ->
@@ -106,11 +108,11 @@ fun BukhariBottomNavBar(
                     )
                 },
                 colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor = Primary700,
-                    selectedTextColor = Primary800,
-                    indicatorColor = Primary100,
-                    unselectedIconColor = TextMuted,
-                    unselectedTextColor = TextMuted
+                    selectedIconColor = tFg(Primary700),
+                    selectedTextColor = tFg(Primary800),
+                    indicatorColor = tBg(Primary100),
+                    unselectedIconColor = tFg(TextMuted),
+                    unselectedTextColor = tFg(TextMuted)
                 ),
                 modifier = Modifier.testTag("nav_item_${item.screen.route}")
             )
@@ -132,7 +134,7 @@ fun BukhariNavigationRail(
 
     NavigationRail(
         modifier = modifier.testTag("navigation_rail"),
-        containerColor = Color.White
+        containerColor = tBg(Color.White)
     ) {
         androidx.compose.foundation.layout.Column(Modifier.verticalScroll(androidx.compose.foundation.rememberScrollState())) {
         accessibleItems.forEach { item ->
@@ -148,11 +150,11 @@ fun BukhariNavigationRail(
                 },
                 label = { Text(text = item.label, style = MaterialTheme.typography.labelSmall) },
                 colors = NavigationRailItemDefaults.colors(
-                    selectedIconColor = Primary700,
-                    selectedTextColor = Primary800,
-                    indicatorColor = Primary100,
-                    unselectedIconColor = TextMuted,
-                    unselectedTextColor = TextMuted
+                    selectedIconColor = tFg(Primary700),
+                    selectedTextColor = tFg(Primary800),
+                    indicatorColor = tBg(Primary100),
+                    unselectedIconColor = tFg(TextMuted),
+                    unselectedTextColor = tFg(TextMuted)
                 ),
                 modifier = Modifier.testTag("rail_item_${item.screen.route}")
             )

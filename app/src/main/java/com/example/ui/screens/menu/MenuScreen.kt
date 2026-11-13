@@ -1,5 +1,9 @@
 package com.example.ui.screens.menu
 
+import com.example.ui.theme.tEdge
+import com.example.ui.theme.tBg
+import com.example.ui.theme.tFg
+import com.example.ui.theme.ThemeMode
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.BorderStroke
@@ -77,6 +81,9 @@ fun MenuScreen(
     onExport: () -> Unit,
     onChangePassword: () -> Unit,
     onLogout: () -> Unit,
+    /** The look the person chose (light until they pick another). */
+    themeMode: ThemeMode = ThemeMode.LIGHT,
+    onThemeMode: (ThemeMode) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val user = currentUser ?: return
@@ -109,16 +116,16 @@ fun MenuScreen(
     )
 
     LazyColumn(
-        modifier.fillMaxSize().background(Color(0xFFF8F9FD)),
+        modifier.fillMaxSize().background(tBg(Color(0xFFF8F9FD))),
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         item {
-            Card(colors = CardDefaults.cardColors(containerColor = Primary800), shape = RoundedCornerShape(18.dp)) {
+            Card(colors = CardDefaults.cardColors(containerColor = tBg(Primary800)), shape = RoundedCornerShape(18.dp)) {
                 Column(Modifier.padding(16.dp).fillMaxWidth()) {
                     Text(user.name, color = Color.White, fontWeight = FontWeight.Black, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text("${user.role.emoji} ${user.role.titleAr}", color = Color(0xFFCCFBF1), style = MaterialTheme.typography.bodySmall)
-                    Text("📞 ${user.phone}", color = Color(0xFFCCFBF1), style = MaterialTheme.typography.labelSmall)
+                    Text("${user.role.emoji} ${user.role.titleAr}", color = tFg(Color(0xFFCCFBF1)), style = MaterialTheme.typography.bodySmall)
+                    Text("📞 ${user.phone}", color = tFg(Color(0xFFCCFBF1)), style = MaterialTheme.typography.labelSmall)
                 }
             }
         }
@@ -131,13 +138,13 @@ fun MenuScreen(
                 quick.forEach { q ->
                     Card(
                         Modifier.weight(1f).clickable(role = Role.Button) { if (q.label == "إضافة لجنة") onAddCommittee() else onExport() },
-                        shape = RoundedCornerShape(14.dp), colors = CardDefaults.cardColors(containerColor = Color.White),
-                        border = BorderStroke(1.dp, Color(0xFFA7F3D0))
+                        shape = RoundedCornerShape(14.dp), colors = CardDefaults.cardColors(containerColor = tBg(Color.White)),
+                        border = BorderStroke(1.dp, tEdge(Color(0xFFA7F3D0)))
                     ) {
                         Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Icon(q.icon, null, tint = Primary700)
+                            Icon(q.icon, null, tint = tFg(Primary700))
                             Spacer(Modifier.width(6.dp))
-                            Text(q.label, fontWeight = FontWeight.Bold, color = Primary800)
+                            Text(q.label, fontWeight = FontWeight.Bold, color = tFg(Primary800))
                         }
                     }
                 }
@@ -146,34 +153,54 @@ fun MenuScreen(
         sections.forEach { (title, entries) ->
             val visible = entries.filter { user.canAccessScreen(it.screen) }
             if (visible.isNotEmpty()) {
-                item { Text(title, style = MaterialTheme.typography.labelMedium, color = TextMuted, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 8.dp)) }
+                item { Text(title, style = MaterialTheme.typography.labelMedium, color = tFg(TextMuted), fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 8.dp)) }
                 visible.forEach { e ->
                     item(key = e.screen.route) { MenuRow(e.label, e.icon, e.badge) { onNavigate(e.screen) } }
                 }
             }
         }
-        item { Text("الحساب", style = MaterialTheme.typography.labelMedium, color = TextMuted, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 8.dp)) }
+        item { Text("الحساب", style = MaterialTheme.typography.labelMedium, color = tFg(TextMuted), fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 8.dp)) }
         item { MenuRow("تغيير كلمة المرور", Icons.Default.Key, null, onClick = onChangePassword) }
-        item { MenuRow("تسجيل الخروج", Icons.AutoMirrored.Filled.Logout, null, tint = Color(0xFFDC2626), onClick = onLogout) }
+        item { ThemeChooser(themeMode, onThemeMode) }
+        item { MenuRow("تسجيل الخروج", Icons.AutoMirrored.Filled.Logout, null, tint = tFg(Color(0xFFDC2626)), onClick = onLogout) }
         item { Spacer(Modifier.padding(16.dp)) }
     }
 }
 
+/** «المظهر»: follow the phone, always light, or always dark. */
 @Composable
-private fun MenuRow(label: String, icon: ImageVector, badge: String?, tint: Color = Primary700, onClick: () -> Unit) {
+private fun ThemeChooser(mode: ThemeMode, onChange: (ThemeMode) -> Unit) {
+    Card(
+        Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp), colors = CardDefaults.cardColors(containerColor = tBg(Color.White)),
+        border = BorderStroke(1.dp, tEdge(Color(0xFFE2E8F0)))
+    ) {
+        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("المظهر", fontWeight = FontWeight.SemiBold, color = tFg(Color(0xFF0F172A)))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                ThemeMode.values().forEach { m ->
+                    androidx.compose.material3.FilterChip(selected = mode == m, onClick = { onChange(m) }, label = { Text(m.label) })
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MenuRow(label: String, icon: ImageVector, badge: String?, tint: Color = tFg(Primary700), onClick: () -> Unit) {
     Card(
         Modifier.fillMaxWidth().clickable(role = Role.Button, onClick = onClick),
-        shape = RoundedCornerShape(14.dp), colors = CardDefaults.cardColors(containerColor = Color.White),
-        border = BorderStroke(1.dp, Color(0xFFE2E8F0))
+        shape = RoundedCornerShape(14.dp), colors = CardDefaults.cardColors(containerColor = tBg(Color.White)),
+        border = BorderStroke(1.dp, tEdge(Color(0xFFE2E8F0)))
     ) {
         Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(icon, null, tint = tint, modifier = Modifier.size(22.dp))
             Spacer(Modifier.width(12.dp))
-            Text(label, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f), color = if (tint == Primary700) Color(0xFF0F172A) else tint)
+            Text(label, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f), color = if (tint == tFg(Primary700)) tFg(Color(0xFF0F172A)) else tint)
             badge?.let {
                 Text(
-                    it, style = MaterialTheme.typography.labelSmall, color = Primary800, fontWeight = FontWeight.Bold,
-                    modifier = Modifier.background(Color(0xFFD1FAE5), RoundedCornerShape(50)).padding(horizontal = 8.dp, vertical = 2.dp)
+                    it, style = MaterialTheme.typography.labelSmall, color = tFg(Primary800), fontWeight = FontWeight.Bold,
+                    modifier = Modifier.background(tBg(Color(0xFFD1FAE5)), RoundedCornerShape(50)).padding(horizontal = 8.dp, vertical = 2.dp)
                 )
             }
         }

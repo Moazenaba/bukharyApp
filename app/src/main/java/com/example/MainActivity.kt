@@ -109,6 +109,14 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+
+        // The look is decided before the first frame, so a dark phone never flashes the light screens.
+        val uiPrefs = getSharedPreferences("bukhari_ui", MODE_PRIVATE)
+        val themeMode = androidx.compose.runtime.mutableStateOf(com.example.ui.theme.ThemeMode.fromKey(uiPrefs.getString("theme_mode", null)))
+        fun phoneIsDark() =
+            (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES
+        com.example.ui.theme.ThemeState.dark = com.example.ui.theme.ThemeMode.isDark(themeMode.value, phoneIsDark())
+
         setContent {
             BukhariTheme(lightBackgroundBehindStatusBar = !viewModel.isLoggedIn.collectAsStateWithLifecycle().value) {
                 val isLoggedIn by viewModel.isLoggedIn.collectAsStateWithLifecycle()
@@ -562,7 +570,13 @@ class MainActivity : ComponentActivity() {
                                         },
                                         onExport = { showExport = true },
                                         onChangePassword = { showChangePassword = true },
-                                        onLogout = { viewModel.requestLogout() }
+                                        onLogout = { viewModel.requestLogout() },
+                                        themeMode = themeMode.value,
+                                        onThemeMode = { chosen ->
+                                            themeMode.value = chosen
+                                            uiPrefs.edit().putString("theme_mode", chosen.key).apply()
+                                            com.example.ui.theme.ThemeState.dark = com.example.ui.theme.ThemeMode.isDark(chosen, phoneIsDark())
+                                        }
                                     )
                                 }
                             }

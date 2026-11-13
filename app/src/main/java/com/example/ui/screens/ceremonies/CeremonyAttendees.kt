@@ -1,5 +1,8 @@
 package com.example.ui.screens.ceremonies
 
+import com.example.ui.theme.tEdge
+import com.example.ui.theme.tBg
+import com.example.ui.theme.tFg
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -60,7 +63,7 @@ fun AttendeePicker(
         OutlinedTextField(query, { query = it }, placeholder = { Text("بحث بالاسم…") }, singleLine = true, modifier = Modifier.fillMaxWidth())
         Column(Modifier.heightIn(max = 220.dp).verticalScroll(rememberScrollState())) {
             val shown = candidates.filter { query.isBlank() || it.name.contains(query.trim()) }
-            if (shown.isEmpty()) Text("لا يوجد أشخاص مطابقون", color = TextMuted)
+            if (shown.isEmpty()) Text("لا يوجد أشخاص مطابقون", color = tFg(TextMuted))
             shown.forEach { p ->
                 val checked = selected.any { it.id == p.id }
                 Row(
@@ -72,7 +75,7 @@ fun AttendeePicker(
                     Checkbox(checked, null)
                     Spacer(Modifier.width(6.dp))
                     Text(p.name, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                    Text(roleLabel(p.role), style = MaterialTheme.typography.labelSmall, color = TextMuted)
+                    Text(roleLabel(p.role), style = MaterialTheme.typography.labelSmall, color = tFg(TextMuted))
                 }
             }
         }
@@ -86,15 +89,15 @@ fun MyCeremoniesSection(committees: List<Committee>, tasks: List<ScheduleTask>, 
         .sortedBy { it.ceremonyDetails.date }
     if (mine.isEmpty()) return
     Card(
-        shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = Color(0xFFFFFBEB)),
-        border = BorderStroke(2.dp, Color(0xFFFCD34D))
+        shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = tBg(Color(0xFFFFFBEB))),
+        border = BorderStroke(2.dp, tEdge(Color(0xFFFCD34D)))
     ) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text("🎉 حفلاتي (${mine.size})", fontWeight = FontWeight.Black, color = Color(0xFF78350F), style = MaterialTheme.typography.titleMedium)
+            Text("🎉 حفلاتي (${mine.size})", fontWeight = FontWeight.Black, color = tFg(Color(0xFF78350F)), style = MaterialTheme.typography.titleMedium)
             mine.forEach { c ->
                 val d = c.ceremonyDetails
                 val date = d.date.ifBlank { tasks.find { it.id == "task-ceremony-${c.id}" }?.date ?: "" }
-                Card(shape = RoundedCornerShape(14.dp), colors = CardDefaults.cardColors(containerColor = Color.White), border = BorderStroke(1.dp, Color(0xFFFDE68A))) {
+                Card(shape = RoundedCornerShape(14.dp), colors = CardDefaults.cardColors(containerColor = tBg(Color.White)), border = BorderStroke(1.dp, tEdge(Color(0xFFFDE68A)))) {
                     Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                         Text("حفل تكريم لجنة #${c.committeeNumber} — ${c.committeeName}", fontWeight = FontWeight.Black)
                         Text(
@@ -105,9 +108,9 @@ fun MyCeremoniesSection(committees: List<Committee>, tasks: List<ScheduleTask>, 
                         Text("الكتاب: ${c.competitionBook} • الشيخ: ${c.sheikhName.ifBlank { "—" }}", style = MaterialTheme.typography.bodySmall)
                         if (d.honoreesCount > 0) Text("عدد المكرمين: ${d.honoreesCount} طالب", style = MaterialTheme.typography.bodySmall)
                         val others = d.attendees.filter { it.id != myId }
-                        if (others.isNotEmpty()) Text("معك في الحفل: ${others.joinToString("، ") { it.name }}", style = MaterialTheme.typography.bodySmall, color = TextMuted)
+                        if (others.isNotEmpty()) Text("معك في الحفل: ${others.joinToString("، ") { it.name }}", style = MaterialTheme.typography.bodySmall, color = tFg(TextMuted))
                         if (d.notes.isNotBlank()) Text("📝 ${d.notes}", style = MaterialTheme.typography.bodySmall)
-                        if (c.stages.ceremony.completed) Text("✓ تم الحفل", color = Color(0xFF047857), fontWeight = FontWeight.Bold)
+                        if (c.stages.ceremony.completed) Text("✓ تم الحفل", color = tFg(Color(0xFF047857)), fontWeight = FontWeight.Bold)
                         TextButton(onClick = { onOpenCommittee(c.id) }) { Text("تفاصيل اللجنة ↗") }
                     }
                 }

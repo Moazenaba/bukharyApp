@@ -1,5 +1,8 @@
 package com.example.ui.screens.stats
 
+import com.example.ui.theme.tEdge
+import com.example.ui.theme.tBg
+import com.example.ui.theme.tFg
 import androidx.compose.runtime.remember
 import com.example.ui.theme.TextMuted
 import androidx.compose.runtime.getValue
@@ -66,7 +69,7 @@ fun StatisticsScreen(
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
-            .background(Color(0xFFF8F9FD))
+            .background(tBg(Color(0xFFF8F9FD)))
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
@@ -75,7 +78,7 @@ fun StatisticsScreen(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = Primary800)
+                colors = CardDefaults.cardColors(containerColor = tBg(Primary800))
             ) {
                 Row(
                     modifier = Modifier.padding(16.dp),
@@ -106,7 +109,7 @@ fun StatisticsScreen(
                         Text(
                             text = "مؤشرات تقدم اللجان عبر المراحل التسع الميدانية",
                             style = MaterialTheme.typography.bodySmall,
-                            color = Primary100
+                            color = tFg(Primary100)
                         )
                     }
                 }
@@ -118,8 +121,8 @@ fun StatisticsScreen(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = SurfacePure),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0))
+                colors = CardDefaults.cardColors(containerColor = tBg(SurfacePure)),
+                border = androidx.compose.foundation.BorderStroke(1.dp, tEdge(Color(0xFFE2E8F0)))
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Row(
@@ -131,13 +134,13 @@ fun StatisticsScreen(
                             text = "المعدل العام لاكتمال الدورة",
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold,
-                            color = Primary900
+                            color = tFg(Primary900)
                         )
                         Text(
                             text = "$overallPercentage%",
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Black,
-                            color = Primary700
+                            color = tFg(Primary700)
                         )
                     }
 
@@ -149,8 +152,8 @@ fun StatisticsScreen(
                             .fillMaxWidth()
                             .height(10.dp)
                             .clip(RoundedCornerShape(9999.dp)),
-                        color = Primary700,
-                        trackColor = Color(0xFFE2E8F0)
+                        color = tFg(Primary700),
+                        trackColor = tBg(Color(0xFFE2E8F0))
                     )
 
                     Spacer(modifier = Modifier.height(10.dp))
@@ -158,7 +161,7 @@ fun StatisticsScreen(
                     Text(
                         text = "تم إنجاز $completedStagesTotal مرحلة من أصل $totalStagesPossible مرحلة في كافة اللجان.",
                         style = MaterialTheme.typography.bodySmall,
-                        color = TextMuted
+                        color = tFg(TextMuted)
                     )
                 }
             }
@@ -173,24 +176,24 @@ fun StatisticsScreen(
                 Card(
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(14.dp),
-                    colors = CardDefaults.cardColors(containerColor = SurfacePure),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0))
+                    colors = CardDefaults.cardColors(containerColor = tBg(SurfacePure)),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, tEdge(Color(0xFFE2E8F0)))
                 ) {
                     Column(modifier = Modifier.padding(14.dp)) {
-                        Text(text = "مصلى الرجال 👨", style = MaterialTheme.typography.bodySmall, color = TextMuted)
-                        Text(text = "$maleCount لجان", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black, color = Primary900)
+                        Text(text = "مصلى الرجال 👨", style = MaterialTheme.typography.bodySmall, color = tFg(TextMuted))
+                        Text(text = "$maleCount لجان", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black, color = tFg(Primary900))
                     }
                 }
 
                 Card(
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(14.dp),
-                    colors = CardDefaults.cardColors(containerColor = SurfacePure),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0))
+                    colors = CardDefaults.cardColors(containerColor = tBg(SurfacePure)),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, tEdge(Color(0xFFE2E8F0)))
                 ) {
                     Column(modifier = Modifier.padding(14.dp)) {
-                        Text(text = "مصلى الأخوات 🧕", style = MaterialTheme.typography.bodySmall, color = TextMuted)
-                        Text(text = "$womenCount لجان", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black, color = Color(0xFF7E22CE))
+                        Text(text = "مصلى الأخوات 🧕", style = MaterialTheme.typography.bodySmall, color = tFg(TextMuted))
+                        Text(text = "$womenCount لجان", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black, color = tFg(Color(0xFF7E22CE)))
                     }
                 }
             }
@@ -201,15 +204,15 @@ fun StatisticsScreen(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = SurfacePure),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0))
+                colors = CardDefaults.cardColors(containerColor = tBg(SurfacePure)),
+                border = androidx.compose.foundation.BorderStroke(1.dp, tEdge(Color(0xFFE2E8F0)))
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
                         text = "معدل الإنجاز بحسب كل مرحلة من المراحل الـ 9:",
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold,
-                        color = Primary900
+                        color = tFg(Primary900)
                     )
 
                     Spacer(modifier = Modifier.height(14.dp))
@@ -229,7 +232,7 @@ fun StatisticsScreen(
                                     Icon(
                                         imageVector = stageIcon(key),
                                         contentDescription = null,
-                                        tint = stageSet?.dot ?: TextMuted,
+                                        tint = stageSet?.dot?.let { tFg(it) } ?: tFg(TextMuted),
                                         modifier = Modifier.size(16.dp)
                                     )
                                     Spacer(modifier = Modifier.width(6.dp))
@@ -237,14 +240,14 @@ fun StatisticsScreen(
                                         text = name,
                                         style = MaterialTheme.typography.bodySmall,
                                         fontWeight = FontWeight.SemiBold,
-                                        color = Color(0xFF334155)
+                                        color = tFg(Color(0xFF334155))
                                     )
                                 }
                                 Text(
                                     text = "$count / $totalCommittees (${(pct * 100).toInt()}%)",
                                     style = MaterialTheme.typography.labelSmall,
                                     fontWeight = FontWeight.Bold,
-                                    color = stageSet?.text ?: Primary700
+                                    color = stageSet?.text?.let { tFg(it) } ?: tFg(Primary700)
                                 )
                             }
 
@@ -256,8 +259,8 @@ fun StatisticsScreen(
                                     .fillMaxWidth()
                                     .height(6.dp)
                                     .clip(RoundedCornerShape(9999.dp)),
-                                color = stageSet?.dot ?: Primary700,
-                                trackColor = Color(0xFFF1F5F9)
+                                color = stageSet?.dot?.let { tFg(it) } ?: tFg(Primary700),
+                                trackColor = tBg(Color(0xFFF1F5F9))
                             )
                         }
                     }
@@ -304,37 +307,37 @@ private fun WebStatsSections(committees: List<Committee>) {
     val byBook = remember(committees) { committees.groupingBy { it.competitionBook.trim().ifBlank { "متون غير مصنفة" } }.eachCount().entries.sortedByDescending { it.value } }
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = SurfacePure)) {
+        Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = tBg(SurfacePure))) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("لوحة الإحصائيات ونسب الإنجاز الحية", fontWeight = FontWeight.Bold, color = Primary900)
+                Text("لوحة الإحصائيات ونسب الإنجاز الحية", fontWeight = FontWeight.Bold, color = tFg(Primary900))
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     listOf("week" to "أسبوعي", "month" to "شهري", "year" to "النسبة الإجمالية (الموسم)").forEach { (k, l) ->
                         androidx.compose.material3.FilterChip(selected = period == k, onClick = { period = k }, label = { Text(l) })
                     }
                 }
                 Text("$label: $done لجنة من إجمالي $total", style = MaterialTheme.typography.bodySmall)
-                LinearProgressIndicator(progress = { rate / 100f }, modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)), color = Primary700, trackColor = Primary100)
-                Text("$rate% — $level", style = MaterialTheme.typography.labelSmall, color = Primary800)
+                LinearProgressIndicator(progress = { rate / 100f }, modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)), color = tFg(Primary700), trackColor = tBg(Primary100))
+                Text("$rate% — $level", style = MaterialTheme.typography.labelSmall, color = tFg(Primary800))
             }
         }
-        Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = SurfacePure)) {
+        Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = tBg(SurfacePure))) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text("تصحيح الأسئلة", fontWeight = FontWeight.Bold, color = Primary900)
+                Text("تصحيح الأسئلة", fontWeight = FontWeight.Bold, color = tFg(Primary900))
                 Text("إجمالي الأسئلة المصححة: $scored من $questions", style = MaterialTheme.typography.bodySmall)
-                LinearProgressIndicator(progress = { if (questions > 0) scored.toFloat() / questions else 0f }, modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)), color = Color(0xFFD97706), trackColor = Color(0xFFFEF3C7))
+                LinearProgressIndicator(progress = { if (questions > 0) scored.toFloat() / questions else 0f }, modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)), color = tFg(Color(0xFFD97706)), trackColor = tBg(Color(0xFFFEF3C7)))
             }
         }
-        Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = SurfacePure)) {
+        Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = tBg(SurfacePure))) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text("توزيع اللجان حسب المرحلة الحالية", fontWeight = FontWeight.Bold, color = Primary900)
+                Text("توزيع اللجان حسب المرحلة الحالية", fontWeight = FontWeight.Bold, color = tFg(Primary900))
                 byStage.forEach { (name, n) ->
                     Row { Text(name, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodySmall); Text("$n لجنة", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodySmall) }
                 }
             }
         }
-        Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = SurfacePure)) {
+        Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = tBg(SurfacePure))) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text("اللجان حسب الكتاب المقرر", fontWeight = FontWeight.Bold, color = Primary900)
+                Text("اللجان حسب الكتاب المقرر", fontWeight = FontWeight.Bold, color = tFg(Primary900))
                 byBook.forEach { (book, n) ->
                     Row { Text(book, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodySmall); Text("$n لجنة", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodySmall) }
                 }

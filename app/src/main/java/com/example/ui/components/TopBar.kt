@@ -1,5 +1,7 @@
 package com.example.ui.components
 
+import com.example.ui.theme.tBg
+import com.example.ui.theme.tFg
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.BarChart
@@ -107,7 +109,7 @@ fun BukhariTopBar(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .background(Primary800)
+            .background(tBg(Primary800))
             .statusBarsPadding()
             .padding(horizontal = 16.dp, vertical = 10.dp)
             .testTag("top_bar")
@@ -126,7 +128,7 @@ fun BukhariTopBar(
                     modifier = Modifier
                         .size(42.dp)
                         .clip(RoundedCornerShape(12.dp))
-                        .background(Primary700),
+                        .background(tBg(Primary700)),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
@@ -151,7 +153,7 @@ fun BukhariTopBar(
                             modifier = Modifier
                                 .size(7.dp)
                                 .clip(CircleShape)
-                                .background(if (isOnline) Color(0xFF22C55E) else Color(0xFFF59E0B))
+                                .background(if (isOnline) tBg(Color(0xFF22C55E)) else tBg(Color(0xFFF59E0B)))
                         )
                     }
 
@@ -161,7 +163,7 @@ fun BukhariTopBar(
                             text = (activeCourseName ?: if (isOnline) "متصل بالخادم" else "غير متصل — تعرض آخر بيانات محفوظة") +
                                 if (courses.size > 1) " ▾" else "",
                             style = MaterialTheme.typography.bodySmall,
-                            color = Primary200,
+                            color = tFg(Primary200),
                             fontSize = 12.sp,
                             modifier = Modifier
                                 .clickable(enabled = courses.size > 1) { courseMenu = true }
@@ -192,14 +194,14 @@ fun BukhariTopBar(
                         Icon(
                             imageVector = Icons.Default.CloudSync,
                             contentDescription = "جاري المزامنة",
-                            tint = Color(0xFF86EFAC),
+                            tint = tFg(Color(0xFF86EFAC)),
                             modifier = Modifier.rotate(rotationAngle)
                         )
                     } else {
                         Icon(
                             imageVector = if (isOnline) Icons.Default.CloudDone else Icons.Default.CloudOff,
                             contentDescription = if (isOnline) "متصل بالخادم — اضغط للتحديث" else "غير متصل — اضغط لإعادة المحاولة",
-                            tint = if (isOnline) Color(0xFF4ADE80) else Color(0xFFFBBF24)
+                            tint = if (isOnline) tFg(Color(0xFF4ADE80)) else tFg(Color(0xFFFBBF24))
                         )
                     }
                 }
@@ -214,7 +216,7 @@ fun BukhariTopBar(
                             badge = {
                                 if (unreadCount > 0) {
                                     Badge(
-                                        containerColor = Color(0xFFEF4444),
+                                        containerColor = tBg(Color(0xFFEF4444)),
                                         contentColor = Color.White
                                     ) {
                                         Text("$unreadCount", fontSize = 12.sp)
@@ -225,7 +227,7 @@ fun BukhariTopBar(
                             Icon(
                                 imageVector = Icons.Default.Notifications,
                                 contentDescription = "الإشعارات والتنبيهات",
-                                tint = Primary100
+                                tint = tFg(Primary100)
                             )
                         }
                     }
@@ -239,7 +241,7 @@ fun BukhariTopBar(
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold,
-                            color = Primary800
+                            color = tFg(Primary800)
                         )
                         if (notifications.isEmpty()) {
                             DropdownMenuItem(
@@ -255,17 +257,17 @@ fun BukhariTopBar(
                                                 text = notif.title,
                                                 fontWeight = FontWeight.Bold,
                                                 style = MaterialTheme.typography.bodyMedium,
-                                                color = if (notif.type == "urgent") Color(0xFFB91C1C) else Color(0xFF0F172A)
+                                                color = if (notif.type == "urgent") tFg(Color(0xFFB91C1C)) else tFg(Color(0xFF0F172A))
                                             )
                                             Text(
                                                 text = notif.description,
                                                 style = MaterialTheme.typography.bodySmall,
-                                                color = TextMuted
+                                                color = tFg(TextMuted)
                                             )
                                             Text(
                                                 text = notif.createdAt,
                                                 style = MaterialTheme.typography.labelSmall,
-                                                color = TextMuted
+                                                color = tFg(TextMuted)
                                             )
                                         }
                                     },
@@ -288,7 +290,7 @@ fun BukhariTopBar(
                         Icon(
                             imageVector = Icons.Default.Menu,
                             contentDescription = "القائمة الإضافية",
-                            tint = Primary100
+                            tint = tFg(Primary100)
                         )
                     }
 
@@ -304,12 +306,12 @@ fun BukhariTopBar(
                                     overflow = TextOverflow.Ellipsis,
                                     fontWeight = FontWeight.Bold,
                                     style = MaterialTheme.typography.bodyMedium,
-                                    color = Primary900
+                                    color = tFg(Primary900)
                                 )
                                 Text(
                                     text = "${user.role.emoji} ${user.role.titleAr}",
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = Primary700
+                                    color = tFg(Primary700)
                                 )
                             }
                         }
@@ -353,8 +355,8 @@ fun BukhariTopBar(
                             }
                         )
                         DropdownMenuItem(
-                            text = { Text("تسجيل الخروج", color = Color(0xFFB91C1C)) },
-                            leadingIcon = { Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = null, tint = Color(0xFFB91C1C)) },
+                            text = { Text("تسجيل الخروج", color = tFg(Color(0xFFB91C1C))) },
+                            leadingIcon = { Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = null, tint = tFg(Color(0xFFB91C1C))) },
                             onClick = {
                                 onLogout()
                                 showMenu = false

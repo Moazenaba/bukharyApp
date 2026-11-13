@@ -1,5 +1,8 @@
 package com.example.ui.screens.committees
 
+import com.example.ui.theme.tEdge
+import com.example.ui.theme.tBg
+import com.example.ui.theme.tFg
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -65,16 +68,16 @@ fun CommitteeStaffSection(
     val canStaff = Permissions.canOn("committees.members", committee.id)
     var editing by remember { mutableStateOf(false) }
     Card(
-        shape = RoundedCornerShape(14.dp), colors = CardDefaults.cardColors(containerColor = Color.White),
-        border = BorderStroke(1.dp, Color(0xFFE2E8F0)), modifier = Modifier.fillMaxWidth()
+        shape = RoundedCornerShape(14.dp), colors = CardDefaults.cardColors(containerColor = tBg(Color.White)),
+        border = BorderStroke(1.dp, tEdge(Color(0xFFE2E8F0))), modifier = Modifier.fillMaxWidth()
     ) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("شيوخ اللجنة (${committee.staff.size})", fontWeight = FontWeight.Bold, color = Primary900, modifier = Modifier.weight(1f))
+                Text("شيوخ اللجنة (${committee.staff.size})", fontWeight = FontWeight.Bold, color = tFg(Primary900), modifier = Modifier.weight(1f))
                 if (canStaff) OutlinedButton(onClick = { editing = true }) { Text("إضافة / إزالة") }
             }
             if (committee.staff.isEmpty()) {
-                Text("لم يُضف أحد لهذه اللجنة بعد.", style = MaterialTheme.typography.bodySmall, color = TextMuted)
+                Text("لم يُضف أحد لهذه اللجنة بعد.", style = MaterialTheme.typography.bodySmall, color = tFg(TextMuted))
             } else {
                 Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     committee.staff.forEach { s ->
@@ -106,7 +109,7 @@ fun CommitteeStaffSection(
                             subtitle = { roleLabel(it.role) },
                             empty = "لا يوجد أشخاص مطابقون"
                         )
-                        Text("يصل لكل من تضيفه أو تزيله تنبيه بذلك.", style = MaterialTheme.typography.bodySmall, color = TextMuted)
+                        Text("يصل لكل من تضيفه أو تزيله تنبيه بذلك.", style = MaterialTheme.typography.bodySmall, color = tFg(TextMuted))
                     }
                 }
             },
@@ -183,7 +186,7 @@ fun PersonAssignmentsDialog(
                         empty = "لا توجد حفلات محددة الموعد يمكنك دعوته إليها"
                     )
                 }
-                Text("يصله تنبيه عند إضافته أو إزالته، ويرى في حسابه اللجان والحفلات المسندة إليه فقط.", style = MaterialTheme.typography.bodySmall, color = TextMuted)
+                Text("يصله تنبيه عند إضافته أو إزالته، ويرى في حسابه اللجان والحفلات المسندة إليه فقط.", style = MaterialTheme.typography.bodySmall, color = tFg(TextMuted))
             }
         },
         confirmButton = {
@@ -214,7 +217,7 @@ private fun <T> CheckList(
     empty: String
 ) {
     Column(Modifier.heightIn(max = 280.dp).verticalScroll(rememberScrollState())) {
-        if (items.isEmpty()) Text(empty, color = TextMuted)
+        if (items.isEmpty()) Text(empty, color = tFg(TextMuted))
         items.forEach { item ->
             val isChecked = checked(item)
             Row(
@@ -226,7 +229,7 @@ private fun <T> CheckList(
                 Column(Modifier.weight(1f)) {
                     Text(title(item), fontWeight = FontWeight.SemiBold)
                     val sub = subtitle(item)
-                    if (sub.isNotBlank()) Text(sub, style = MaterialTheme.typography.labelSmall, color = TextMuted)
+                    if (sub.isNotBlank()) Text(sub, style = MaterialTheme.typography.labelSmall, color = tFg(TextMuted))
                 }
             }
         }

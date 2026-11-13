@@ -1,5 +1,6 @@
 package com.example.ui.screens.course_tracker
 
+import com.example.ui.theme.tFg
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
@@ -109,7 +110,7 @@ fun ImageWorkbenchDialog(uri: Uri, onDismiss: () -> Unit, onExtract: (ByteArray)
                         Checkbox(contrast, { contrast = it })
                         Text("تحسين التباين لوضوح الخط")
                     }
-                    Text("كل صف مستخرج يُعلَّم «يحتاج تدقيق» حتى تراجعه.", style = MaterialTheme.typography.labelSmall, color = TextMuted)
+                    Text("كل صف مستخرج يُعلَّم «يحتاج تدقيق» حتى تراجعه.", style = MaterialTheme.typography.labelSmall, color = tFg(TextMuted))
                 }
             }
         },

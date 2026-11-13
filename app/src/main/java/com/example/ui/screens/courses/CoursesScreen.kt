@@ -1,5 +1,8 @@
 package com.example.ui.screens.courses
 
+import com.example.ui.theme.tEdge
+import com.example.ui.theme.tBg
+import com.example.ui.theme.tFg
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
@@ -80,7 +83,7 @@ fun CoursesScreen(
     val shown = courses.filter { filter == "all" || it.status == filter }
 
     LazyColumn(
-        modifier = modifier.fillMaxSize().background(Color(0xFFF8F9FD)),
+        modifier = modifier.fillMaxSize().background(tBg(Color(0xFFF8F9FD))),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
@@ -88,7 +91,7 @@ fun CoursesScreen(
             Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Color.Transparent)) {
                 Column(
                     Modifier.fillMaxWidth()
-                        .background(Brush.horizontalGradient(listOf(Color(0xFF115E59), Primary800)))
+                        .background(Brush.horizontalGradient(listOf(tBg(Color(0xFF115E59)), tBg(Primary800))))
                         .padding(16.dp)
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -99,13 +102,13 @@ fun CoursesScreen(
                     Spacer(Modifier.height(6.dp))
                     Text(
                         "تنظيم مسابقات مسجد البخاري على مستوى الدورات. تُربط اللجان بكل دورة، وتُحفظ الدورات المكتملة بأرشيفها.",
-                        color = Color(0xFFCCFBF1), style = MaterialTheme.typography.bodySmall
+                        color = tFg(Color(0xFFCCFBF1)), style = MaterialTheme.typography.bodySmall
                     )
                     if (canWrite) {
                         Spacer(Modifier.height(10.dp))
                         Button(
                             onClick = { adding = true },
-                            colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Primary800),
+                            colors = ButtonDefaults.buttonColors(containerColor = tBg(Color.White), contentColor = tFg(Primary800)),
                             shape = RoundedCornerShape(12.dp)
                         ) {
                             Icon(Icons.Default.Add, null)
@@ -127,36 +130,36 @@ fun CoursesScreen(
                     FilterChip(selected = filter == key, onClick = { filter = key }, label = { Text(label) })
                 }
             }
-            Text("إجمالي اللجان المسجلة بالمنظومة: ${committees.size} لجنة", style = MaterialTheme.typography.bodySmall, color = TextMuted)
+            Text("إجمالي اللجان المسجلة بالمنظومة: ${committees.size} لجنة", style = MaterialTheme.typography.bodySmall, color = tFg(TextMuted))
         }
         if (shown.isEmpty()) {
-            item { Text("لا توجد دورات في هذا التصنيف", color = TextMuted, modifier = Modifier.padding(24.dp)) }
+            item { Text("لا توجد دورات في هذا التصنيف", color = tFg(TextMuted), modifier = Modifier.padding(24.dp)) }
         }
         items(shown, key = { it.id }) { course ->
             val comms = committees.filter { it.courseId == course.id }
             val done = comms.count { it.stages.ceremony.completed }
             Card(
                 shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                border = BorderStroke(if (course.isDefault) 2.dp else 1.dp, if (course.isDefault) Color(0xFF10B981) else Color(0xFFE2E8F0))
+                colors = CardDefaults.cardColors(containerColor = tBg(Color.White)),
+                border = BorderStroke(if (course.isDefault) 2.dp else 1.dp, if (course.isDefault) tEdge(Color(0xFF10B981)) else tEdge(Color(0xFFE2E8F0)))
             ) {
                 Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
-                            Text("${course.season} • ${course.year}", style = MaterialTheme.typography.labelSmall, color = TextMuted)
-                            Text(course.name, fontWeight = FontWeight.Bold, color = Primary900)
+                            Text("${course.season} • ${course.year}", style = MaterialTheme.typography.labelSmall, color = tFg(TextMuted))
+                            Text(course.name, fontWeight = FontWeight.Bold, color = tFg(Primary900))
                         }
                         if (course.isDefault) {
                             Text(
                                 "الدورة الحالية", color = Color.White, style = MaterialTheme.typography.labelSmall,
-                                modifier = Modifier.background(Color(0xFF059669), RoundedCornerShape(50)).padding(horizontal = 8.dp, vertical = 2.dp)
+                                modifier = Modifier.background(tBg(Color(0xFF059669)), RoundedCornerShape(50)).padding(horizontal = 8.dp, vertical = 2.dp)
                             )
                         } else {
-                            Text(STATUS_LABELS[course.status] ?: course.status, style = MaterialTheme.typography.labelSmall, color = TextMuted)
+                            Text(STATUS_LABELS[course.status] ?: course.status, style = MaterialTheme.typography.labelSmall, color = tFg(TextMuted))
                         }
                     }
                     if (course.description.isNotBlank()) {
-                        Text(course.description, style = MaterialTheme.typography.bodySmall, modifier = Modifier.background(Color(0xFFF8FAFC), RoundedCornerShape(10.dp)).padding(8.dp).fillMaxWidth())
+                        Text(course.description, style = MaterialTheme.typography.bodySmall, modifier = Modifier.background(tBg(Color(0xFFF8FAFC)), RoundedCornerShape(10.dp)).padding(8.dp).fillMaxWidth())
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         StatBox("اللجان المرتبطة", "${comms.size} لجنة", "(الهدف: ${course.targetCommitteesCount.takeIf { it > 0 } ?: 30})", Modifier.weight(1f))
@@ -167,12 +170,12 @@ fun CoursesScreen(
                     }
                     Text(
                         "الفترة: ${course.startDate}${if (course.endDate.isNotBlank()) " إلى ${course.endDate}" else " (مفتوحة)"}",
-                        style = MaterialTheme.typography.bodySmall, color = TextMuted
+                        style = MaterialTheme.typography.bodySmall, color = tFg(TextMuted)
                     )
                     Button(
                         onClick = { onShowCourseCommittees(course.id) },
                         modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(containerColor = Primary700),
+                        colors = ButtonDefaults.buttonColors(containerColor = tBg(Primary700)),
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         Icon(Icons.Default.Groups, null, Modifier.size(18.dp))
@@ -183,8 +186,8 @@ fun CoursesScreen(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             if (!course.isDefault) TextButton(onClick = { onSetDefaultCourse(course) }) { Text("✓ تعيين كدورة نشطة", fontWeight = FontWeight.Bold) }
                             Spacer(Modifier.weight(1f))
-                            TextButton(onClick = { editing = course }) { Text("تعديل", color = Color(0xFF92400E)) }
-                            if (courses.size > 1) TextButton(onClick = { confirmDelete = course }) { Text("حذف", color = Color(0xFFDC2626)) }
+                            TextButton(onClick = { editing = course }) { Text("تعديل", color = tFg(Color(0xFF92400E))) }
+                            if (courses.size > 1) TextButton(onClick = { confirmDelete = course }) { Text("حذف", color = tFg(Color(0xFFDC2626))) }
                         }
                     }
                 }
@@ -204,7 +207,7 @@ fun CoursesScreen(
             onDismissRequest = { confirmDelete = null },
             title = { Text("حذف الدورة") },
             text = { Text("هل تريد حذف «${c.name}»؟ لا يمكن حذف دورة مرتبطة بلجان.") },
-            confirmButton = { TextButton(onClick = { confirmDelete = null; onDeleteCourse(c) }) { Text("حذف", color = Color(0xFFDC2626)) } },
+            confirmButton = { TextButton(onClick = { confirmDelete = null; onDeleteCourse(c) }) { Text("حذف", color = tFg(Color(0xFFDC2626))) } },
             dismissButton = { TextButton(onClick = { confirmDelete = null }) { Text("إلغاء") } }
         )
     }
@@ -212,10 +215,10 @@ fun CoursesScreen(
 
 @Composable
 private fun StatBox(title: String, value: String, sub: String, modifier: Modifier) {
-    Column(modifier.background(Color(0xFFF8FAFC), RoundedCornerShape(10.dp)).padding(8.dp)) {
-        Text(title, style = MaterialTheme.typography.labelSmall, color = TextMuted)
-        Text(value, fontWeight = FontWeight.Bold, color = Primary700)
-        Text(sub, style = MaterialTheme.typography.labelSmall, color = TextMuted)
+    Column(modifier.background(tBg(Color(0xFFF8FAFC)), RoundedCornerShape(10.dp)).padding(8.dp)) {
+        Text(title, style = MaterialTheme.typography.labelSmall, color = tFg(TextMuted))
+        Text(value, fontWeight = FontWeight.Bold, color = tFg(Primary700))
+        Text(sub, style = MaterialTheme.typography.labelSmall, color = tFg(TextMuted))
     }
 }
 
@@ -237,7 +240,7 @@ fun CourseFormDialog(course: Course?, onDismiss: () -> Unit, onSave: (Course) ->
         title = { Text(if (course == null) "إضافة دورة مسابقات جديدة" else "تعديل بيانات الدورة", fontWeight = FontWeight.Bold) },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                error?.let { Text(it, color = Color(0xFFDC2626)) }
+                error?.let { Text(it, color = tFg(Color(0xFFDC2626))) }
                 OutlinedTextField(name, { name = it; error = null }, label = { Text("اسم الدورة *") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 Text("الموسم / النوع", style = MaterialTheme.typography.labelMedium)
                 Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -277,7 +280,7 @@ fun CourseFormDialog(course: Course?, onDismiss: () -> Unit, onSave: (Course) ->
                         createdAt = course?.createdAt ?: Dates.today()
                     )
                 )
-            }, colors = ButtonDefaults.buttonColors(containerColor = Primary700)) { Text("حفظ الدورة") }
+            }, colors = ButtonDefaults.buttonColors(containerColor = tBg(Primary700))) { Text("حفظ الدورة") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("إلغاء") } }
     )

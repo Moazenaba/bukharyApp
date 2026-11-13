@@ -1,5 +1,8 @@
 package com.example.ui.components
 
+import com.example.ui.theme.tFg
+import com.example.ui.theme.tEdge
+import com.example.ui.theme.tBg
 import androidx.compose.ui.semantics.Role
 import com.example.ui.theme.TextMuted
 import androidx.compose.foundation.background
@@ -49,9 +52,9 @@ fun StageBadge(
 ) {
     val stageSet = StageColorMap[stageKey] ?: return
 
-    val bg = if (completed) stageSet.bg else Color(0xFFF8FAFC)
-    val text = if (completed) stageSet.text else TextMuted
-    val border = if (completed) stageSet.border else Color(0xFFE2E8F0)
+    val bg = if (completed) tBg(stageSet.bg) else tBg(Color(0xFFF8FAFC))
+    val text = if (completed) tFg(stageSet.text) else tFg(TextMuted)
+    val border = if (completed) tEdge(stageSet.border) else tEdge(Color(0xFFE2E8F0))
     val dot = if (completed) stageSet.dot else Color(0xFFCBD5E1)
 
     val clickableModifier = if (onClick != null) {

@@ -1,5 +1,8 @@
 package com.example.ui.screens.course_tracker
 
+import com.example.ui.theme.tEdge
+import com.example.ui.theme.tBg
+import com.example.ui.theme.tFg
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -177,7 +180,7 @@ fun SummerCourseTrackerScreen(
     val inCourse = rows.filter { selectedCourseId == null || (it.row.courseId ?: defaultCourse?.id) == selectedCourseId }.map { it.row }
 
     LazyColumn(
-        modifier.fillMaxSize().background(Color(0xFFF8F9FD)),
+        modifier.fillMaxSize().background(tBg(Color(0xFFF8F9FD))),
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
@@ -193,7 +196,7 @@ fun SummerCourseTrackerScreen(
                     if (canEdit) OutlinedButton(onClick = { pickFile.launch("*/*") }) { Text("استيراد Excel/CSV", color = Color.White) }
                     if (canOcr) OutlinedButton(onClick = { pickImage.launch("image/*") }) { Text("استخراج من صورة", color = Color.White) }
                     OutlinedButton(onClick = onExport) { Text("تصدير", color = Color.White) }
-                    if (canEdit && sheetRows.isNotEmpty()) OutlinedButton(onClick = { confirmClear = true }) { Text("تفريغ الكشف", color = Color(0xFFFECACA)) }
+                    if (canEdit && sheetRows.isNotEmpty()) OutlinedButton(onClick = { confirmClear = true }) { Text("تفريغ الكشف", color = tFg(Color(0xFFFECACA))) }
                 }
             }
         }
@@ -220,14 +223,14 @@ fun SummerCourseTrackerScreen(
                     StatTile("الطلاب", "${inCourse.sumOf { it.students_count }}", Modifier.weight(1f))
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    StatTile("الامتحان", "${inCourse.count { it.delivered }}", Modifier.weight(1f), tint = Color(0xFF1D4ED8))
-                    StatTile("التصحيح", "${inCourse.count { it.corrected }}", Modifier.weight(1f), tint = Color(0xFFB45309))
-                    StatTile("المراجعة", "${inCourse.count { it.reviewed }}", Modifier.weight(1f), tint = Color(0xFF0F766E))
+                    StatTile("الامتحان", "${inCourse.count { it.delivered }}", Modifier.weight(1f), tint = tFg(Color(0xFF1D4ED8)))
+                    StatTile("التصحيح", "${inCourse.count { it.corrected }}", Modifier.weight(1f), tint = tFg(Color(0xFFB45309)))
+                    StatTile("المراجعة", "${inCourse.count { it.reviewed }}", Modifier.weight(1f), tint = tFg(Color(0xFF0F766E)))
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    StatTile("الإعلان", "${inCourse.count { it.announced }}", Modifier.weight(1f), tint = Color(0xFF0E7490))
-                    StatTile("الحفل", "${inCourse.count { it.ceremony }}", Modifier.weight(1f), tint = Color(0xFF047857))
-                    StatTile("يحتاج تدقيق", "${inCourse.count { it.uncertain }}", Modifier.weight(1f), tint = Color(0xFFB91C1C))
+                    StatTile("الإعلان", "${inCourse.count { it.announced }}", Modifier.weight(1f), tint = tFg(Color(0xFF0E7490)))
+                    StatTile("الحفل", "${inCourse.count { it.ceremony }}", Modifier.weight(1f), tint = tFg(Color(0xFF047857)))
+                    StatTile("يحتاج تدقيق", "${inCourse.count { it.uncertain }}", Modifier.weight(1f), tint = tFg(Color(0xFFB91C1C)))
                 }
             }
         }
@@ -295,12 +298,12 @@ fun SummerCourseTrackerScreen(
                 FilterChip(selected = place == "all", onClick = { place = "all" }, label = { Text("كل الأماكن") })
                 places.forEach { p -> FilterChip(selected = place == p, onClick = { place = p }, label = { Text(p) }) }
             }
-            Text("عرض ${shown.size} من ${rows.size} صف", style = MaterialTheme.typography.labelSmall, color = TextMuted)
+            Text("عرض ${shown.size} من ${rows.size} صف", style = MaterialTheme.typography.labelSmall, color = tFg(TextMuted))
         }
         if (rows.isEmpty()) item {
             Column(Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 Text("الكشف فارغ", fontWeight = FontWeight.Bold)
-                Text("أضف صفاً أو استورد ملف Excel لبدء المتابعة.", color = TextMuted, style = MaterialTheme.typography.bodySmall)
+                Text("أضف صفاً أو استورد ملف Excel لبدء المتابعة.", color = tFg(TextMuted), style = MaterialTheme.typography.bodySmall)
             }
         }
         items(shown, key = { it.row.id }) { sr ->
@@ -310,14 +313,14 @@ fun SummerCourseTrackerScreen(
                 Permissions.canOn("committees.scoring", committee.id) || Permissions.canOn("committees.finalize", committee.id) else canEdit
             Card(
                 shape = RoundedCornerShape(14.dp),
-                colors = CardDefaults.cardColors(containerColor = if (r.struck_out) Color(0xFFF1F5F9) else Color.White),
-                border = BorderStroke(1.dp, if (r.uncertain) Color(0xFFFCA5A5) else Color(0xFFE2E8F0))
+                colors = CardDefaults.cardColors(containerColor = if (r.struck_out) tBg(Color(0xFFF1F5F9)) else tBg(Color.White)),
+                border = BorderStroke(1.dp, if (r.uncertain) tEdge(Color(0xFFFCA5A5)) else tEdge(Color(0xFFE2E8F0)))
             ) {
                 Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             "${r.number}", color = Color.White, fontWeight = FontWeight.Black,
-                            modifier = Modifier.background(if (sr.virtual) TextMuted else Primary700, RoundedCornerShape(8.dp)).padding(horizontal = 8.dp, vertical = 2.dp)
+                            modifier = Modifier.background(if (sr.virtual) tBg(TextMuted) else tBg(Primary700), RoundedCornerShape(8.dp)).padding(horizontal = 8.dp, vertical = 2.dp)
                         )
                         Spacer(Modifier.width(8.dp))
                         Column(Modifier.weight(1f)) {
@@ -327,12 +330,12 @@ fun SummerCourseTrackerScreen(
                             )
                             Text(
                                 listOf(r.place, r.book, "${r.students_count} طالب", r.courseName ?: "").filter { it.isNotBlank() }.joinToString(" • "),
-                                style = MaterialTheme.typography.labelSmall, color = TextMuted
+                                style = MaterialTheme.typography.labelSmall, color = tFg(TextMuted)
                             )
                         }
                         // A committee's data (sheikh, place, book, students) can be edited from its row too.
-                        if ((canEdit && !sr.virtual) || (committee != null && Permissions.can("committees.update"))) IconButton(onClick = { editing = sr }) { Icon(Icons.Default.Edit, "تعديل الصف", tint = Primary700) }
-                        if (canEdit && !sr.virtual) IconButton(onClick = { deleting = r }) { Icon(Icons.Default.Delete, "حذف الصف", tint = Color(0xFFEF4444)) }
+                        if ((canEdit && !sr.virtual) || (committee != null && Permissions.can("committees.update"))) IconButton(onClick = { editing = sr }) { Icon(Icons.Default.Edit, "تعديل الصف", tint = tFg(Primary700)) }
+                        if (canEdit && !sr.virtual) IconButton(onClick = { deleting = r }) { Icon(Icons.Default.Delete, "حذف الصف", tint = tFg(Color(0xFFEF4444))) }
                     }
                     Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         FLAGS.forEach { (key, label) ->
@@ -352,7 +355,7 @@ fun SummerCourseTrackerScreen(
                             )
                         }
                     }
-                    if (r.uncertain) Text("⚠️ قراءة غير مؤكدة تحتاج تدقيق", style = MaterialTheme.typography.labelSmall, color = Color(0xFFB91C1C))
+                    if (r.uncertain) Text("⚠️ قراءة غير مؤكدة تحتاج تدقيق", style = MaterialTheme.typography.labelSmall, color = tFg(Color(0xFFB91C1C)))
                     if (r.notes.isNotBlank()) Text("💬 ${r.notes}", style = MaterialTheme.typography.labelSmall)
                     Row {
                         if (committee != null) TextButton(onClick = { onOpenCommitteeDetail(committee.id) }) { Text("تفاصيل اللجنة ↗") }
@@ -395,7 +398,7 @@ fun SummerCourseTrackerScreen(
             onDismissRequest = { deleting = null },
             title = { Text("حذف الصف") },
             text = { Text("هل أنت متأكد من حذف الصف رقم ${r.number}؟") },
-            confirmButton = { TextButton(onClick = { deleting = null; onDeleteRow(r) }) { Text("حذف", color = Color(0xFFDC2626)) } },
+            confirmButton = { TextButton(onClick = { deleting = null; onDeleteRow(r) }) { Text("حذف", color = tFg(Color(0xFFDC2626))) } },
             dismissButton = { TextButton(onClick = { deleting = null }) { Text("إلغاء") } }
         )
     }
@@ -434,7 +437,7 @@ fun SummerCourseTrackerScreen(
                         val formatted = incoming.map { r -> r.copy(id = "row-${java.util.UUID.randomUUID()}", number = if (r.number > 0) r.number else next++) }
                         importCourseId?.let { onImportRows(formatted, it, true) {} }
                         pendingImport = null
-                    }) { Text("استبدال كشف الدورة بالكامل", color = Color(0xFFB91C1C)) }
+                    }) { Text("استبدال كشف الدورة بالكامل", color = tFg(Color(0xFFB91C1C))) }
                 }
             },
             dismissButton = { TextButton(onClick = { pendingImport = null }) { Text("إلغاء") } }
@@ -449,7 +452,7 @@ fun SummerCourseTrackerScreen(
                 TextButton(onClick = {
                     confirmClear = false
                     importCourseId?.let { onImportRows(emptyList(), it, true) {} } ?: run { importError = "اختر الدورة التي تريد تفريغ كشفها أولاً" }
-                }) { Text("تفريغ", color = Color(0xFFDC2626)) }
+                }) { Text("تفريغ", color = tFg(Color(0xFFDC2626))) }
             },
             dismissButton = { TextButton(onClick = { confirmClear = false }) { Text("إلغاء") } }
         )
@@ -498,7 +501,7 @@ private fun RowEditDialog(row: SheetRowDto, courses: List<Course>, canEditCommit
                 OutlinedTextField(students, { students = it.filter(Char::isDigit) }, label = { Text("عدد الطلاب") }, singleLine = true, enabled = dataEditable, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
                 if (linked && !dataEditable) Text(
                     "الشيخ والمكان والكتاب وعدد الطلاب بيانات اللجنة نفسها، وتعديلها من تفاصيل اللجنة لمن له صلاحية تعديل اللجان.",
-                    style = MaterialTheme.typography.labelSmall, color = Color(0xFFB45309)
+                    style = MaterialTheme.typography.labelSmall, color = tFg(Color(0xFFB45309))
                 )
                 OutlinedTextField(notes, { notes = it }, label = { Text("ملاحظات") })
                 Row(verticalAlignment = Alignment.CenterVertically) { Checkbox(struck, { struck = it }); Text("مشطوب (ملغي)") }
@@ -508,7 +511,7 @@ private fun RowEditDialog(row: SheetRowDto, courses: List<Course>, canEditCommit
                     Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         courses.forEach { c -> FilterChip(selected = courseId == c.id, onClick = { courseId = c.id }, label = { Text(c.name) }) }
                     }
-                } else Text("الصف مربوط بلجنة؛ رقمها ودورتها ومراحلها تُعدّل من تفاصيل اللجنة.", style = MaterialTheme.typography.labelSmall, color = TextMuted)
+                } else Text("الصف مربوط بلجنة؛ رقمها ودورتها ومراحلها تُعدّل من تفاصيل اللجنة.", style = MaterialTheme.typography.labelSmall, color = tFg(TextMuted))
             }
         },
         confirmButton = {
@@ -578,7 +581,7 @@ private fun AddRowDialog(courses: List<Course>, initialCourseId: String?, nextNu
                         createdDate = now
                     )
                 )
-            }, colors = ButtonDefaults.buttonColors(containerColor = Primary700)) { Text("إضافة") }
+            }, colors = ButtonDefaults.buttonColors(containerColor = tBg(Primary700))) { Text("إضافة") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("إلغاء") } }
     )
