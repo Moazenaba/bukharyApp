@@ -13,7 +13,21 @@
 ```
 الإصدار لازم يستخدم رابط `https`، وإلا البناء بيفشل. توقيع الإصدار يتحدد بمتغيرات البيئة `KEYSTORE_PATH` و`STORE_PASSWORD` و`KEY_PASSWORD`.
 
-## الاختبارات
+## نشر تحديث للأجهزة (بدون متجر)
+التطبيق بيفحص السيرفر لما يتفتح، ولو فيه نسخة أحدث بينزّلها ويثبّتها لوحده (`AppUpdater`). لنشر نسخة:
+1. ارفع `versionCode` و`versionName` في `app/build.gradle.kts`، واعمل merge على `main`.
+2. من GitHub: **Actions > Publish Android > Run workflow**، واكتب «ما الجديد».
+3. الـ workflow بيبني نسخة موقّعة ويحطها في مستودع الموقع (`public/app`)، ولما الموقع يتنشر الأجهزة تاخد التحديث.
+
+الـ secrets المطلوبة في **Settings > Secrets and variables > Actions** (ما تتكتبش في أي مكان تاني):
+- `KEYSTORE_BASE64`: ملف المفتاح `bukhari-upload.jks` محوّل لنص (على Windows في PowerShell: `[Convert]::ToBase64String([IO.File]::ReadAllBytes("bukhari-upload.jks")) | Set-Clipboard` وبعدين الصق في الـ secret؛ على Linux: `base64 -w0 bukhari-upload.jks`).
+- `STORE_PASSWORD` و`KEY_PASSWORD`: كلمتا سر المفتاح.
+- `API_BASE_URL`: رابط الموقع الحقيقي، يبدأ بـ `https://` وينتهي بـ `/`.
+- `BUKHARY_PUSH_TOKEN`: token (Fine-grained) على مستودع الموقع `bukhary` بصلاحية `Contents: Read and write` فقط.
+
+لازم المفتاح يكون نفس مفتاح النسخ المثبّتة، وإلا أندرويد بيرفض التحديث (والنشر بيفشل قبل ما يوصل للأجهزة).
+
+
 ```bash
 ./gradlew testDebugUnitTest
 ```
