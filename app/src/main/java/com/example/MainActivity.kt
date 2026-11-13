@@ -500,6 +500,7 @@ class MainActivity : ComponentActivity() {
                                         onScheduleCeremony = { c, d -> viewModel.updateCeremony(c.id, d) },
                                         onToggleCeremonyDone = { viewModel.toggleCeremonyDone(it) },
                                         onOpenCommittee = { viewModel.openCommitteeDetail(it) },
+                                        onEditCommittee = { viewModel.openCommitteeDetail(it, edit = true) },
                                         onNavigateDailyAlerts = { viewModel.navigateTo(AppNavScreen.DAILY_ALERTS) },
                                         onNavigateCalendar = { viewModel.navigateTo(AppNavScreen.SCHEDULE) },
                                         currentUserId = currentUser?.id,

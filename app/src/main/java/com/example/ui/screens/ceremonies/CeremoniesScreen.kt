@@ -88,6 +88,8 @@ fun CeremoniesScreen(
     currentUserId: String? = null,
     ceremonyCandidates: List<com.example.data.remote.AssignableUserDto>? = null,
     onLoadCandidates: () -> Unit = {},
+    /** Opens the committee's data form (edit what was entered when it was added). */
+    onEditCommittee: (String) -> Unit = onOpenCommittee,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -221,6 +223,10 @@ fun CeremoniesScreen(
                         )
                         val place = c.ceremonyDetails.venue.ifBlank { task?.notes ?: "" }
                         if (place.isNotBlank()) Text("📍 $place", style = MaterialTheme.typography.labelSmall)
+                    }
+                    // Full width, never pushed off-screen by the buttons row below.
+                    if (Permissions.canOn("committees.update", c.id)) {
+                        OutlinedButton(onClick = { onEditCommittee(c.id) }, modifier = Modifier.fillMaxWidth()) { Text("✏️ تعديل بيانات اللجنة") }
                     }
                     Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         if (canFinalize) {
