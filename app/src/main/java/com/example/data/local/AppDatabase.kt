@@ -33,7 +33,7 @@ import kotlinx.coroutines.launch
         com.example.data.local.entities.CustomPermissionEntity::class,
         com.example.data.local.entities.PendingOpEntity::class
     ],
-    version = 6,
+    version = 7,
     exportSchema = true
 )
 @TypeConverters(Converters::class)

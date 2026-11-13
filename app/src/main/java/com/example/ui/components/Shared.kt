@@ -118,18 +118,19 @@ fun StatTile(title: String, value: String, modifier: Modifier = Modifier, tint: 
     }
 }
 
-/** The committee's current stage for filtering and counts, the same rule as the web's calculateCurrentStage. */
-fun currentStageKey(stages: com.example.data.model.StagesMap): String = when {
-    stages.ceremony.completed -> "ceremony"
-    stages.announcement.completed -> "announcement"
-    stages.accreditation.completed -> "accreditation"
-    stages.sheet.completed -> "sheet"
-    stages.review.completed -> "review"
-    stages.aggregation.completed -> "aggregation"
-    stages.scoring.completed -> "scoring"
-    stages.exam.completed -> "scoring"
-    else -> "exam"
+/**
+ * The committee's current state for filtering and counts, the same rule as the web's
+ * calculateCurrentStage: the last stage that is done («تم …»); nothing after registration done is
+ * "registration" («في انتظار الامتحان»). Checked against the shared rules.json in the tests.
+ */
+fun currentStageKey(stages: com.example.data.model.StagesMap): String {
+    var key = "registration"
+    for ((k, _) in OrderedStageKeys) if (stages.getStage(k).completed) key = k
+    return key
 }
+
+/** Committees still waiting for their exam (web: isAwaitingExam). */
+fun isAwaitingExam(stages: com.example.data.model.StagesMap): Boolean = currentStageKey(stages) == "registration"
 
 /** Writes [bytes] to the app cache and opens the share sheet (save to Files, Drive, WhatsApp, e-mail...). */
 fun shareFile(context: Context, bytes: ByteArray, fileName: String, mime: String) {

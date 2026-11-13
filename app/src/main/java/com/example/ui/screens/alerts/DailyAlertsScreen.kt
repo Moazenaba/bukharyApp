@@ -100,7 +100,9 @@ fun DailyAlertsScreen(
     onScheduleCeremony: (Committee, CeremonyDetails) -> Unit,
     onNavigateCalendar: () -> Unit,
     onNavigateCeremonies: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    /** Opens a committee's details (from «لجان متأخرة»). */
+    onOpenCommittee: (String) -> Unit = {}
 ) {
     val today = Dates.today()
     var selectedDate by rememberSaveable { mutableStateOf(today) }
@@ -152,6 +154,7 @@ fun DailyAlertsScreen(
                 }
             }
         }
+        item { com.example.ui.components.OverduePanel(committees, tasks, onOpenCommittee) }
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 FilterChip(selected = !allSchedule, onClick = { allSchedule = false }, label = { Text("اليوم المحدد (${tasks.count { it.date == selectedDate }})") })
@@ -347,6 +350,9 @@ fun CeremonyQuickDialog(
                         if (n.isNotEmpty() && n !in sheikhs) sheikhs = sheikhs + n
                         newSheikh = ""
                     }) { Text("إضافة") }
+                }
+                com.example.ui.components.NameSuggestions("اختيار من قائمة مشايخ الحفلات", com.example.data.remote.AppSettings.current.ceremonySheikhs, sheikhs) { n ->
+                    sheikhs = sheikhs + n
                 }
                 OutlinedTextField(notes, { notes = it }, label = { Text("ملاحظات وترتيبات") }, minLines = 2)
             }

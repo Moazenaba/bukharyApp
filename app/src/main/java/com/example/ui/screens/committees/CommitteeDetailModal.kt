@@ -751,6 +751,10 @@ fun CommitteeDetailModal(
                             label = { Text("أسماء الشيوخ الحاضرين (مفصولة بفاصلة)") },
                             modifier = Modifier.fillMaxWidth()
                         )
+                        val chosenSheikhs = sheikhsInput.split("،", ",").map { it.trim() }.filter { it.isNotBlank() }
+                        com.example.ui.components.NameSuggestions("اختيار من قائمة مشايخ الحفلات", com.example.data.remote.AppSettings.current.ceremonySheikhs, chosenSheikhs) { n ->
+                            sheikhsInput = (chosenSheikhs + n).joinToString("، ")
+                        }
 
                         Spacer(modifier = Modifier.height(12.dp))
 

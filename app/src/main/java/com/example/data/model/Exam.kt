@@ -14,5 +14,9 @@ data class Exam(
     val pdfFileSize: String = "",
     val uploadedAt: String = "",
     val sampleQuestions: List<String> = emptyList(),
-    val notes: String = ""
+    val notes: String = "",
+    /** When the paper may be downloaded (ISO time, set on the website); null = as soon as uploaded. */
+    val opensAt: String? = null,
+    /** Set by the server while the paper is still closed for this user: the time it opens (ISO). */
+    val lockedUntil: String? = null
 )

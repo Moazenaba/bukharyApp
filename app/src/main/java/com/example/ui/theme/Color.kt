@@ -43,6 +43,7 @@ val PriorityNormalDot = Color(0xFF22C55E)
 data class StageColorSet(
     val key: String,
     val name: String,
+    /** The committee's state when this is its last done stage (web STAGES_LIST.activeLabel). */
     val activeLabel: String,
     val emoji: String,
     val bg: Color,
@@ -55,7 +56,7 @@ val StageColorMap = mapOf(
     "registration" to StageColorSet(
         key = "registration",
         name = "التسجيل",
-        activeLabel = "تم التسجيل",
+        activeLabel = "في انتظار الامتحان",
         emoji = "📝",
         bg = Color(0xFFF1F5F9),
         text = Color(0xFF334155),
@@ -65,7 +66,7 @@ val StageColorMap = mapOf(
     "exam" to StageColorSet(
         key = "exam",
         name = "الامتحان",
-        activeLabel = "في انتظار الامتحان",
+        activeLabel = "تم الامتحان",
         emoji = "🟦",
         bg = Color(0xFFEFF6FF),
         text = Color(0xFF1D4ED8),
@@ -75,7 +76,7 @@ val StageColorMap = mapOf(
     "scoring" to StageColorSet(
         key = "scoring",
         name = "التصحيح",
-        activeLabel = "تم الامتحان / التصحيح",
+        activeLabel = "تم التصحيح",
         emoji = "🟠",
         bg = Color(0xFFFFFBEB),
         text = Color(0xFFB45309),
@@ -85,7 +86,7 @@ val StageColorMap = mapOf(
     "aggregation" to StageColorSet(
         key = "aggregation",
         name = "تجميع الدرجات",
-        activeLabel = "في التجميع",
+        activeLabel = "تم التجميع",
         emoji = "🔵",
         bg = Color(0xFFEEF2FF),
         text = Color(0xFF4338CA),
@@ -95,7 +96,7 @@ val StageColorMap = mapOf(
     "review" to StageColorSet(
         key = "review",
         name = "المراجعة",
-        activeLabel = "في المراجعة والتدقيق",
+        activeLabel = "تمت المراجعة",
         emoji = "🟡",
         bg = Color(0xFFFEFCE8),
         text = Color(0xFF854D0E),
@@ -105,7 +106,7 @@ val StageColorMap = mapOf(
     "sheet" to StageColorSet(
         key = "sheet",
         name = "كتابة الكشف",
-        activeLabel = "كتابة الكشف",
+        activeLabel = "تمت كتابة الكشف",
         emoji = "🟣",
         bg = Color(0xFFFAF5FF),
         text = Color(0xFF7E22CE),
@@ -115,7 +116,7 @@ val StageColorMap = mapOf(
     "accreditation" to StageColorSet(
         key = "accreditation",
         name = "الاعتمادية",
-        activeLabel = "قيد الاعتمادية",
+        activeLabel = "تم الاعتماد",
         emoji = "📜",
         bg = Color(0xFFECFDF5),
         text = Color(0xFF065F46),
@@ -125,7 +126,7 @@ val StageColorMap = mapOf(
     "announcement" to StageColorSet(
         key = "announcement",
         name = "إعلان النتيجة",
-        activeLabel = "إعلان النتيجة",
+        activeLabel = "تم إعلان النتيجة",
         emoji = "📢",
         bg = Color(0xFFECFEFF),
         text = Color(0xFF0E7490),
@@ -135,7 +136,7 @@ val StageColorMap = mapOf(
     "ceremony" to StageColorSet(
         key = "ceremony",
         name = "الحفل",
-        activeLabel = "تم الحفل والتكريم",
+        activeLabel = "تم الحفل",
         emoji = "🟢",
         bg = Color(0xFFF0FDF4),
         text = Color(0xFF15803D),

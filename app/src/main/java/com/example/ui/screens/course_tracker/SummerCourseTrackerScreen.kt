@@ -369,7 +369,7 @@ fun SummerCourseTrackerScreen(
     }
 
     editing?.let { sr ->
-        RowEditDialog(sr.row, courses, onDismiss = { editing = null }) { updated ->
+        RowEditDialog(sr.row, courses, canEditCommitteeData = sr.row.committeeId == null || Permissions.can("committees.update"), onDismiss = { editing = null }) { updated ->
             val committee = updated.committeeId?.let { id -> committees.find { it.id == id } }
             if (committee != null && Permissions.can("committees.update")) {
                 // Linked row: the edit goes to the committee, so it shows everywhere (web, details, ceremonies).
@@ -472,7 +472,7 @@ private fun committeeFromRow(r: SheetRowDto, courseId: String, courseName: Strin
 }
 
 @Composable
-private fun RowEditDialog(row: SheetRowDto, courses: List<Course>, onDismiss: () -> Unit, onSave: (SheetRowDto) -> Unit) {
+private fun RowEditDialog(row: SheetRowDto, courses: List<Course>, canEditCommitteeData: Boolean = true, onDismiss: () -> Unit, onSave: (SheetRowDto) -> Unit) {
     var number by remember { mutableStateOf(row.number.toString()) }
     var sheikh by remember { mutableStateOf(row.sheikh_name) }
     var place by remember { mutableStateOf(row.place) }
@@ -483,16 +483,23 @@ private fun RowEditDialog(row: SheetRowDto, courses: List<Course>, onDismiss: ()
     var uncertain by remember { mutableStateOf(row.uncertain) }
     var courseId by remember { mutableStateOf(row.courseId) }
     val linked = row.committeeId != null
+    // A linked row shows its committee's sheikh, place, book and students (one place for them);
+    // without the right to edit committees they are read-only here.
+    val dataEditable = canEditCommitteeData
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("تعديل الصف رقم ${row.number}") },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 if (!linked) OutlinedTextField(number, { number = it.filter(Char::isDigit) }, label = { Text("م") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
-                OutlinedTextField(sheikh, { sheikh = it }, label = { Text("اسم الشيخ") }, singleLine = true)
-                OutlinedTextField(place, { place = it }, label = { Text("المكان (مكان الشيخ)") }, singleLine = true)
-                OutlinedTextField(book, { book = it }, label = { Text("الكتاب") }, singleLine = true)
-                OutlinedTextField(students, { students = it.filter(Char::isDigit) }, label = { Text("عدد الطلاب") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
+                OutlinedTextField(sheikh, { sheikh = it }, label = { Text("اسم الشيخ") }, singleLine = true, enabled = dataEditable)
+                OutlinedTextField(place, { place = it }, label = { Text("المكان (مكان الشيخ)") }, singleLine = true, enabled = dataEditable)
+                OutlinedTextField(book, { book = it }, label = { Text("الكتاب") }, singleLine = true, enabled = dataEditable)
+                OutlinedTextField(students, { students = it.filter(Char::isDigit) }, label = { Text("عدد الطلاب") }, singleLine = true, enabled = dataEditable, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
+                if (linked && !dataEditable) Text(
+                    "الشيخ والمكان والكتاب وعدد الطلاب بيانات اللجنة نفسها، وتعديلها من تفاصيل اللجنة لمن له صلاحية تعديل اللجان.",
+                    style = MaterialTheme.typography.labelSmall, color = Color(0xFFB45309)
+                )
                 OutlinedTextField(notes, { notes = it }, label = { Text("ملاحظات") })
                 Row(verticalAlignment = Alignment.CenterVertically) { Checkbox(struck, { struck = it }); Text("مشطوب (ملغي)") }
                 Row(verticalAlignment = Alignment.CenterVertically) { Checkbox(uncertain, { uncertain = it }); Text("قراءة غير مؤكدة تحتاج تدقيق") }

@@ -1,0 +1,144 @@
+{
+  "_about": "Shared rules of the web app and the Android app. Tested by tests/contract/rules.test.ts (web) and app/src/test/.../SharedRulesTest.kt (Android, own copy in app/src/test/resources/rules.json). Change both apps together.",
+  "stageOrder": [
+    "registration",
+    "exam",
+    "scoring",
+    "aggregation",
+    "review",
+    "sheet",
+    "accreditation",
+    "announcement",
+    "ceremony"
+  ],
+  "stageStates": [
+    {
+      "completed": [],
+      "key": "registration",
+      "label": "في انتظار الامتحان"
+    },
+    {
+      "completed": [
+        "registration"
+      ],
+      "key": "registration",
+      "label": "في انتظار الامتحان"
+    },
+    {
+      "completed": [
+        "registration",
+        "exam"
+      ],
+      "key": "exam",
+      "label": "تم الامتحان"
+    },
+    {
+      "completed": [
+        "registration",
+        "exam",
+        "scoring"
+      ],
+      "key": "scoring",
+      "label": "تم التصحيح"
+    },
+    {
+      "completed": [
+        "registration",
+        "exam",
+        "scoring",
+        "aggregation"
+      ],
+      "key": "aggregation",
+      "label": "تم التجميع"
+    },
+    {
+      "completed": [
+        "registration",
+        "exam",
+        "scoring",
+        "aggregation",
+        "review"
+      ],
+      "key": "review",
+      "label": "تمت المراجعة"
+    },
+    {
+      "completed": [
+        "registration",
+        "exam",
+        "scoring",
+        "aggregation",
+        "review",
+        "sheet"
+      ],
+      "key": "sheet",
+      "label": "تمت كتابة الكشف"
+    },
+    {
+      "completed": [
+        "registration",
+        "exam",
+        "scoring",
+        "aggregation",
+        "review",
+        "sheet",
+        "accreditation"
+      ],
+      "key": "accreditation",
+      "label": "تم الاعتماد"
+    },
+    {
+      "completed": [
+        "registration",
+        "exam",
+        "scoring",
+        "aggregation",
+        "review",
+        "sheet",
+        "accreditation",
+        "announcement"
+      ],
+      "key": "announcement",
+      "label": "تم إعلان النتيجة"
+    },
+    {
+      "completed": [
+        "registration",
+        "exam",
+        "scoring",
+        "aggregation",
+        "review",
+        "sheet",
+        "accreditation",
+        "announcement",
+        "ceremony"
+      ],
+      "key": "ceremony",
+      "label": "تم الحفل"
+    }
+  ],
+  "ceremonyStatusColumns": {
+    "not_held": [
+      "م",
+      "رقم اللجنة",
+      "اسم الشيخ",
+      "المكان",
+      "الكتاب المقرر",
+      "عدد الطلاب",
+      "المرحلة الحالية",
+      "موعد الحفل",
+      "مكان الحفل"
+    ],
+    "held": [
+      "م",
+      "رقم اللجنة",
+      "اسم الشيخ",
+      "المكان",
+      "الكتاب المقرر",
+      "عدد الطلاب المكرمين",
+      "تاريخ الحفل",
+      "مكان الحفل",
+      "المشايخ الحاضرون"
+    ]
+  }
+}
