@@ -56,10 +56,11 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
 
       - name: Unit tests
-        run: ./gradlew --no-daemon testDebugUnitTest
+        run: chmod +x gradlew && ./gradlew --no-daemon testDebugUnitTest
 
       - name: Build the signed release
         run: |
+          chmod +x gradlew
           echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
           KEYSTORE_PATH="$RUNNER_TEMP/release.jks" ./gradlew --no-daemon assembleRelease -PrequireReleaseSigning=true -PAPI_BASE_URL="$API_BASE_URL"
           ls -l app/build/outputs/apk/release/

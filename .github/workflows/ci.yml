@@ -24,7 +24,7 @@ jobs:
           distribution: temurin
           java-version: 17
       - uses: gradle/actions/setup-gradle@v4
-      - run: ./gradlew --no-daemon testDebugUnitTest assembleDebug
+      - run: chmod +x gradlew && ./gradlew --no-daemon testDebugUnitTest assembleDebug
       # Release must build with an https server URL; this placeholder only proves the release
       # configuration (minify, ProGuard rules) compiles. The APK is unsigned and not published.
       - run: ./gradlew --no-daemon assembleRelease -PAPI_BASE_URL=https://ci.invalid/
