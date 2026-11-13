@@ -203,12 +203,18 @@ class MainActivity : ComponentActivity() {
                     com.example.update.AppUpdater.UiState.Idle -> Unit
                 }
 
+                // The server's reason for a refused save stays on screen until it is read (a toast
+                // vanished in a few seconds, and sat under the keyboard of the form being filled).
                 val dialogError by viewModel.dialogError.collectAsStateWithLifecycle()
-                LaunchedEffect(dialogError) {
-                    dialogError?.let {
-                        android.widget.Toast.makeText(this@MainActivity, it, android.widget.Toast.LENGTH_LONG).show()
-                        viewModel.clearDialogError()
-                    }
+                dialogError?.let { message ->
+                    androidx.compose.material3.AlertDialog(
+                        onDismissRequest = { viewModel.clearDialogError() },
+                        title = { Text("تعذّر إتمام العملية") },
+                        text = { Text(message) },
+                        confirmButton = {
+                            androidx.compose.material3.TextButton(onClick = { viewModel.clearDialogError() }) { Text("حسنًا") }
+                        }
+                    )
                 }
 
                 LaunchedEffect(snackbarMessage) {

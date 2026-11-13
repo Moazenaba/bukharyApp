@@ -1,5 +1,8 @@
 package com.example.ui.screens.committees
 
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.selection.selectable
 
 import androidx.compose.material.icons.filled.Delete
@@ -380,6 +383,7 @@ fun CommitteeDetailModal(
                         OutlinedTextField(
                             value = asstPhone,
                             onValueChange = { asstPhone = it },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone, imeAction = ImeAction.Next),
                             label = { Text("هاتف المعاون") },
                             singleLine = true,
                             modifier = Modifier.fillMaxWidth()
@@ -738,6 +742,7 @@ fun CommitteeDetailModal(
                         OutlinedTextField(
                             value = honoreesCount.toString(),
                             onValueChange = { honoreesCount = it.toIntOrNull() ?: 0 },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
                             label = { Text("عدد الطلاب المكرمين") },
                             singleLine = true,
                             modifier = Modifier.fillMaxWidth()

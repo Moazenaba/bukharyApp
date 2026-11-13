@@ -1,5 +1,8 @@
 package com.example.ui.screens.exams
 
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.minimumInteractiveComponentSize
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -684,6 +687,7 @@ fun AddExamDialog(
                     OutlinedTextField(
                         value = totalMarks.toString(),
                         onValueChange = { totalMarks = it.toIntOrNull() ?: 100 },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
                         label = { Text("الدرجة") },
                         singleLine = true,
                         modifier = Modifier.weight(1f)
@@ -701,6 +705,7 @@ fun AddExamDialog(
                 OutlinedTextField(
                     value = if (questionsCount == 0) "" else questionsCount.toString(),
                     onValueChange = { questionsCount = it.filter(Char::isDigit).toIntOrNull() ?: 0 },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
                     label = { Text("عدد الأسئلة") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
