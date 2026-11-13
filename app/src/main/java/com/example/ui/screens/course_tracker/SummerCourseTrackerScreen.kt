@@ -317,7 +317,7 @@ fun SummerCourseTrackerScreen(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             "${r.number}", color = Color.White, fontWeight = FontWeight.Black,
-                            modifier = Modifier.background(if (sr.virtual) Color(0xFF64748B) else Primary700, RoundedCornerShape(8.dp)).padding(horizontal = 8.dp, vertical = 2.dp)
+                            modifier = Modifier.background(if (sr.virtual) TextMuted else Primary700, RoundedCornerShape(8.dp)).padding(horizontal = 8.dp, vertical = 2.dp)
                         )
                         Spacer(Modifier.width(8.dp))
                         Column(Modifier.weight(1f)) {

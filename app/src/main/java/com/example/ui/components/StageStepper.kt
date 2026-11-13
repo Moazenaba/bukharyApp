@@ -1,5 +1,6 @@
 package com.example.ui.components
 
+import com.example.ui.theme.TextMuted
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -132,7 +133,7 @@ fun InteractiveStageStepper(
                                 text = "${index + 1}",
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = Color(0xFF64748B)
+                                color = TextMuted
                             )
                         }
                     }
@@ -148,7 +149,7 @@ fun InteractiveStageStepper(
                             Icon(
                                 imageVector = stageIcon(key),
                                 contentDescription = null,
-                                tint = if (stageItem.completed) stageSet?.dot ?: Color(0xFF64748B) else Color(0xFF94A3B8),
+                                tint = if (stageItem.completed) stageSet?.dot ?: TextMuted else TextMuted,
                                 modifier = Modifier.size(16.dp)
                             )
                             Spacer(modifier = Modifier.width(6.dp))
@@ -165,7 +166,7 @@ fun InteractiveStageStepper(
                                 text = "تم الإنجاز في: ${Dates.displayTime(stageItem.completedAt)}",
                                 style = MaterialTheme.typography.bodySmall,
                                 fontSize = 12.sp,
-                                color = stageSet?.text?.copy(alpha = 0.8f) ?: Color(0xFF64748B)
+                                color = stageSet?.text?.copy(alpha = 0.8f) ?: TextMuted
                             )
                         }
                     }
@@ -177,7 +178,7 @@ fun InteractiveStageStepper(
                             style = MaterialTheme.typography.labelSmall,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
-                            color = if (stageItem.completed) stageSet?.text ?: Primary700 else Color(0xFF94A3B8)
+                            color = if (stageItem.completed) stageSet?.text ?: Primary700 else TextMuted
                         )
                     }
                 }

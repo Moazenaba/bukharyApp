@@ -1,5 +1,6 @@
 package com.example.ui.components
 
+import com.example.ui.theme.TextMuted
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -28,7 +29,7 @@ fun NameSuggestions(title: String, names: List<String>, chosen: List<String>, on
     val left = remainingNames(names, chosen)
     if (left.isEmpty()) return
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        Text(title, style = MaterialTheme.typography.labelSmall, color = Color(0xFF64748B))
+        Text(title, style = MaterialTheme.typography.labelSmall, color = TextMuted)
         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             left.forEach { n -> SuggestionChip(onClick = { onPick(n) }, label = { Text("+ $n") }) }
         }

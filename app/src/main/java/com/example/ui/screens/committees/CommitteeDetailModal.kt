@@ -1,5 +1,10 @@
 package com.example.ui.screens.committees
 
+import androidx.compose.ui.text.style.TextOverflow
+import com.example.ui.theme.TextMuted
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.selection.selectable
 
 import androidx.compose.material.icons.filled.Delete
@@ -192,6 +197,8 @@ fun CommitteeDetailModal(
                     Column {
                         Text(
                             text = committee.committeeName,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = Primary900
@@ -199,7 +206,7 @@ fun CommitteeDetailModal(
                         Text(
                             text = "الدورة: ${committee.courseName}",
                             style = MaterialTheme.typography.bodySmall,
-                            color = Color(0xFF64748B),
+                            color = TextMuted,
                             fontSize = 12.sp
                         )
                     }
@@ -252,13 +259,13 @@ fun CommitteeDetailModal(
                     Text(
                         text = "المكان: ${committee.sheikhCountry.ifBlank { committee.branch.ifBlank { "—" } }} • ${if (committee.isWomenCommittee) "مصلى الأخوات" else "مصلى الرجال"}",
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color(0xFF64748B)
+                        color = TextMuted
                     )
                     if (inScope && Permissions.can("committees.update")) {
                         androidx.compose.material3.TextButton(
                             onClick = { activeTab = COMMITTEE_DATA_TAB },
                             modifier = Modifier.testTag("btn_edit_committee_data")
-                        ) { Text("✏️ تعديل بيانات اللجنة (الرقم، الاسم، الشيخ، المكان، الكتاب، الطلاب)") }
+                        ) { Text("تعديل بيانات اللجنة (الرقم، الاسم، الشيخ، المكان، الكتاب، الطلاب)") }
                     }
                 }
             }
@@ -277,7 +284,7 @@ fun CommitteeDetailModal(
             ) {
                 listOf(
                     0 to "المراحل التسع 📌",
-                    COMMITTEE_DATA_TAB to "✏️ تعديل بيانات اللجنة",
+                    COMMITTEE_DATA_TAB to "تعديل بيانات اللجنة",
                     1 to "الاستلام والجاهزية 🤝",
                     2 to "التصحيح والتجميع ✏️",
                     5 to "كشف الدرجات 🟣",
@@ -380,6 +387,7 @@ fun CommitteeDetailModal(
                         OutlinedTextField(
                             value = asstPhone,
                             onValueChange = { asstPhone = it },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone, imeAction = ImeAction.Next),
                             label = { Text("هاتف المعاون") },
                             singleLine = true,
                             modifier = Modifier.fillMaxWidth()
@@ -535,7 +543,7 @@ fun CommitteeDetailModal(
                                     Text(
                                         text = if (done) "مصحح ✓" else "قيد التصحيح",
                                         style = MaterialTheme.typography.labelSmall,
-                                        color = if (done) Color(0xFFB45309) else Color(0xFF94A3B8)
+                                        color = if (done) Color(0xFFB45309) else TextMuted
                                     )
                                     if (canScoring && questionsState.size > 1) {
                                         IconButton(onClick = {
@@ -552,7 +560,7 @@ fun CommitteeDetailModal(
                             Text(
                                 text = "لم تُضف أسئلة لهذه اللجنة بعد.",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = Color(0xFF64748B)
+                                color = TextMuted
                             )
                         }
                         if (canScoring) {
@@ -738,6 +746,7 @@ fun CommitteeDetailModal(
                         OutlinedTextField(
                             value = honoreesCount.toString(),
                             onValueChange = { honoreesCount = it.toIntOrNull() ?: 0 },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
                             label = { Text("عدد الطلاب المكرمين") },
                             singleLine = true,
                             modifier = Modifier.fillMaxWidth()
@@ -780,7 +789,7 @@ fun CommitteeDetailModal(
                         if (canFinalize) Text(
                             text = "يظهر الموعد في التقويم تلقائياً. إتمام مرحلة الحفل يتم من تبويب المراحل.",
                             style = MaterialTheme.typography.bodySmall,
-                            color = Color(0xFF64748B),
+                            color = TextMuted,
                             modifier = Modifier.padding(top = 6.dp)
                         )
                     }

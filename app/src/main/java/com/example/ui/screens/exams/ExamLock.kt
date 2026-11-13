@@ -16,10 +16,10 @@ object ExamLock {
         return SimpleDateFormat("EEEE d MMMM، h:mm a", Locale("ar")).apply { timeZone = TimeZone.getTimeZone("Africa/Cairo") }.format(d)
     }
 
-    /** (locked, text): «🔒 مقفول — تُتاح الورقة …» while closed, «📅 موعد الامتحان …» once a time is set; null otherwise. */
+    /** (locked, text): «مقفول — تُتاح الورقة …» while closed, «موعد الامتحان …» once a time is set; null otherwise. */
     fun text(exam: Exam): Pair<Boolean, String>? = when {
-        !exam.lockedUntil.isNullOrBlank() -> true to "🔒 مقفول — تُتاح الورقة ${cairo(exam.lockedUntil)} (بتوقيت القاهرة)"
-        !exam.opensAt.isNullOrBlank() -> false to "📅 موعد الامتحان ${cairo(exam.opensAt)} (بتوقيت القاهرة)"
+        !exam.lockedUntil.isNullOrBlank() -> true to "مقفول — تُتاح الورقة ${cairo(exam.lockedUntil)} (بتوقيت القاهرة)"
+        !exam.opensAt.isNullOrBlank() -> false to "موعد الامتحان ${cairo(exam.opensAt)} (بتوقيت القاهرة)"
         else -> null
     }
 }

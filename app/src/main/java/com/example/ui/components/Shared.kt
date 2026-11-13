@@ -1,5 +1,8 @@
 package com.example.ui.components
 
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import com.example.ui.theme.TextMuted
 import android.content.Context
 import android.print.PrintAttributes
 import android.print.PrintManager
@@ -73,7 +76,7 @@ fun printHtml(context: Context, jobName: String, bodyHtml: String) {
                 val manager = context.getSystemService(Context.PRINT_SERVICE) as PrintManager
                 manager.print(jobName, view.createPrintDocumentAdapter(jobName), PrintAttributes.Builder().build())
             } catch (e: Exception) {
-                android.widget.Toast.makeText(context, "تعذر إنشاء ملف PDF: ${e.message}", android.widget.Toast.LENGTH_LONG).show()
+                com.example.ui.components.UiMessages.show("تعذر إنشاء ملف PDF: ${e.message}")
             } finally {
                 printingViews.remove(view)
             }
@@ -98,7 +101,7 @@ fun ScreenBanner(title: String, subtitle: String, icon: ImageVector, colors: Lis
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(icon, null, tint = Color.White)
             Spacer(Modifier.width(8.dp))
-            Text(title, color = Color.White, fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleMedium)
+            Text(title, color = Color.White, fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleMedium, modifier = Modifier.semantics { heading() })
         }
         Spacer(Modifier.height(4.dp))
         Text(subtitle, color = Color.White.copy(alpha = 0.85f), style = MaterialTheme.typography.bodySmall)
@@ -113,7 +116,7 @@ fun StatTile(title: String, value: String, modifier: Modifier = Modifier, tint: 
             .border(1.dp, Color(0xFFE2E8F0), RoundedCornerShape(14.dp))
             .padding(10.dp)
     ) {
-        Text(title, style = MaterialTheme.typography.labelSmall, color = Color(0xFF64748B))
+        Text(title, style = MaterialTheme.typography.labelSmall, color = TextMuted)
         Text(value, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black, color = tint)
     }
 }

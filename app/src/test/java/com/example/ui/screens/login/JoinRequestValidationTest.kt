@@ -39,4 +39,20 @@ class JoinRequestValidationTest {
     fun `required fields are checked first`() {
         assertEquals("الاسم ورقم الجوال وكلمة المرور حقول مطلوبة", joinRequestProblem("", "0109282080", "", "abcd1234"))
     }
+
+    @Test
+    fun `each problem is reported under its own field`() {
+        val all = joinRequestFieldProblems("", "", "bad", "123")
+        assertEquals(setOf("name", "phone", "email", "password"), all.keys)
+        assertEquals("رقم الجوال مطلوب", all["phone"])
+        assertEquals("البريد الإلكتروني غير صحيح", all["email"])
+        assertNotNull(all["password"])
+    }
+
+    @Test
+    fun `a good form has no field problems and agrees with the single-message check`() {
+        assertEquals(emptyMap<String, String>(), joinRequestFieldProblems("معاذ", "0109282080", "", "abcd1234"))
+        assertNull(joinRequestProblem("معاذ", "0109282080", "", "abcd1234"))
+        assertEquals(setOf("phone"), joinRequestFieldProblems("معاذ", "01x9", "", "abcd1234").keys)
+    }
 }

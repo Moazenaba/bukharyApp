@@ -1,5 +1,8 @@
 package com.example.ui.screens.home
 
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.semantics.Role
+import com.example.ui.theme.TextMuted
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.background
@@ -94,9 +97,9 @@ fun HomeScreen(
 ) {
     val totalCommittees = committees.size
     // Web: committees waiting for their exam or whose exam is done and not yet scored.
-    val activeCommittees = committees.count { com.example.ui.components.currentStageKey(it.stages) in setOf("registration", "exam") }
-    val completedCommittees = committees.count { it.stages.ceremony.completed }
-    val totalStudents = committees.sumOf { it.studentsCount }
+    val activeCommittees = remember(committees) { committees.count { com.example.ui.components.currentStageKey(it.stages) in setOf("registration", "exam") } }
+    val completedCommittees = remember(committees) { committees.count { it.stages.ceremony.completed } }
+    val totalStudents = remember(committees) { committees.sumOf { it.studentsCount } }
 
     val urgentTasks = remember(tasks) {
         tasks.filter { !it.completed }
@@ -154,7 +157,7 @@ fun HomeScreen(
                         icon = Icons.Default.Groups,
                         color = Color(0xFF0F766E),
                         bgColor = Color(0xFFF0FDFA),
-                        modifier = Modifier.weight(1f).clickable { onNavigateCommittees("all") }
+                        modifier = Modifier.weight(1f).clickable(role = Role.Button) { onNavigateCommittees("all") }
                     )
                     KpiCard(
                         title = "الامتحان (منتظر/تم)",
@@ -163,7 +166,7 @@ fun HomeScreen(
                         icon = Icons.Default.School,
                         color = Color(0xFF2563EB),
                         bgColor = Color(0xFFEFF6FF),
-                        modifier = Modifier.weight(1f).clickable { onNavigateCommittees("registration") }
+                        modifier = Modifier.weight(1f).clickable(role = Role.Button) { onNavigateCommittees("registration") }
                     )
                 }
                 Spacer(modifier = Modifier.height(10.dp))
@@ -176,18 +179,18 @@ fun HomeScreen(
                         value = "$completedCommittees",
                         sub = "لجنة مكرّمة",
                         icon = Icons.Default.WorkspacePremium,
-                        color = Color(0xFF16A34A),
+                        color = Color(0xFF15803D),
                         bgColor = Color(0xFFF0FDF4),
-                        modifier = Modifier.weight(1f).clickable { onNavigateCommittees("ceremony") }
+                        modifier = Modifier.weight(1f).clickable(role = Role.Button) { onNavigateCommittees("ceremony") }
                     )
                     KpiCard(
                         title = "إجمالي الطلاب",
                         value = "$totalStudents",
                         sub = "طالباً وطالبة",
                         icon = Icons.Default.Person,
-                        color = Color(0xFFD97706),
+                        color = Color(0xFFB45309),
                         bgColor = Color(0xFFFFFBEB),
-                        modifier = Modifier.weight(1f).clickable { onNavigateCommittees("all") }
+                        modifier = Modifier.weight(1f).clickable(role = Role.Button) { onNavigateCommittees("all") }
                     )
                 }
             }
@@ -283,7 +286,7 @@ fun HomeScreen(
                         style = MaterialTheme.typography.labelSmall,
                         color = Primary700,
                         fontWeight = FontWeight.Bold,
-                        modifier = Modifier.clickable { onNavigate(AppNavScreen.SCHEDULE) }
+                        modifier = Modifier.clickable(role = Role.Button) { onNavigate(AppNavScreen.SCHEDULE) }
                     )
                 }
 
@@ -337,7 +340,7 @@ fun HomeScreen(
                     Text(
                         text = "لم يتم جدولة مواعيد حفلات قادمة بعد.",
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color(0xFF64748B)
+                        color = TextMuted
                     )
                 } else {
                     Row(
@@ -434,7 +437,7 @@ fun HeroGreetingCard(
                 ) {
                     Row(
                         modifier = Modifier
-                            .clickable { onViewTracker() }
+                            .clickable(role = Role.Button) { onViewTracker() }
                             .padding(horizontal = 12.dp, vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
@@ -493,7 +496,7 @@ fun KpiCard(
                 Text(
                     text = title,
                     style = MaterialTheme.typography.labelMedium,
-                    color = Color(0xFF64748B)
+                    color = TextMuted
                 )
                 Box(
                     modifier = Modifier
@@ -543,7 +546,7 @@ fun QuickActionButton(
     Card(
         modifier = modifier
             .clip(RoundedCornerShape(16.dp))
-            .clickable(onClick = onClick)
+            .clickable(role = Role.Button, onClick = onClick)
             .testTag("btn_quick_action_$title"),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = containerColor),
@@ -580,7 +583,7 @@ fun QuickActionButton(
                     text = subtitle,
                     style = MaterialTheme.typography.bodySmall,
                     fontSize = 12.sp,
-                    color = if (containerColor == Color.White) Color(0xFF64748B) else Color.White.copy(alpha = 0.8f)
+                    color = if (containerColor == Color.White) TextMuted else Color.White.copy(alpha = 0.8f)
                 )
             }
         }
@@ -610,11 +613,11 @@ fun HomeTaskItem(
             modifier = Modifier.padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(onClick = onToggle) {
+            androidx.compose.material3.IconToggleButton(checked = task.completed, onCheckedChange = { onToggle() }) {
                 Icon(
                     imageVector = if (task.completed) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
-                    contentDescription = "تبديل الإنجاز",
-                    tint = if (task.completed) Color(0xFF16A34A) else Color(0xFF94A3B8)
+                    contentDescription = if (task.completed) "إلغاء تحديد «${task.title}» كمنجز" else "تحديد «${task.title}» كمنجز",
+                    tint = if (task.completed) Color(0xFF15803D) else TextMuted
                 )
             }
 
@@ -649,6 +652,8 @@ fun HomeTaskItem(
 
                 Text(
                     text = task.title,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Bold,
                     color = Primary900
@@ -659,7 +664,7 @@ fun HomeTaskItem(
                         text = "التسليم: ${task.deliverable}",
                         style = MaterialTheme.typography.bodySmall,
                         fontSize = 12.sp,
-                        color = Color(0xFF64748B)
+                        color = TextMuted
                     )
                 }
             }
@@ -667,7 +672,7 @@ fun HomeTaskItem(
             Text(
                 text = task.time,
                 style = MaterialTheme.typography.labelSmall,
-                color = Color(0xFF64748B),
+                color = TextMuted,
                 fontWeight = FontWeight.Bold
             )
         }
@@ -683,7 +688,7 @@ fun CeremonyCard(
         modifier = Modifier
             .width(260.dp)
             .clip(RoundedCornerShape(16.dp))
-            .clickable(onClick = onClick)
+            .clickable(role = Role.Button, onClick = onClick)
             .testTag("ceremony_card_${committee.id}"),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = Color(0xFFF0FDF4)),

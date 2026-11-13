@@ -1,5 +1,12 @@
 package com.example.ui.screens.committees
 
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.semantics.Role
+import com.example.ui.theme.TextMuted
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 
 import androidx.compose.material3.minimumInteractiveComponentSize
@@ -123,10 +130,14 @@ fun CommitteesScreen(
     val canAdd = com.example.data.remote.Permissions.can("committees.create")
 
     // Only stages that have committees are offered as filters; keeps the row short and every chip meaningful.
-    val filterTabs = listOf("all" to "الكل (${allCommittees.size})") + OrderedStageKeys.mapNotNull { (key, _) ->
-        val count = allCommittees.count { com.example.ui.components.currentStageKey(it.stages) == key }
-        if (count == 0 && key != selectedStageFilter) null
-        else key to "${StageColorMap[key]?.activeLabel ?: ""} ($count)"
+    val filterTabs = remember(allCommittees, selectedStageFilter) {
+        // One pass to count per stage (this was nine passes, redone on every keystroke of the search box).
+        val perStage = allCommittees.groupingBy { com.example.ui.components.currentStageKey(it.stages) }.eachCount()
+        listOf("all" to "الكل (${allCommittees.size})") + OrderedStageKeys.mapNotNull { (key, _) ->
+            val count = perStage[key] ?: 0
+            if (count == 0 && key != selectedStageFilter) null
+            else key to "${StageColorMap[key]?.activeLabel ?: ""} ($count)"
+        }
     }
 
     Scaffold(
@@ -282,14 +293,14 @@ fun CommitteesScreen(
                         Icon(
                             imageVector = Icons.Default.Search,
                             contentDescription = null,
-                            tint = Color(0xFF64748B),
+                            tint = TextMuted,
                             modifier = Modifier.size(40.dp)
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             text = "لا توجد لجان مطابقة للبحث أو التصفية الحالية",
                             style = MaterialTheme.typography.titleMedium,
-                            color = Color(0xFF64748B)
+                            color = TextMuted
                         )
                         if (searchQuery.isNotBlank() || selectedStageFilter != "all") {
                             TextButton(onClick = {
@@ -320,7 +331,7 @@ fun CommitteesScreen(
                         Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
                                 "عرض ${if (committees.isEmpty()) 0 else (current - 1) * pageSize + 1} إلى ${minOf(current * pageSize, committees.size)} من إجمالي ${committees.size} لجنة مسجلة",
-                                style = MaterialTheme.typography.labelSmall, color = Color(0xFF64748B)
+                                style = MaterialTheme.typography.labelSmall, color = TextMuted
                             )
                             if (pages > 1) Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                                 TextButton(onClick = { page = current - 1 }, enabled = current > 1) { Text("السابق") }
@@ -370,7 +381,7 @@ fun CommitteeCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onOpenDetail)
+            .clickable(role = Role.Button, onClick = onOpenDetail)
             .testTag("committee_card_${committee.id}"),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = SurfacePure),
@@ -397,6 +408,8 @@ fun CommitteeCard(
                 Column(Modifier.weight(1f)) {
                     Text(
                         text = committee.committeeName,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = Primary900
@@ -404,7 +417,7 @@ fun CommitteeCard(
                     Text(
                         text = "${committee.branch} • ${if (committee.isWomenCommittee) "مصلى الأخوات" else "مصلى الرجال"} • ${committee.studentsCount} طالباً",
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color(0xFF64748B)
+                        color = TextMuted
                     )
                 }
                 // ✏️ Edit the committee's data (what was entered when it was added).
@@ -421,12 +434,14 @@ fun CommitteeCard(
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.MenuBook,
                     contentDescription = "كتاب المسابقة",
-                    tint = Color(0xFF64748B),
+                    tint = TextMuted,
                     modifier = Modifier.size(18.dp)
                 )
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
                     text = committee.competitionBook,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = Primary900
@@ -443,7 +458,7 @@ fun CommitteeCard(
                 }
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
-                    text = "📅 ${st.label}",
+                    text = st.label,
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Bold,
                     color = fg,
@@ -467,7 +482,7 @@ fun CommitteeCard(
                             try {
                                 context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:${committee.sheikhPhone}")))
                             } catch (e: ActivityNotFoundException) {
-                                Toast.makeText(context, "لا يوجد تطبيق اتصال على هذا الجهاز", Toast.LENGTH_SHORT).show()
+                                com.example.ui.components.UiMessages.show("لا يوجد تطبيق اتصال على هذا الجهاز")
                             }
                         }) {
                             Icon(
@@ -503,7 +518,7 @@ fun CommitteeCard(
                     Text(
                         text = "$doneCount من $totalStages",
                         style = MaterialTheme.typography.labelMedium,
-                        color = Color(0xFF64748B)
+                        color = TextMuted
                     )
                 }
                 Spacer(modifier = Modifier.height(8.dp))
@@ -594,6 +609,7 @@ fun AddCommitteeDialog(
 ) {
     var number by remember { mutableIntStateOf(1) }
     var name by remember { mutableStateOf("") }
+    var nameTouched by remember { mutableStateOf(false) }
     var association by remember { mutableStateOf("") }
     var branch by remember { mutableStateOf("") }
     var book by remember { mutableStateOf("") }
@@ -619,16 +635,33 @@ fun AddCommitteeDialog(
         number = (allCommittees.filter { it.courseId == courseId }.maxOfOrNull { it.committeeNumber } ?: 0) + 1
     }
     val initialStages = listOf(
-        "exam" to "🟦 في انتظار الامتحان", "scoring" to "✅ تم الامتحان", "aggregation" to "🟠 تم التصحيح",
-        "review" to "🔵 تم التجميع", "sheet" to "🟡 تمت المراجعة", "announcement" to "📜 تم الاعتماد", "ceremony" to "🟢 تم الحفل"
+        "exam" to "في انتظار الامتحان", "scoring" to "تم الامتحان", "aggregation" to "تم التصحيح",
+        "review" to "تم التجميع", "sheet" to "تمت المراجعة", "announcement" to "تم الاعتماد", "ceremony" to "تم الحفل"
     )
 
-    AlertDialog(
+    // Why the save button is off, shown next to it instead of leaving it silently disabled.
+    val problem = when {
+        courseId.isBlank() -> "اختر الدورة أولاً"
+        number <= 0 -> "رقم اللجنة لازم يكون أكبر من صفر"
+        name.isBlank() -> "اكتب اسم اللجنة"
+        else -> null
+    }
+
+    // A long form needs the whole screen: in a small dialog the keyboard left a few lines of room.
+    androidx.compose.ui.window.Dialog(
         onDismissRequest = onDismiss,
-        title = { Text("إضافة لجنة جديدة", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = Primary900) },
-        text = {
+        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+      Surface(modifier = Modifier.fillMaxSize(), color = SurfacePure) {
+        Column(Modifier.fillMaxSize()) {
+          Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = onDismiss) { Icon(Icons.Default.Close, contentDescription = "إغلاق") }
+            Text("إضافة لجنة جديدة", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = Primary900, modifier = Modifier.weight(1f))
+          }
+          androidx.compose.material3.HorizontalDivider()
+          run {
             Column(
-                modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(vertical = 6.dp),
+                modifier = Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 // The committee must belong to a course (same rule as the web app and the server).
@@ -655,9 +688,17 @@ fun AddCommitteeDialog(
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
                         value = number.toString(), onValueChange = { number = it.filter(Char::isDigit).toIntOrNull() ?: 0 },
-                        label = { Text("رقم اللجنة") }, singleLine = true, modifier = Modifier.weight(1f)
+                        label = { Text("رقم اللجنة *") }, singleLine = true, modifier = Modifier.weight(1f),
+                        isError = number <= 0,
+                        supportingText = { if (number <= 0) Text("لازم أكبر من صفر") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next)
                     )
-                    OutlinedTextField(name, { name = it }, label = { Text("اسم اللجنة *") }, singleLine = true, modifier = Modifier.weight(2f))
+                    OutlinedTextField(
+                        name, { name = it; nameTouched = true }, label = { Text("اسم اللجنة *") }, singleLine = true, modifier = Modifier.weight(2f),
+                        isError = nameTouched && name.isBlank(),
+                        supportingText = { if (nameTouched && name.isBlank()) Text("اسم اللجنة مطلوب") },
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next)
+                    )
                 }
                 com.example.ui.components.DateField(examDate, { examDate = it }, "ميعاد الامتحان (اختياري)", allowClear = true)
                 Text("المرحلة الحالية للجنة", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
@@ -669,14 +710,21 @@ fun AddCommitteeDialog(
                 OutlinedTextField(association, { association = it }, label = { Text("اسم الجمعية (إن وجد)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 OutlinedTextField(sheikhName, { sheikhName = it }, label = { Text("الشيخ المرسل إليه") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(sheikhPhone, { sheikhPhone = it }, label = { Text("هاتف الشيخ") }, singleLine = true, modifier = Modifier.weight(1f))
+                    OutlinedTextField(
+                        sheikhPhone, { sheikhPhone = it }, label = { Text("هاتف الشيخ") }, singleLine = true, modifier = Modifier.weight(1f),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone, imeAction = ImeAction.Next)
+                    )
                     OutlinedTextField(sheikhCountry, { sheikhCountry = it }, label = { Text("مكان الشيخ (المسجد / القاعة)") }, singleLine = true, modifier = Modifier.weight(1f))
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(studentsCount, { studentsCount = it.filter(Char::isDigit) }, label = { Text("عدد الطلاب") }, singleLine = true, modifier = Modifier.weight(1f))
+                    OutlinedTextField(
+                        studentsCount, { studentsCount = it.filter(Char::isDigit) }, label = { Text("عدد الطلاب") }, singleLine = true, modifier = Modifier.weight(1f),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next)
+                    )
                     OutlinedTextField(
                         questionsCount.toString(), { questionsCount = it.filter(Char::isDigit).toIntOrNull()?.coerceIn(1, 30) ?: 1 },
-                        label = { Text("عدد الأسئلة") }, singleLine = true, modifier = Modifier.weight(1f)
+                        label = { Text("عدد الأسئلة") }, singleLine = true, modifier = Modifier.weight(1f),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done)
                     )
                 }
                 Text("أعضاء اللجنة", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
@@ -700,10 +748,15 @@ fun AddCommitteeDialog(
                 }
                 OutlinedTextField(notes, { notes = it }, label = { Text("ملاحظات عامة") }, minLines = 2, modifier = Modifier.fillMaxWidth())
             }
-        },
-        confirmButton = {
+          }
+          androidx.compose.material3.HorizontalDivider()
+          Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+            if (problem != null) {
+                Text(problem, color = Color(0xFFB91C1C), style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(bottom = 6.dp))
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
             Button(
-                enabled = courseId.isNotBlank() && number > 0 && name.isNotBlank(),
+                enabled = problem == null,
                 onClick = {
                     val finalMembers = members.map { it.trim() }.filter { it.isNotEmpty() }
                     // Stages before the chosen current stage are completed, as on the web; the server stamps the time.
@@ -750,7 +803,10 @@ fun AddCommitteeDialog(
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = Primary700)
             ) { Text("حفظ وتسجيل اللجنة") }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("إلغاء") } }
-    )
+            TextButton(onClick = onDismiss) { Text("إلغاء") }
+            }
+          }
+        }
+      }
+    }
 }

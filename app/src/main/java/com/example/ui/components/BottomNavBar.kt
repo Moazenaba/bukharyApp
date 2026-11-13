@@ -1,5 +1,6 @@
 package com.example.ui.components
 
+import com.example.ui.theme.TextMuted
 import androidx.compose.foundation.verticalScroll
 
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -108,8 +109,8 @@ fun BukhariBottomNavBar(
                     selectedIconColor = Primary700,
                     selectedTextColor = Primary800,
                     indicatorColor = Primary100,
-                    unselectedIconColor = Color(0xFF64748B),
-                    unselectedTextColor = Color(0xFF64748B)
+                    unselectedIconColor = TextMuted,
+                    unselectedTextColor = TextMuted
                 ),
                 modifier = Modifier.testTag("nav_item_${item.screen.route}")
             )
@@ -150,8 +151,8 @@ fun BukhariNavigationRail(
                     selectedIconColor = Primary700,
                     selectedTextColor = Primary800,
                     indicatorColor = Primary100,
-                    unselectedIconColor = Color(0xFF64748B),
-                    unselectedTextColor = Color(0xFF64748B)
+                    unselectedIconColor = TextMuted,
+                    unselectedTextColor = TextMuted
                 ),
                 modifier = Modifier.testTag("rail_item_${item.screen.route}")
             )

@@ -1,5 +1,6 @@
 package com.example.ui.screens.assistants
 
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -232,7 +233,7 @@ fun UsersManagementScreen(
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Column(Modifier.weight(1f)) {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Text(u.name, fontWeight = FontWeight.Bold, color = Primary900)
+                                        Text(u.name, fontWeight = FontWeight.Bold, color = Primary900, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                         if (u.role == "super_admin") Text("  👑 سوبر أدمن", style = MaterialTheme.typography.labelSmall, color = Color(0xFF92400E))
                                     }
                                     Text("📞 ${u.phone} • ${roleLabel(u.role)}", style = MaterialTheme.typography.bodySmall, color = TextMuted)

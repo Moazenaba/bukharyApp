@@ -1,5 +1,12 @@
 package com.example.ui.components
 
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.material.icons.filled.Storage
+import androidx.compose.material.icons.filled.AdminPanelSettings
+import androidx.compose.ui.text.style.TextOverflow
+import com.example.ui.theme.TextMuted
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -253,12 +260,12 @@ fun BukhariTopBar(
                                             Text(
                                                 text = notif.description,
                                                 style = MaterialTheme.typography.bodySmall,
-                                                color = Color(0xFF64748B)
+                                                color = TextMuted
                                             )
                                             Text(
                                                 text = notif.createdAt,
                                                 style = MaterialTheme.typography.labelSmall,
-                                                color = Color(0xFF94A3B8)
+                                                color = TextMuted
                                             )
                                         }
                                     },
@@ -293,6 +300,8 @@ fun BukhariTopBar(
                             Column(modifier = Modifier.padding(12.dp)) {
                                 Text(
                                     text = user.name,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
                                     fontWeight = FontWeight.Bold,
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = Primary900
@@ -307,7 +316,8 @@ fun BukhariTopBar(
 
                         if (currentUser?.canAccessScreen(AppNavScreen.ASSISTANTS) == true) {
                             DropdownMenuItem(
-                                text = { Text("👮 الشيوخ وإدارة الصلاحيات") },
+                                text = { Text("الشيوخ وإدارة الصلاحيات") },
+                                leadingIcon = { Icon(Icons.Default.AdminPanelSettings, contentDescription = null) },
                                 onClick = {
                                     onNavigate(AppNavScreen.ASSISTANTS)
                                     showMenu = false
@@ -316,7 +326,8 @@ fun BukhariTopBar(
                         }
                         if (currentUser?.canAccessScreen(AppNavScreen.DATABASE_INSPECTOR) == true) {
                             DropdownMenuItem(
-                                text = { Text("🗄️ حالة البيانات والمزامنة") },
+                                text = { Text("حالة البيانات والمزامنة") },
+                                leadingIcon = { Icon(Icons.Default.Storage, contentDescription = null) },
                                 onClick = {
                                     onNavigate(AppNavScreen.DATABASE_INSPECTOR)
                                     showMenu = false
@@ -325,7 +336,8 @@ fun BukhariTopBar(
                         }
                         if (currentUser?.canAccessScreen(AppNavScreen.STATISTICS) == true) {
                             DropdownMenuItem(
-                                text = { Text("📊 الإحصائيات الشاملة ونسب الإنجاز") },
+                                text = { Text("الإحصائيات الشاملة ونسب الإنجاز") },
+                                leadingIcon = { Icon(Icons.Default.BarChart, contentDescription = null) },
                                 onClick = {
                                     onNavigate(AppNavScreen.STATISTICS)
                                     showMenu = false
@@ -333,14 +345,16 @@ fun BukhariTopBar(
                             )
                         }
                         DropdownMenuItem(
-                            text = { Text("🔑 تغيير كلمة المرور") },
+                            text = { Text("تغيير كلمة المرور") },
+                                leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
                             onClick = {
                                 onChangePassword()
                                 showMenu = false
                             }
                         )
                         DropdownMenuItem(
-                            text = { Text("🚪 تسجيل الخروج", color = Color(0xFFEF4444)) },
+                            text = { Text("تسجيل الخروج", color = Color(0xFFB91C1C)) },
+                            leadingIcon = { Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = null, tint = Color(0xFFB91C1C)) },
                             onClick = {
                                 onLogout()
                                 showMenu = false
