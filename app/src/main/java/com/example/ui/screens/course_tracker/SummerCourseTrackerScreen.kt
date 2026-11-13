@@ -242,6 +242,51 @@ fun SummerCourseTrackerScreen(
                     "reviewed" to "تمت المراجعة", "announced" to "تم الإعلان", "no_ceremony" to "لم يتم الحفل", "ceremony" to "تم الحفل", "uncertain" to "يحتاج تدقيق", "struck_out" to "مشطوب"
                 ).forEach { (k, l) -> FilterChip(selected = status == k, onClick = { status = k }, label = { Text(l) }) }
             }
+            // PDF of the rows on screen: pick «لم يتم الحفل» or «تم الحفل» first to get that list.
+            val statusLabel = STATUS_LABELS[status].orEmpty()
+            Row(Modifier.padding(top = 6.dp).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                fun pdfParts(): Triple<String, String, List<List<Any?>>> {
+                    val list = shown.map { it.row }
+                    val title = "كشف الدورة${if (statusLabel.isNotEmpty() && status != "all") " — $statusLabel" else ""} — مسابقات مسجد الإمام البخاري"
+                    val total = list.sumOf { it.students_count }
+                    val subtitle = listOfNotNull(defaultCourse?.name, Dates.today(), "${list.size} لجنة", "$total طالب").joinToString(" — ")
+                    fun mark(v: Boolean) = if (v) "✓" else "—"
+                    val rows = list.map { r ->
+                        listOf<Any?>(r.number, r.sheikh_name.ifBlank { "-" }, r.place.ifBlank { "-" }, r.book.ifBlank { "-" }, r.students_count,
+                            mark(r.delivered), mark(r.corrected), mark(r.reviewed), mark(r.announced), mark(r.ceremony))
+                    } + listOf(listOf<Any?>("", "الإجمالي: ${list.size} لجنة", "", "", total, "", "", "", "", ""))
+                    return Triple(title, subtitle, rows)
+                }
+                OutlinedButton(
+                    onClick = {
+                        val (title, subtitle, rows) = pdfParts()
+                        val body = StringBuilder("<h2 class='center'>${com.example.ui.components.escapeHtml(title)}</h2><p class='center'>${com.example.ui.components.escapeHtml(subtitle)}</p><table><tr>")
+                        SHEET_PDF_HEADER.forEach { body.append("<th>$it</th>") }
+                        body.append("</tr>")
+                        rows.forEachIndexed { i, r ->
+                            body.append(if (i == rows.lastIndex) "<tr style='font-weight:bold;background:#f1f5f9'>" else "<tr>")
+                            r.forEach { body.append("<td>${com.example.ui.components.escapeHtml(it?.toString() ?: "")}</td>") }
+                            body.append("</tr>")
+                        }
+                        com.example.ui.components.printHtml(context, title, body.append("</table><style>@page{size:A4 landscape}</style>").toString())
+                    },
+                    enabled = shown.isNotEmpty(),
+                    modifier = Modifier.weight(1f)
+                ) { Text("تصدير PDF") }
+                Button(
+                    onClick = {
+                        try {
+                            val (title, subtitle, rows) = pdfParts()
+                            val pdf = com.example.data.PdfTable.write(title, subtitle, SHEET_PDF_HEADER, rows, listOf(4, 16, 16, 18, 7, 7, 7, 7, 7, 7))
+                            com.example.ui.components.shareFile(context, pdf, "Bukhari-sheet-${Dates.today()}.pdf", "application/pdf")
+                        } catch (e: Exception) {
+                            importError = "تعذر إنشاء ملف PDF: ${e.message}"
+                        }
+                    },
+                    enabled = shown.isNotEmpty(),
+                    modifier = Modifier.weight(1f)
+                ) { Text("مشاركة PDF") }
+            }
             if (books.isNotEmpty()) Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 FilterChip(selected = book == "all", onClick = { book = "all" }, label = { Text("كل الكتب") })
                 books.forEach { b -> FilterChip(selected = book == b, onClick = { book = b }, label = { Text(b) }) }
@@ -531,3 +576,11 @@ private fun AddRowDialog(courses: List<Course>, initialCourseId: String?, nextNu
         dismissButton = { TextButton(onClick = onDismiss) { Text("إلغاء") } }
     )
 }
+
+private val STATUS_LABELS = mapOf(
+    "all" to "الكل", "not_delivered" to "في انتظار الامتحان", "delivered" to "تم الامتحان", "corrected" to "تم التصحيح",
+    "reviewed" to "تمت المراجعة", "announced" to "تم الإعلان", "no_ceremony" to "لم يتم الحفل", "ceremony" to "تم الحفل",
+    "uncertain" to "يحتاج تدقيق", "struck_out" to "مشطوب"
+)
+private val SHEET_PDF_HEADER = listOf("م", "اسم الشيخ", "المكان", "الكتاب المقرر", "عدد الطلاب", "تم الامتحان", "تم التصحيح", "تمت المراجعة", "تم الإعلان", "تم الحفل")
+

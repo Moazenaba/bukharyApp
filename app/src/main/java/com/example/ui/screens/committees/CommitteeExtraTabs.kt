@@ -62,6 +62,11 @@ fun CommitteeBaseDataTab(
     onSave: (Committee) -> Unit,
     onDelete: () -> Unit
 ) {
+    var number by remember { mutableStateOf(committee.committeeNumber.toString()) }
+    var name by remember { mutableStateOf(committee.committeeName) }
+    var association by remember { mutableStateOf(committee.associationName) }
+    var branch by remember { mutableStateOf(committee.branch) }
+    var book by remember { mutableStateOf(committee.competitionBook) }
     var sheikhName by remember { mutableStateOf(committee.sheikhName) }
     var sheikhPhone by remember { mutableStateOf(committee.sheikhPhone) }
     var sheikhCountry by remember { mutableStateOf(committee.sheikhCountry) }
@@ -75,9 +80,15 @@ fun CommitteeBaseDataTab(
 
     Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = Color.White), border = BorderStroke(1.dp, Color(0xFFE2E8F0))) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("بيانات اللجنة الأساسية", fontWeight = FontWeight.Bold, color = Primary800)
-            Text("الفرع: ${committee.branch.ifBlank { "—" }} • الجمعية: ${committee.associationName.ifBlank { "—" }}", style = MaterialTheme.typography.bodySmall, color = TextMuted)
-            Text("الكتاب المقرر: ${committee.competitionBook}", style = MaterialTheme.typography.bodySmall, color = TextMuted)
+            Text("بيانات اللجنة (كما أُدخلت عند الإضافة)", fontWeight = FontWeight.Bold, color = Primary800)
+            OutlinedTextField(
+                number, { number = it.filter(Char::isDigit) }, label = { Text("رقم اللجنة") }, enabled = canEditBase, singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth()
+            )
+            OutlinedTextField(name, { name = it }, label = { Text("اسم اللجنة") }, enabled = canEditBase, singleLine = true, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(book, { book = it }, label = { Text("الكتاب المقرر / المسابقة") }, enabled = canEditBase, singleLine = true, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(branch, { branch = it }, label = { Text("الفرع") }, enabled = canEditBase, singleLine = true, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(association, { association = it }, label = { Text("الجمعية (اختياري)") }, enabled = canEditBase, singleLine = true, modifier = Modifier.fillMaxWidth())
             OutlinedTextField(sheikhName, { sheikhName = it }, label = { Text("الشيخ المرسل إليه") }, enabled = canEditBase, singleLine = true, modifier = Modifier.fillMaxWidth())
             OutlinedTextField(
                 sheikhPhone, { sheikhPhone = it }, label = { Text("هاتف الشيخ") }, enabled = canEditBase, singleLine = true,
@@ -116,6 +127,9 @@ fun CommitteeBaseDataTab(
                     onClick = {
                         onSave(
                             committee.copy(
+                                committeeNumber = number.toIntOrNull() ?: committee.committeeNumber,
+                                committeeName = name.trim().ifBlank { committee.committeeName },
+                                competitionBook = book.trim(), branch = branch.trim(), associationName = association.trim(),
                                 sheikhName = sheikhName.trim(), sheikhPhone = sheikhPhone.trim(), sheikhCountry = sheikhCountry.trim(),
                                 studentsCount = students.toIntOrNull() ?: 0, isWomenCommittee = isWomen,
                                 courseId = courseId, courseName = courses.find { it.id == courseId }?.name ?: committee.courseName,

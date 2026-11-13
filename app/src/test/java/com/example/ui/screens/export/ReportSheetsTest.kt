@@ -74,4 +74,41 @@ class ReportSheetsTest {
         assertTrue(html.contains("2026-10-21 — 1 لجنة"))
         assertTrue(html.contains("<tr style='font-weight:bold;background:#f1f5f9'>"))
     }
+
+    @Test
+    fun ceremonyStatusReportsSplitByTheCeremonyStageWithTheSheetDataAndATotal() {
+        var all = StagesMap()
+        listOf("registration", "exam", "scoring", "aggregation", "review", "sheet", "accreditation", "announcement", "ceremony")
+            .forEach { all = all.updateStage(it, true) }
+        val committees = listOf(
+            committee("held", 5, all) {
+                copy(sheikhName = "شيخ", sheikhCountry = "مسجد النور", competitionBook = "كتاب", studentsCount = 30,
+                    ceremonyDetails = CeremonyDetails(date = "2026-11-05", venue = "القاعة", honoreesCount = 25, attendingSheikhs = listOf("أ", "ب")))
+            },
+            committee("b", 2) { copy(branch = "فرع", studentsCount = 10) },
+            committee("a", 1) { copy(studentsCount = 7) }
+        )
+        val tasks = listOf(ScheduleTask(id = "task-ceremony-a", title = "حفل", date = "2026-11-21", time = "8 م", committeeId = "a", type = "ceremony"))
+
+        val notHeld = ReportSheets.statusRows(committees, tasks, "not_held")
+        assertEquals(listOf<Any?>(1, 2), notHeld.dropLast(1).map { it[1] })
+        assertEquals("2026-11-21 (السبت) 8 م", notHeld[0][7])
+        assertEquals("لم يُحدد بعد", notHeld[1][7])
+        assertEquals("فرع", notHeld[1][3]) // place falls back to the branch
+        assertEquals(17, notHeld.last()[5])
+        assertEquals("الإجمالي: 2 لجنة", notHeld.last()[2])
+
+        val held = ReportSheets.statusRows(committees, tasks, "held")
+        assertEquals(2, held.size)
+        assertEquals(listOf<Any?>(1, 5, "شيخ", "مسجد النور", "كتاب", 25), held[0].take(6))
+        assertEquals("القاعة", held[0][7])
+        assertEquals("أ، ب", held[0][8])
+
+        for (status in listOf("held", "not_held")) {
+            ReportSheets.statusRows(committees, tasks, status).forEach { assertEquals(ReportSheets.statusHeader(status).size, it.size) }
+        }
+        assertEquals(ReportSheets.STATUS_WEIGHTS.size, ReportSheets.HELD_HEADER.size)
+        assertTrue(ReportSheets.statusRows(emptyList(), emptyList(), "held").isEmpty())
+        assertTrue(ReportSheets.statusPrintBody(held, "held", "x").contains("تم الحفل"))
+    }
 }

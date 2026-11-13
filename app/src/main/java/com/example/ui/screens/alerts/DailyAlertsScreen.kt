@@ -259,7 +259,7 @@ fun DailyAlertsScreen(
                         if (t.notes.isNotBlank()) Text("💬 ${t.notes}", style = MaterialTheme.typography.bodySmall, color = TextMuted)
                         Text("👤 المكلف: ${t.assignedAssistantName ?: "غير محدد"}", style = MaterialTheme.typography.labelSmall, color = TextMuted)
                     }
-                    if (canDeleteTasks) IconButton(onClick = { deleting = t }) { Icon(Icons.Default.Delete, "حذف هذا التنبيه", tint = Color(0xFFEF4444)) }
+                    if (canDeleteTasks && !t.id.startsWith("task-ceremony-")) IconButton(onClick = { deleting = t }) { Icon(Icons.Default.Delete, "حذف هذا التنبيه", tint = Color(0xFFEF4444)) }
                 }
             }
         }

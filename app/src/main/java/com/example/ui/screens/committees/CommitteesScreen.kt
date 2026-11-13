@@ -36,6 +36,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
@@ -95,6 +96,8 @@ fun CommitteesScreen(
     onSearchChange: (String) -> Unit,
     onStageFilterChange: (String) -> Unit,
     onOpenCommitteeDetail: (String) -> Unit,
+    /** Opens the committee's data form (number, name, sheikh, place, book, students...). */
+    onEditCommittee: (String) -> Unit = onOpenCommitteeDetail,
     onSaveCommittee: (Committee) -> Unit,
     onDeleteCommittee: (String) -> Unit,
     allCommittees: List<Committee> = committees,
@@ -305,6 +308,7 @@ fun CommitteesScreen(
                         CommitteeCard(
                             committee = committee,
                             onOpenDetail = { onOpenCommitteeDetail(committee.id) },
+                            onEdit = if (com.example.data.remote.Permissions.canOn("committees.update", committee.id)) ({ onEditCommittee(committee.id) }) else null,
                             onDelete = { onDeleteCommittee(committee.id) },
                             canDelete = com.example.data.remote.Permissions.canOn("committees.delete", committee.id),
                             onReceive = if (com.example.data.remote.Permissions.canOn("committees.reception", committee.id)) ({ onReceive(committee.id, committee.receivedByAssistant != null) }) else null,
@@ -352,6 +356,7 @@ fun CommitteeCard(
     onOpenDetail: () -> Unit,
     onDelete: () -> Unit,
     canDelete: Boolean,
+    onEdit: (() -> Unit)? = null,
     onReceive: (() -> Unit)? = null,
     onApproveReadiness: (() -> Unit)? = null
 ) {
@@ -389,7 +394,7 @@ fun CommitteeCard(
                     )
                 }
                 Spacer(modifier = Modifier.width(10.dp))
-                Column {
+                Column(Modifier.weight(1f)) {
                     Text(
                         text = committee.committeeName,
                         style = MaterialTheme.typography.titleMedium,
@@ -401,6 +406,12 @@ fun CommitteeCard(
                         style = MaterialTheme.typography.bodySmall,
                         color = Color(0xFF64748B)
                     )
+                }
+                // ✏️ Edit the committee's data (what was entered when it was added).
+                if (onEdit != null) {
+                    IconButton(onClick = onEdit, modifier = Modifier.testTag("btn_edit_committee_${committee.id}")) {
+                        Icon(Icons.Default.Edit, contentDescription = "تعديل بيانات اللجنة", tint = Primary700)
+                    }
                 }
             }
 

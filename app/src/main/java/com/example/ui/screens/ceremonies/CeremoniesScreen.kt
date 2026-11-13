@@ -88,6 +88,8 @@ fun CeremoniesScreen(
     currentUserId: String? = null,
     ceremonyCandidates: List<com.example.data.remote.AssignableUserDto>? = null,
     onLoadCandidates: () -> Unit = {},
+    /** Opens the committee's data form (edit what was entered when it was added). */
+    onEditCommittee: (String) -> Unit = onOpenCommittee,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -139,6 +141,7 @@ fun CeremoniesScreen(
         }
         item { MyCeremoniesSection(committees, tasks, currentUserId, onOpenCommittee) }
         item { CeremoniesExportCard(committees, tasks) }
+        item { CeremonyStatusReportCard(committees, tasks) }
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 StatTile("إجمالي اللجان", "${committees.size}", Modifier.weight(1f))
@@ -220,6 +223,10 @@ fun CeremoniesScreen(
                         )
                         val place = c.ceremonyDetails.venue.ifBlank { task?.notes ?: "" }
                         if (place.isNotBlank()) Text("📍 $place", style = MaterialTheme.typography.labelSmall)
+                    }
+                    // Full width, never pushed off-screen by the buttons row below.
+                    if (Permissions.canOn("committees.update", c.id)) {
+                        OutlinedButton(onClick = { onEditCommittee(c.id) }, modifier = Modifier.fillMaxWidth()) { Text("✏️ تعديل بيانات اللجنة") }
                     }
                     Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         if (canFinalize) {
@@ -379,3 +386,55 @@ private fun CeremoniesExportCard(committees: List<Committee>, tasks: List<Schedu
         }
     }
 }
+
+/**
+ * «لم يتم الحفل» / «تم الحفل» reports (web: the same section on the ceremonies screen), laid out like
+ * the sheets: «تصدير PDF» opens the print screen (save as PDF), «مشاركة» sends a PDF file.
+ */
+@Composable
+fun CeremonyStatusReportCard(committees: List<Committee>, tasks: List<ScheduleTask>) {
+    val context = LocalContext.current
+    val courseName = committees.firstOrNull()?.courseName
+    Card(
+        shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = Color.White),
+        border = BorderStroke(1.dp, Color(0xFFFDE68A))
+    ) {
+        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("كشف «لم يتم الحفل» و«تم الحفل» (PDF)", fontWeight = FontWeight.Black)
+            Text(
+                "بنفس بيانات الكشوفات: اسم الشيخ، المكان، الكتاب، عدد الطلاب، وموعد ومكان الحفل، مع الإجمالي.",
+                style = MaterialTheme.typography.bodySmall, color = TextMuted
+            )
+            listOf("not_held", "held").forEach { status ->
+                val rows = ReportSheets.statusRows(committees, tasks, status)
+                val count = ReportSheets.statusCommittees(committees, status).size
+                val label = ReportSheets.STATUS_LABEL.getValue(status)
+                val today = Dates.today()
+                val subtitle = ReportSheets.statusSubtitle(rows, courseName, today)
+                Text("$label ($count لجنة)", fontWeight = FontWeight.Bold, color = if (status == "held") Color(0xFF047857) else Color(0xFFC2410C))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                    OutlinedButton(
+                        onClick = { printHtml(context, ReportSheets.statusTitle(status), ReportSheets.statusPrintBody(rows, status, subtitle)) },
+                        enabled = count > 0,
+                        modifier = Modifier.weight(1f)
+                    ) { Text("تصدير PDF") }
+                    Button(
+                        onClick = {
+                            try {
+                                val pdf = com.example.data.PdfTable.write(
+                                    ReportSheets.statusTitle(status), subtitle, ReportSheets.statusHeader(status), rows, ReportSheets.STATUS_WEIGHTS
+                                )
+                                shareFile(context, pdf, ReportSheets.statusFileName(status, today), "application/pdf")
+                            } catch (e: Exception) {
+                                android.widget.Toast.makeText(context, "تعذر إنشاء ملف PDF: ${e.message}", android.widget.Toast.LENGTH_LONG).show()
+                            }
+                        },
+                        enabled = count > 0,
+                        modifier = Modifier.weight(1f)
+                    ) { Text("مشاركة") }
+                }
+            }
+        }
+    }
+}
+

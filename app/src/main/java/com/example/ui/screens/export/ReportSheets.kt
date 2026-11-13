@@ -141,4 +141,71 @@ object ReportSheets {
         }
         return body.append("</table><style>@page{size:A4 landscape}</style>").toString()
     }
+
+    // ---- «لم يتم الحفل» / «تم الحفل» report (web: ceremonyStatusPdfTable), laid out like the sheets.
+
+    val STATUS_LABEL = mapOf("not_held" to "لم يتم الحفل", "held" to "تم الحفل")
+    val NOT_HELD_HEADER = listOf("م", "رقم اللجنة", "اسم الشيخ", "المكان", "الكتاب المقرر", "عدد الطلاب", "المرحلة الحالية", "موعد الحفل", "مكان الحفل")
+    val HELD_HEADER = listOf("م", "رقم اللجنة", "اسم الشيخ", "المكان", "الكتاب المقرر", "عدد الطلاب المكرمين", "تاريخ الحفل", "مكان الحفل", "المشايخ الحاضرون")
+    val STATUS_WEIGHTS = listOf(3, 6, 14, 14, 14, 8, 12, 14, 14)
+
+    fun statusHeader(status: String) = if (status == "held") HELD_HEADER else NOT_HELD_HEADER
+
+    fun statusCommittees(committees: List<Committee>, status: String) =
+        committees.filter { it.stages.ceremony.completed == (status == "held") }.sortedBy { it.committeeNumber }
+
+    /** The sheikh's place stored on the committee, else its branch. */
+    private fun place(c: Committee) = c.sheikhCountry.trim().ifBlank { c.branch.trim() }.ifBlank { "-" }
+
+    private fun whenText(c: Committee, tasks: List<ScheduleTask>): String {
+        val task = linkedCeremonyTask(c, tasks)
+        val date = (task?.date?.takeIf { it.isNotBlank() } ?: c.ceremonyDetails.date).take(10)
+        if (date.isEmpty()) return ""
+        val time = task?.time?.takeIf { it.isNotBlank() } ?: c.ceremonyDetails.time
+        val day = runCatching { ARABIC_DAYS[calendarOf(date).get(Calendar.DAY_OF_WEEK) - 1] }.getOrNull()
+        return listOfNotNull(date, day?.let { "($it)" }, time.ifBlank { null }).joinToString(" ")
+    }
+
+    /** One row per committee in that state, then a total row; empty when there are none. */
+    fun statusRows(committees: List<Committee>, tasks: List<ScheduleTask>, status: String): List<List<Any?>> {
+        val held = status == "held"
+        val list = statusCommittees(committees, status)
+        if (list.isEmpty()) return emptyList()
+        fun students(c: Committee) = if (held && c.ceremonyDetails.honoreesCount > 0) c.ceremonyDetails.honoreesCount else c.studentsCount
+        val rows = list.mapIndexed { i, c ->
+            if (held) listOf<Any?>(
+                i + 1, c.committeeNumber, c.sheikhName.ifBlank { "-" }, place(c), c.competitionBook.ifBlank { "-" }, students(c),
+                whenText(c, tasks).ifBlank { "-" }, c.ceremonyDetails.venue.ifBlank { "-" }, names(c.ceremonyDetails.attendingSheikhs)
+            ) else listOf<Any?>(
+                i + 1, c.committeeNumber, c.sheikhName.ifBlank { "-" }, place(c), c.competitionBook.ifBlank { "-" }, students(c),
+                com.example.ui.theme.StageColorMap[currentStageKey(c.stages)]?.activeLabel ?: "",
+                whenText(c, tasks).ifBlank { "لم يُحدد بعد" }, c.ceremonyDetails.venue.ifBlank { "-" }
+            )
+        }
+        return rows + listOf(listOf<Any?>("", "", "الإجمالي: ${list.size} لجنة", "", "", list.sumOf { students(it) }, "", "", ""))
+    }
+
+    fun statusTitle(status: String) = "كشف «${STATUS_LABEL[status]}» — مسابقات مسجد الإمام البخاري"
+
+    fun statusSubtitle(rows: List<List<Any?>>, courseName: String?, today: String): String {
+        val count = (rows.size - 1).coerceAtLeast(0)
+        val total = rows.lastOrNull()?.getOrNull(5) ?: 0
+        return listOfNotNull(courseName?.ifBlank { null }, today, "$count لجنة", "$total طالب").joinToString(" — ")
+    }
+
+    fun statusFileName(status: String, today: String) =
+        "Bukhari-${if (status == "held") "ceremony-held" else "ceremony-not-held"}-$today.pdf"
+
+    /** Printable body (the print screen saves it as PDF). */
+    fun statusPrintBody(rows: List<List<Any?>>, status: String, subtitle: String): String {
+        val body = StringBuilder("<h2 class='center'>${escapeHtml(statusTitle(status))}</h2><p class='center'>${escapeHtml(subtitle)}</p><table><tr>")
+        statusHeader(status).forEach { body.append("<th>${escapeHtml(it)}</th>") }
+        body.append("</tr>")
+        rows.forEachIndexed { i, r ->
+            body.append(if (i == rows.lastIndex) "<tr style='font-weight:bold;background:#f1f5f9'>" else "<tr>")
+            r.forEach { body.append("<td>${escapeHtml(it?.toString() ?: "")}</td>") }
+            body.append("</tr>")
+        }
+        return body.append("</table><style>@page{size:A4 landscape}</style>").toString()
+    }
 }

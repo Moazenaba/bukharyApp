@@ -258,8 +258,22 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         super.onCleared()
     }
 
+    @Volatile private var lastRefreshAt = 0L
+
+    /**
+     * Keeps the screens current while the app is on screen: called when the app comes back to the
+     * front and every minute after that, so committees added or edited on the web or on another
+     * phone show up without closing the app. Quiet: no message unless something was refused.
+     */
+    fun refreshWhileVisible() {
+        if (!_isLoggedIn.value || _isSyncing.value || !_isNetworkAvailable.value) return
+        if (System.currentTimeMillis() - lastRefreshAt < 15_000) return
+        viewModelScope.launch { refreshFromServer() }
+    }
+
     /** Sends queued writes, reloads data and the user's permissions from the server. */
     private suspend fun refreshFromServer(): Boolean = syncMutex.withLock {
+        lastRefreshAt = System.currentTimeMillis()
         _isSyncing.value = true
         try {
             val me = authService.refreshMe()?.also { me ->
@@ -356,7 +370,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             if (courseId == null) remove("current_course") else putString("current_course", courseId)
         }.apply()
     }
-    fun openCommitteeDetail(committeeId: String) { _selectedCommitteeIdForDetail.value = committeeId }
+    private val _detailOpensOnEdit = MutableStateFlow(false)
+    /** Whether the committee details opened from an «edit» button (shows the data form first). */
+    val detailOpensOnEdit: StateFlow<Boolean> = _detailOpensOnEdit.asStateFlow()
+    fun openCommitteeDetail(committeeId: String, edit: Boolean = false) {
+        _detailOpensOnEdit.value = edit
+        _selectedCommitteeIdForDetail.value = committeeId
+    }
     fun closeCommitteeDetail() { _selectedCommitteeIdForDetail.value = null }
     fun showMessage(message: String) { _snackBarMessage.value = message }
     fun clearMessage() { _snackBarMessage.value = null }
@@ -627,7 +647,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun saveTask(task: ScheduleTask) = write("تمت جدولة المهمة ✓") { repository.saveTask(task) }
 
-    fun toggleTask(taskId: String) = write("تم تحديث حالة المهمة") { repository.toggleTask(taskId) }
+    fun toggleTask(taskId: String) {
+        // Ticking a ceremony's task records «تم الحفل» on its committee (server side): reload so the
+        // committee shows it too.
+        if (taskId.startsWith("task-ceremony-")) {
+            viewModelScope.launch {
+                val result = repository.toggleTask(taskId)
+                report(result, "تم تحديث حالة الحفل")
+                if (result is WriteResult.Sent) refreshFromServer()
+            }
+        } else write("تم تحديث حالة المهمة") { repository.toggleTask(taskId) }
+    }
 
     fun deleteTask(taskId: String) = write("تم حذف المهمة") { repository.deleteTask(taskId) }
 

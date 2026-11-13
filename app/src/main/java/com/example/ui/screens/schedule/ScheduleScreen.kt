@@ -271,7 +271,7 @@ fun ScheduleScreen(
                             task = task,
                             onToggle = { onToggleTask(task.id) },
                             onDelete = { onDeleteTask(task.id) },
-                            canDelete = canDelete
+                            canDelete = canDelete && !task.id.startsWith("task-ceremony-") // a ceremony task follows its committee
                         )
                         task.committeeId?.let { id ->
                             if (committees.any { it.id == id }) TextButton(onClick = { onOpenCommittee(id) }) { Text("تفاصيل اللجنة المرتبطة ↗", style = MaterialTheme.typography.labelSmall) }
