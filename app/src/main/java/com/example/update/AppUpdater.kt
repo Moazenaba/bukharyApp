@@ -48,6 +48,7 @@ object AppUpdater {
     private const val NOTIFICATION_ID = 7301
     private const val PREFS = "app_update"
     private const val KEY_ASKED_PERMISSION = "asked_install_permission"
+    private const val KEY_ASKED_AT = "asked_install_permission_at"
 
     data class UpdateInfo(
         val versionCode: Int = 0,
@@ -86,38 +87,89 @@ object AppUpdater {
     fun canInstall(context: Context): Boolean =
         Build.VERSION.SDK_INT < Build.VERSION_CODES.O || context.packageManager.canRequestPackageInstalls()
 
+    /** What a check found: a verified APK to install, or a report saying why there is nothing to install. */
+    private sealed interface Outcome {
+        data class Ready(val file: File, val info: UpdateInfo) : Outcome
+        data class None(val report: UpdateReport) : Outcome
+    }
+
+    private val installedName: String get() = BuildConfig.VERSION_NAME
+
+    private val _report = MutableStateFlow<UpdateReport?>(null)
+
+    /** The result of the last check (null before the first one): what the update row and the banner show. */
+    val report: StateFlow<UpdateReport?> = _report.asStateFlow()
+
     /**
      * Fetches the manifest and, if it names a newer version, downloads and checks the APK.
      * Returns the verified APK, or null when there is nothing (valid) to install.
      */
-    suspend fun fetchUpdate(context: Context): File? = lock.withLock {
+    suspend fun fetchUpdate(context: Context): File? = (fetch(context) as? Outcome.Ready)?.file
+
+    private suspend fun fetch(context: Context): Outcome = lock.withLock {
         withContext(Dispatchers.IO) {
-            if (!ApiClient.isConfigured) return@withContext null
+            if (!ApiClient.isConfigured) return@withContext Outcome.None(UpdateReport(UpdateStatus.NOT_CONFIGURED, installedName))
+            val info = try {
+                fetchInfo()
+            } catch (e: Exception) {
+                Log.w(TAG, "Update check failed: ${e.message}")
+                return@withContext Outcome.None(UpdateReport(UpdateStatus.UNREACHABLE, installedName, detail = e.message.orEmpty()))
+            } ?: return@withContext Outcome.None(UpdateReport(UpdateStatus.UNREACHABLE, installedName, detail = "no manifest"))
+            val apkUrl = ApiClient.baseUrl + info.apk.trimStart('/')
+            if (!UpdateDecision.isNewer(BuildConfig.VERSION_CODE, info.versionCode, info.apk)) {
+                clearDownloads(context)
+                return@withContext Outcome.None(UpdateReport(UpdateStatus.UP_TO_DATE, installedName, info.versionName))
+            }
+            fun report(status: UpdateStatus, detail: String = "") = Outcome.None(UpdateReport(status, installedName, info.versionName, apkUrl, detail))
             try {
-                val info = fetchInfo() ?: return@withContext null
-                if (info.versionCode <= BuildConfig.VERSION_CODE || info.apk.isBlank()) {
-                    clearDownloads(context)
-                    return@withContext null
-                }
                 val file = File(updatesDir(context), "bukhari-${info.versionCode}.apk")
                 if (!(file.exists() && sha256(file).equals(info.sha256, ignoreCase = true))) {
                     clearDownloads(context)
-                    download(ApiClient.baseUrl + info.apk.trimStart('/'), file)
+                    download(apkUrl, file)
                     if (info.sha256.isNotBlank() && !sha256(file).equals(info.sha256, ignoreCase = true)) {
                         Log.w(TAG, "Downloaded APK does not match its checksum")
                         file.delete()
-                        return@withContext null
+                        return@withContext report(UpdateStatus.CHECKSUM_MISMATCH)
                     }
                 }
-                if (!isSafeUpgrade(context, file)) {
+                unsafeReason(context, file)?.let { status ->
                     file.delete()
-                    return@withContext null
+                    return@withContext report(status)
                 }
-                file
+                Outcome.Ready(file, info)
             } catch (e: Exception) {
                 Log.w(TAG, "Update check failed: ${e.message}")
-                null
+                report(UpdateStatus.DOWNLOAD_FAILED, e.message.orEmpty())
             }
+        }
+    }
+
+    /**
+     * Checks for an update now and says what happened, in a form the screen can show. Does not install.
+     */
+    suspend fun check(context: Context): UpdateReport {
+        val report = when (val outcome = fetch(context)) {
+            is Outcome.None -> outcome.report
+            is Outcome.Ready -> UpdateReport(
+                if (canInstall(context)) UpdateStatus.READY else UpdateStatus.NEEDS_PERMISSION,
+                installedName, outcome.info.versionName, ApiClient.baseUrl + outcome.info.apk.trimStart('/')
+            )
+        }
+        _report.value = report
+        return report
+    }
+
+    /** The «حدّث الآن» button: checks, and installs while the app is on screen, so Android's own confirm dialog opens at once. */
+    suspend fun updateNow(context: Context): UpdateReport {
+        val report = check(context)
+        if (report.status != UpdateStatus.READY) return report
+        val apk = fetchUpdate(context) ?: return report
+        return try {
+            install(context, apk)
+            report
+        } catch (e: Exception) {
+            Log.w(TAG, "Install failed to start: ${e.message}")
+            report.copy(status = UpdateStatus.DOWNLOAD_FAILED, detail = e.message.orEmpty())
         }
     }
 
@@ -153,23 +205,23 @@ object AppUpdater {
         return digest.digest().joinToString("") { "%02x".format(it) }
     }
 
-    /** Same package, higher version and the same signing key as the installed app: Android will accept it as an update. */
-    private fun isSafeUpgrade(context: Context, apk: File): Boolean {
+    /** Same package, higher version and the same signing key as the installed app: Android will accept it as an update. Null when it will; else why not. */
+    private fun unsafeReason(context: Context, apk: File): UpdateStatus? {
         val pm = context.packageManager
-        val archive = archiveInfo(pm, apk.path) ?: return false.also { Log.w(TAG, "Downloaded file is not an APK") }
-        if (archive.packageName != context.packageName) return false.also { Log.w(TAG, "APK is for another app: ${archive.packageName}") }
+        val archive = archiveInfo(pm, apk.path) ?: return UpdateStatus.DOWNLOAD_FAILED.also { Log.w(TAG, "Downloaded file is not an APK") }
+        if (archive.packageName != context.packageName) return UpdateStatus.WRONG_APP.also { Log.w(TAG, "APK is for another app: ${archive.packageName}") }
         @Suppress("DEPRECATION")
         val archiveCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) archive.longVersionCode else archive.versionCode.toLong()
-        if (archiveCode <= BuildConfig.VERSION_CODE) return false.also { Log.w(TAG, "APK is not newer ($archiveCode)") }
+        if (archiveCode <= BuildConfig.VERSION_CODE) return UpdateStatus.NOT_NEWER.also { Log.w(TAG, "APK is not newer ($archiveCode)") }
         val installed = installedInfo(pm, context.packageName)
         val apkSigners = signers(archive)
         val ownSigners = signers(installed)
         // Without readable signatures the installer still rejects a different key, quietly (no dialog).
         if (apkSigners.isNotEmpty() && ownSigners.isNotEmpty() && apkSigners != ownSigners) {
             Log.w(TAG, "APK is signed with a different key; skipped")
-            return false
+            return UpdateStatus.WRONG_SIGNATURE
         }
-        return true
+        return null
     }
 
     @Suppress("DEPRECATION")
@@ -238,12 +290,19 @@ object AppUpdater {
      * permission to install apps, and on Android 11 and older offers the downloaded update.
      */
     suspend fun onAppOpened(context: Context) {
-        val apk = fetchUpdate(context) ?: return
+        val report = check(context)
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        when {
-            !canInstall(context) -> if (!prefs.getBoolean(KEY_ASKED_PERMISSION, false)) _ui.value = UiState.NeedsPermission
-            !installsSilently -> _ui.value = UiState.ReadyToInstall(versionNameOf(context, apk))
-            // Android 12+: installed quietly once the app leaves the screen (MainActivity.onStop).
+        when (report.status) {
+            UpdateStatus.NEEDS_PERMISSION -> {
+                val lastAsked = prefs.getLong(KEY_ASKED_AT, if (prefs.getBoolean(KEY_ASKED_PERMISSION, false)) 1L else 0L)
+                if (UpdateDecision.shouldAskPermission(lastAsked, System.currentTimeMillis())) _ui.value = UiState.NeedsPermission
+            }
+            UpdateStatus.READY -> if (!installsSilently) {
+                val apk = fetchUpdate(context)
+                if (apk != null) _ui.value = UiState.ReadyToInstall(versionNameOf(context, apk))
+            }
+            // Android 12+: installed quietly once the app leaves the screen (MainActivity.onStop), or at once from the update row.
+            else -> Unit
         }
     }
 
@@ -254,7 +313,8 @@ object AppUpdater {
         Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:${context.packageName}"))
 
     fun dismissPermissionRequest(context: Context) {
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(KEY_ASKED_PERMISSION, true).apply()
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putBoolean(KEY_ASKED_PERMISSION, true).putLong(KEY_ASKED_AT, System.currentTimeMillis()).apply()
         _ui.value = UiState.Idle
     }
 
