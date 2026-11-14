@@ -229,7 +229,9 @@ fun CommitteeDetailModal(
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // Sheikh & Meta Card
+            // What this committee is waiting for, then its facts in two columns (it used to be one tall box).
+            com.example.ui.components.CommitteeNowCard(committee, onGoTo = { activeTab = it })
+            Spacer(modifier = Modifier.height(10.dp))
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
@@ -237,33 +239,14 @@ fun CommitteeDetailModal(
                 border = androidx.compose.foundation.BorderStroke(1.dp, tEdge(Color(0xFFE2E8F0)))
             ) {
                 Column(modifier = Modifier.padding(14.dp)) {
-                    Text(
-                        text = "📖 الكتاب: ${committee.competitionBook}",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = tFg(Color(0xFF0F766E))
-                    )
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = "الشيخ: ${committee.sheikhName}",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Medium
+                    com.example.ui.components.InfoGrid(
+                        listOf(
+                            "الكتاب" to committee.competitionBook,
+                            "الشيخ" to committee.sheikhName,
+                            "المكان" to committee.sheikhCountry.ifBlank { committee.branch },
+                            "النوع" to (if (committee.isWomenCommittee) "مصلى الأخوات" else "مصلى الرجال"),
+                            "عدد الطلاب" to (if (committee.studentsCount > 0) "${committee.studentsCount}" else "لم يُسجَّل بعد")
                         )
-                        Text(
-                            text = "${committee.studentsCount} طالباً",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = tFg(Color(0xFFB45309))
-                        )
-                    }
-                    Text(
-                        text = "المكان: ${committee.sheikhCountry.ifBlank { committee.branch.ifBlank { "—" } }} • ${if (committee.isWomenCommittee) "مصلى الأخوات" else "مصلى الرجال"}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = tFg(TextMuted)
                     )
                 }
             }
