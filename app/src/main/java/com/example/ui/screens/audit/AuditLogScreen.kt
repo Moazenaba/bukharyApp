@@ -1,5 +1,6 @@
 package com.example.ui.screens.audit
 
+import com.example.ui.components.ChipFlow
 import com.example.ui.theme.tBg
 import com.example.ui.theme.tFg
 import androidx.compose.foundation.background
@@ -67,7 +68,7 @@ fun AuditLogScreen(
             ScreenBanner("سجل التدقيق", "كل تعديل يُسجَّل مع اسم من قام به ووقته، في نفس عملية الحفظ.", Icons.Default.History, listOf(Color(0xFF334155), Primary800))
         }
         item {
-            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            ChipFlow(Modifier, 6.dp) {
                 ENTITIES.forEach { (k, l) -> FilterChip(selected = entity == k, onClick = { entity = k }, label = { Text(l) }) }
             }
         }

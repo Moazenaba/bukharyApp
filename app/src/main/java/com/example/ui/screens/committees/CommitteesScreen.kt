@@ -1,5 +1,6 @@
 package com.example.ui.screens.committees
 
+import com.example.ui.components.ChipFlow
 import com.example.ui.theme.tEdge
 import com.example.ui.theme.tBg
 import com.example.ui.theme.tFg
@@ -212,12 +213,7 @@ fun CommitteesScreen(
             Spacer(modifier = Modifier.height(10.dp))
 
             // Stage filter chips
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
+            ChipFlow(Modifier.fillMaxWidth(), 8.dp) {
                 filterTabs.forEach { (key, label) ->
                     FilterChip(
                         selected = selectedStageFilter == key,
@@ -228,6 +224,13 @@ fun CommitteesScreen(
                 }
             }
 
+            // The less used controls (course, kind, order, export) sit behind one button, so the first committee
+            // is reached after the search and the stage chips instead of after seven bands of controls.
+            var moreControls by remember { mutableStateOf(false) }
+            androidx.compose.material3.TextButton(onClick = { moreControls = !moreControls }) {
+                Text(if (moreControls) "إخفاء خيارات التصفية والتصدير" else "المزيد: الدورة، النوع، الترتيب، التصدير")
+            }
+            if (moreControls) {
             // Web: the «في انتظار الامتحان» sheet (sheikh, country, students and proctors of each committee)
             val examCount = com.example.ui.screens.export.ReportSheets.examInProgress(allCommittees).size
             val context = androidx.compose.ui.platform.LocalContext.current
@@ -258,18 +261,12 @@ fun CommitteesScreen(
             }
 
             // Course, gender and sort (web: SearchAndFilters)
-            Row(
-                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(top = 6.dp),
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
+            ChipFlow(Modifier.fillMaxWidth().padding(top = 6.dp), 6.dp) {
                 activeCourses.forEach { c ->
                     FilterChip(selected = selectedCourseId == c.id, onClick = { onCourseFilterChange(c.id) }, label = { Text(c.name) })
                 }
             }
-            Row(
-                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
+            ChipFlow(Modifier.fillMaxWidth(), 6.dp) {
                 listOf("all" to "الكل", "men" to "رجال", "women" to "نسائية").forEach { (k, l) ->
                     FilterChip(selected = filters.gender == k, onClick = { onFiltersChange(filters.copy(gender = k)) }, label = { Text(l) })
                 }
@@ -277,6 +274,8 @@ fun CommitteesScreen(
                 listOf("newest" to "الأحدث", "oldest" to "الأقدم", "committeeNumber" to "رقم اللجنة", "book" to "الكتاب").forEach { (k, l) ->
                     FilterChip(selected = filters.sortBy == k, onClick = { onFiltersChange(filters.copy(sortBy = k)) }, label = { Text(l) })
                 }
+            }
+
             }
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -336,7 +335,7 @@ fun CommitteesScreen(
                                 "عرض ${if (committees.isEmpty()) 0 else (current - 1) * pageSize + 1} إلى ${minOf(current * pageSize, committees.size)} من إجمالي ${committees.size} لجنة مسجلة",
                                 style = MaterialTheme.typography.labelSmall, color = tFg(TextMuted)
                             )
-                            if (pages > 1) Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            if (pages > 1) ChipFlow(Modifier, 4.dp) {
                                 TextButton(onClick = { page = current - 1 }, enabled = current > 1) { Text("السابق") }
                                 (1..pages).forEach { n ->
                                     FilterChip(selected = n == current, onClick = { page = n }, label = { Text("$n") })
@@ -669,7 +668,7 @@ fun AddCommitteeDialog(
             ) {
                 // The committee must belong to a course (same rule as the web app and the server).
                 Text("الدورة *", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
-                Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                ChipFlow(Modifier.fillMaxWidth(), 6.dp) {
                     activeCourses.forEach { course ->
                         FilterChip(selected = courseId == course.id, onClick = { courseId = course.id }, label = { Text(course.name, maxLines = 1) })
                     }
@@ -705,7 +704,7 @@ fun AddCommitteeDialog(
                 }
                 com.example.ui.components.DateField(examDate, { examDate = it }, "ميعاد الامتحان (اختياري)", allowClear = true)
                 Text("المرحلة الحالية للجنة", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
-                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                ChipFlow(Modifier, 6.dp) {
                     initialStages.forEach { (k, l) -> FilterChip(selected = initialStage == k, onClick = { initialStage = k }, label = { Text(l) }) }
                 }
                 OutlinedTextField(book, { book = it }, label = { Text("الكتاب المقرر / مسار المسابقة") }, singleLine = true, modifier = Modifier.fillMaxWidth())

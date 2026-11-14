@@ -1,5 +1,6 @@
 package com.example.ui.screens.assistants
 
+import com.example.ui.components.ChipFlow
 import com.example.ui.theme.tEdge
 import com.example.ui.theme.tBg
 import com.example.ui.theme.tFg
@@ -281,7 +282,7 @@ fun UsersManagementScreen(
                                         if (invitedTo.isEmpty()) "" else " (" + invitedTo.joinToString("، ") { "لجنة ${it.committeeNumber}" } + ")"
                                 )
                             }
-                            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            ChipFlow(Modifier, 6.dp) {
                                 if (canPlace) {
                                     Button(onClick = { placing = u }) { Text("اللجان والحفلات") }
                                 }
@@ -332,7 +333,7 @@ fun UsersManagementScreen(
             }
             else -> {
                 item {
-                    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    ChipFlow(Modifier, 6.dp) {
                         listOf(
                             "all" to "الكل (${requests.size})",
                             "pending" to "قيد المراجعة (${requests.count { it.status == "pending" }})",
@@ -354,7 +355,7 @@ fun UsersManagementScreen(
                             u.quranLevel?.let { InfoLine("الحفظ:", it) }
                             if (u.status == "interview") u.interviewDate?.let { InfoLine("موعد المقابلة:", it) }
                             if (u.status == "rejected") u.rejectionReason?.let { InfoLine("سبب الاعتذار:", it) }
-                            if (canManage) Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            if (canManage) ChipFlow(Modifier, 6.dp) {
                                 Button(onClick = { approving = u }, colors = ButtonDefaults.buttonColors(containerColor = tBg(Color(0xFF059669)))) { Text("اعتماد") }
                                 OutlinedButton(onClick = { interviewing = u }) { Text("تحديد مقابلة") }
                                 OutlinedButton(onClick = { dossier = u }) { Text("الملف") }
@@ -620,14 +621,14 @@ private fun ExamMultiPicker(exams: List<Exam>, selected: List<String>, onChange:
 private fun RolePicker(role: String, enabled: Boolean, onChange: (String) -> Unit, includeSuper: Boolean) {
     // Only roles the server lets this user give (admins never give admin roles).
     val roles = Permissions.grantableRoles.filter { includeSuper || it != "super_admin" }
-    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+    ChipFlow(Modifier, 6.dp) {
         roles.forEach { r -> FilterChip(selected = role == r, onClick = { if (enabled) onChange(r) }, enabled = enabled, label = { Text(roleLabel(r)) }) }
     }
 }
 
 @Composable
 private fun ProfilePicker(profiles: List<PermissionProfileDto>, selected: String, onChange: (String) -> Unit) {
-    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+    ChipFlow(Modifier, 6.dp) {
         FilterChip(selected = selected.isBlank(), onClick = { onChange("") }, label = { Text("بدون بروفايل (حدد أدناه)") })
         profiles.forEach { p -> FilterChip(selected = selected == p.id, onClick = { onChange(p.id) }, label = { Text(p.name) }) }
     }
@@ -859,7 +860,7 @@ private fun ProfileDialog(
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(name, { name = it }, label = { Text("اسم البروفايل *") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 OutlinedTextField(description, { description = it }, label = { Text("الوصف") }, modifier = Modifier.fillMaxWidth())
-                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                ChipFlow(Modifier, 6.dp) {
                     listOf("emerald", "blue", "amber", "purple", "rose", "teal").forEach { c -> FilterChip(selected = color == c, onClick = { color = c }, label = { Text(c) }) }
                 }
                 Text("الصلاحيات", fontWeight = FontWeight.Bold)

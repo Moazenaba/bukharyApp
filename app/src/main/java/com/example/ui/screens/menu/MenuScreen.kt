@@ -152,6 +152,8 @@ fun MenuScreen(
                 }
             }
         }
+        // For sheikhs and committee heads: the simple look is the first thing in the menu, not buried at the bottom.
+        onTrySimple?.let { go -> item { MenuRow("جرّب الواجهة المبسطة (أسهل وأوضح)", androidx.compose.material.icons.Icons.Default.AutoAwesome, null, onClick = go) } }
         sections.forEach { (title, entries) ->
             val visible = entries.filter { user.canAccessScreen(it.screen) }
             if (visible.isNotEmpty()) {
@@ -162,7 +164,6 @@ fun MenuScreen(
             }
         }
         item { Text("الحساب", style = MaterialTheme.typography.labelMedium, color = tFg(TextMuted), fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 8.dp)) }
-        onTrySimple?.let { go -> item { MenuRow("جرّب الواجهة المبسطة", Icons.Default.Key, null, onClick = go) } }
         item { MenuRow("تغيير كلمة المرور", Icons.Default.Key, null, onClick = onChangePassword) }
         item { ThemeChooser(themeMode, onThemeMode) }
         item { MenuRow("تسجيل الخروج", Icons.AutoMirrored.Filled.Logout, null, tint = tFg(Color(0xFFDC2626)), onClick = onLogout) }

@@ -1,5 +1,6 @@
 package com.example.ui.screens.schedule
 
+import com.example.ui.components.ChipFlow
 import com.example.ui.theme.tEdge
 import com.example.ui.theme.tBg
 import com.example.ui.theme.tFg
@@ -196,7 +197,7 @@ fun ScheduleScreen(
             }
 
             Spacer(modifier = Modifier.height(8.dp))
-            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            ChipFlow(Modifier.fillMaxWidth(), 6.dp) {
                 androidx.compose.material3.FilterChip(selected = showCalendar, onClick = { showCalendar = !showCalendar }, label = { Text(if (showCalendar) "إخفاء التقويم" else "عرض التقويم الشهري") })
                 androidx.compose.material3.FilterChip(selected = selectedDate == null, onClick = { selectedDate = if (selectedDate == null) Dates.today() else null }, label = { Text("كل التواريخ") })
                 if (onScheduleCeremony != null && Permissions.can("committees.finalize")) {
@@ -218,10 +219,7 @@ fun ScheduleScreen(
             Spacer(modifier = Modifier.height(8.dp))
 
             // Filter Tabs
-            Row(
-                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
+            ChipFlow(Modifier.fillMaxWidth(), 8.dp) {
                 listOf(
                     "all" to "كافة المهام (${dayTasks.size})",
                     "pending" to "قيد التنفيذ (${dayTasks.count { !it.completed }})",
@@ -611,12 +609,7 @@ fun AddTaskDialog(
                     fontWeight = FontWeight.Bold,
                     color = tFg(Primary800)
                 )
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
+                ChipFlow(Modifier.fillMaxWidth(), 6.dp) {
                     types.forEach { (key, label) ->
                         val isSel = type == key
                         Box(

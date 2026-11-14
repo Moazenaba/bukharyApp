@@ -1,5 +1,6 @@
 package com.example.ui.screens.courses
 
+import com.example.ui.components.ChipFlow
 import com.example.ui.theme.tEdge
 import com.example.ui.theme.tBg
 import com.example.ui.theme.tFg
@@ -120,7 +121,7 @@ fun CoursesScreen(
             }
         }
         item {
-            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            ChipFlow(Modifier.fillMaxWidth(), 6.dp) {
                 listOf(
                     "all" to "جميع الدورات (${courses.size})",
                     "active" to "النشطة (${courses.count { it.status == "active" }})",
@@ -243,7 +244,7 @@ fun CourseFormDialog(course: Course?, onDismiss: () -> Unit, onSave: (Course) ->
                 error?.let { Text(it, color = tFg(Color(0xFFDC2626))) }
                 OutlinedTextField(name, { name = it; error = null }, label = { Text("اسم الدورة *") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 Text("الموسم / النوع", style = MaterialTheme.typography.labelMedium)
-                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                ChipFlow(Modifier, 6.dp) {
                     val options = if (SEASONS.none { it.first == season }) SEASONS + (season to season) else SEASONS
                     options.forEach { (key, label) -> FilterChip(selected = season == key, onClick = { season = key }, label = { Text(label) }) }
                 }
@@ -251,7 +252,7 @@ fun CourseFormDialog(course: Course?, onDismiss: () -> Unit, onSave: (Course) ->
                 DateField(startDate, { startDate = it }, "تاريخ البداية")
                 DateField(endDate, { endDate = it }, "تاريخ النهاية المتوقع", allowClear = true)
                 Text("حالة الدورة", style = MaterialTheme.typography.labelMedium)
-                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                ChipFlow(Modifier, 6.dp) {
                     STATUS_LABELS.forEach { (key, label) -> FilterChip(selected = status == key, onClick = { status = key }, label = { Text(label) }) }
                 }
                 OutlinedTextField(

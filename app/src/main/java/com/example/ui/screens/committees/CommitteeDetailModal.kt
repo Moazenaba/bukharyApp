@@ -1,5 +1,6 @@
 package com.example.ui.screens.committees
 
+import com.example.ui.components.ChipFlow
 import com.example.ui.theme.tEdge
 import com.example.ui.theme.tBg
 import com.example.ui.theme.tFg
@@ -264,34 +265,28 @@ fun CommitteeDetailModal(
                         style = MaterialTheme.typography.bodySmall,
                         color = tFg(TextMuted)
                     )
-                    if (inScope && Permissions.can("committees.update")) {
-                        androidx.compose.material3.TextButton(
-                            onClick = { activeTab = COMMITTEE_DATA_TAB },
-                            modifier = Modifier.testTag("btn_edit_committee_data")
-                        ) { Text("تعديل بيانات اللجنة (الرقم، الاسم، الشيخ، المكان، الكتاب، الطلاب)") }
-                    }
                 }
             }
 
             Spacer(modifier = Modifier.height(14.dp))
 
             // Detail Navigation Tabs
-            Row(
+            // Wraps onto two lines so every tab is visible (it used to scroll sideways, 2.5 tabs showing),
+            // in the order the work happens; editing the committee's data is last.
+            ChipFlow(
                 modifier = Modifier
-                    .fillMaxWidth()
                     .clip(RoundedCornerShape(12.dp))
                     .background(tBg(Color(0xFFE2E8F0)))
-                    .horizontalScroll(rememberScrollState())
                     .padding(4.dp),
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                spacing = 4.dp
             ) {
                 listOf(
                     0 to "المراحل التسع 📌",
-                    COMMITTEE_DATA_TAB to "تعديل بيانات اللجنة",
                     1 to "الاستلام والجاهزية 🤝",
                     2 to "التصحيح والتجميع ✏️",
                     5 to "كشف الدرجات 🟣",
-                    3 to "حفل التكريم 🎓"
+                    3 to "حفل التكريم 🎓",
+                    COMMITTEE_DATA_TAB to "تعديل بيانات اللجنة"
                 ).forEach { (idx, title) ->
                     val isSel = activeTab == idx
                     Box(

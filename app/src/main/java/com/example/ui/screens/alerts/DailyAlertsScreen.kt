@@ -1,5 +1,6 @@
 package com.example.ui.screens.alerts
 
+import com.example.ui.components.ChipFlow
 import com.example.ui.theme.tEdge
 import com.example.ui.theme.tBg
 import com.example.ui.theme.tFg
@@ -150,7 +151,7 @@ fun DailyAlertsScreen(
                 "📅 ${if (allSchedule) "كافة المواعيد المجدولة" else longArabicDate(selectedDate)} — مربوطة بجدول تقويم المواعيد.",
                 Icons.Default.NotificationsActive, listOf(Primary800, Color(0xFF0F766E))
             ) {
-                Row(Modifier.padding(top = 8.dp).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                ChipFlow(Modifier.padding(top = 8.dp), 6.dp) {
                     if (canScheduleCeremonies) OutlinedButton(onClick = { addingCeremony = true }) { Text("+ إضافة وجدولة حفلة", color = Color.White) }
                     if (canWriteTasks) OutlinedButton(onClick = { onLoadAssignableUsers(); addingTask = true }) { Text("+ إضافة عمل / تنبيه لليوم", color = Color.White) }
                     OutlinedButton(onClick = onNavigateCalendar) { Text("عرض جدول التقويم الكامل ↗", color = Color.White) }
@@ -163,7 +164,7 @@ fun DailyAlertsScreen(
                 FilterChip(selected = !allSchedule, onClick = { allSchedule = false }, label = { Text("اليوم المحدد (${tasks.count { it.date == selectedDate }})") })
                 FilterChip(selected = allSchedule, onClick = { allSchedule = true }, label = { Text("كافة المواعيد (${tasks.size})") })
             }
-            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            ChipFlow(Modifier, 6.dp) {
                 quickDays.forEach { (iso, label) ->
                     val n = tasks.count { it.date == iso }
                     FilterChip(
@@ -249,7 +250,7 @@ fun DailyAlertsScreen(
                     }
                     Spacer(Modifier.width(10.dp))
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        ChipFlow(Modifier, 6.dp) {
                             Text(typeLabel(t.type), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                             Text("📅 ${t.date}", style = MaterialTheme.typography.labelSmall)
                             t.committeeNumber?.let { Text("لجنة #$it", style = MaterialTheme.typography.labelSmall, color = tFg(Color(0xFF0F766E))) }
@@ -341,7 +342,7 @@ fun CeremonyQuickDialog(
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                 )
                 Text("المشايخ الحاضرون", fontWeight = FontWeight.Bold)
-                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                ChipFlow(Modifier, 4.dp) {
                     sheikhs.forEachIndexed { i, s ->
                         InputChip(selected = false, onClick = { sheikhs = sheikhs.filterIndexed { j, _ -> j != i } }, label = { Text("$s ✕") })
                     }

@@ -1,5 +1,6 @@
 package com.example.ui.screens.course_tracker
 
+import com.example.ui.components.ChipFlow
 import com.example.ui.theme.tEdge
 import com.example.ui.theme.tBg
 import com.example.ui.theme.tFg
@@ -190,7 +191,7 @@ fun SummerCourseTrackerScreen(
                 "نظام المتابعة الإدارية للكشوفات ورصد درجات المتون العلمية، مربوط بلجان المسابقة.",
                 Icons.Default.TableChart, listOf(Color(0xFF003B36), Primary800)
             ) {
-                Row(Modifier.padding(top = 8.dp).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                ChipFlow(Modifier.padding(top = 8.dp), 6.dp) {
                     if (canWriteCourses) OutlinedButton(onClick = { addingCourse = true }) { Text("+ دورة جديدة", color = Color.White) }
                     if (canCreateCommittees) OutlinedButton(onClick = { addingRow = true }) { Text("+ إضافة صف ولجنة", color = Color.White) }
                     if (canEdit) OutlinedButton(onClick = { pickFile.launch("*/*") }) { Text("استيراد Excel/CSV", color = Color.White) }
@@ -204,7 +205,7 @@ fun SummerCourseTrackerScreen(
             Row(verticalAlignment = Alignment.CenterVertically) { CircularProgressIndicator(); Spacer(Modifier.width(8.dp)); Text("جارٍ قراءة الجدول من الصورة...") }
         }
         item {
-            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            ChipFlow(Modifier, 6.dp) {
                 FilterChip(selected = selectedCourseId == null, onClick = { onSelectCourse(null) }, label = { Text("كافة الدورات (${rows.size})") })
                 courses.forEach { c ->
                     FilterChip(
@@ -239,7 +240,7 @@ fun SummerCourseTrackerScreen(
                 query, { query = it }, Modifier.fillMaxWidth(), singleLine = true, leadingIcon = { Icon(Icons.Default.Search, null) },
                 placeholder = { Text("بحث بالرقم، الشيخ، المكان، الكتاب، الملاحظات...") }, shape = RoundedCornerShape(14.dp)
             )
-            Row(Modifier.padding(top = 6.dp).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            ChipFlow(Modifier.padding(top = 6.dp), 6.dp) {
                 listOf(
                     "all" to "الكل", "not_delivered" to "في انتظار الامتحان", "delivered" to "تم الامتحان", "corrected" to "تم التصحيح",
                     "reviewed" to "تمت المراجعة", "announced" to "تم الإعلان", "no_ceremony" to "لم يتم الحفل", "ceremony" to "تم الحفل", "uncertain" to "يحتاج تدقيق", "struck_out" to "مشطوب"
@@ -290,11 +291,11 @@ fun SummerCourseTrackerScreen(
                     modifier = Modifier.weight(1f)
                 ) { Text("مشاركة PDF") }
             }
-            if (books.isNotEmpty()) Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            if (books.isNotEmpty()) ChipFlow(Modifier, 6.dp) {
                 FilterChip(selected = book == "all", onClick = { book = "all" }, label = { Text("كل الكتب") })
                 books.forEach { b -> FilterChip(selected = book == b, onClick = { book = b }, label = { Text(b) }) }
             }
-            if (places.isNotEmpty()) Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            if (places.isNotEmpty()) ChipFlow(Modifier, 6.dp) {
                 FilterChip(selected = place == "all", onClick = { place = "all" }, label = { Text("كل الأماكن") })
                 places.forEach { p -> FilterChip(selected = place == p, onClick = { place = p }, label = { Text(p) }) }
             }
@@ -337,7 +338,7 @@ fun SummerCourseTrackerScreen(
                         if ((canEdit && !sr.virtual) || (committee != null && Permissions.can("committees.update"))) IconButton(onClick = { editing = sr }) { Icon(Icons.Default.Edit, "تعديل الصف", tint = tFg(Primary700)) }
                         if (canEdit && !sr.virtual) IconButton(onClick = { deleting = r }) { Icon(Icons.Default.Delete, "حذف الصف", tint = tFg(Color(0xFFEF4444))) }
                     }
-                    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    ChipFlow(Modifier, 4.dp) {
                         FLAGS.forEach { (key, label) ->
                             FilterChip(
                                 selected = r.flag(key), enabled = canToggle,
@@ -508,7 +509,7 @@ private fun RowEditDialog(row: SheetRowDto, courses: List<Course>, canEditCommit
                 Row(verticalAlignment = Alignment.CenterVertically) { Checkbox(uncertain, { uncertain = it }); Text("قراءة غير مؤكدة تحتاج تدقيق") }
                 if (!linked) {
                     Text("الدورة", fontWeight = FontWeight.Bold)
-                    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    ChipFlow(Modifier, 6.dp) {
                         courses.forEach { c -> FilterChip(selected = courseId == c.id, onClick = { courseId = c.id }, label = { Text(c.name) }) }
                     }
                 } else Text("الصف مربوط بلجنة؛ رقمها ودورتها ومراحلها تُعدّل من تفاصيل اللجنة.", style = MaterialTheme.typography.labelSmall, color = tFg(TextMuted))
@@ -546,7 +547,7 @@ private fun AddRowDialog(courses: List<Course>, initialCourseId: String?, nextNu
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text("الدورة *", fontWeight = FontWeight.Bold)
-                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                ChipFlow(Modifier, 6.dp) {
                     courses.forEach { c -> FilterChip(selected = courseId == c.id, onClick = { courseId = c.id }, label = { Text(c.name) }) }
                 }
                 OutlinedTextField(number, { number = it.filter(Char::isDigit) }, label = { Text("رقم اللجنة") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
@@ -554,7 +555,7 @@ private fun AddRowDialog(courses: List<Course>, initialCourseId: String?, nextNu
                 OutlinedTextField(place, { place = it }, label = { Text("المكان / الفرع") }, singleLine = true)
                 OutlinedTextField(book, { book = it }, label = { Text("الكتاب") }, singleLine = true)
                 OutlinedTextField(students, { students = it.filter(Char::isDigit) }, label = { Text("عدد الطلاب") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
-                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                ChipFlow(Modifier, 4.dp) {
                     FLAGS.forEach { (k, l) -> FilterChip(selected = k in flags, onClick = { flags = if (k in flags) flags - k else flags + k }, label = { Text(l) }) }
                 }
                 OutlinedTextField(notes, { notes = it }, label = { Text("ملاحظات") })
