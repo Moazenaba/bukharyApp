@@ -166,6 +166,7 @@ fun MenuScreen(
         }
         item { Text("الحساب", style = MaterialTheme.typography.labelMedium, color = tFg(TextMuted), fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 8.dp)) }
         item { MenuRow("تغيير كلمة المرور", Icons.Default.Key, null, onClick = onChangePassword) }
+        item { com.example.ui.components.UpdateRow() }
         item { ThemeChooser(themeMode, onThemeMode) }
         item { MenuRow("تسجيل الخروج", Icons.AutoMirrored.Filled.Logout, null, tint = tFg(Color(0xFFDC2626)), onClick = onLogout) }
         item { Spacer(Modifier.padding(16.dp)) }

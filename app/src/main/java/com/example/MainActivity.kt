@@ -683,6 +683,28 @@ class MainActivity : ComponentActivity() {
                     }
                 }
                 com.example.ui.components.UpdatedBanner(visible = justUpdated.value, onDismiss = { justUpdated.value = false })
+                // A newer version is waiting and not installed: say so on screen (it used to happen silently).
+                val updateReport by com.example.update.AppUpdater.report.collectAsStateWithLifecycle()
+                var updateBannerDismissed by remember { androidx.compose.runtime.mutableStateOf(false) }
+                val pending = updateReport?.takeIf { com.example.update.UpdateText.actionable(it.status) }
+                com.example.ui.components.UpdatedBanner(
+                    visible = pending != null && !updateBannerDismissed && !justUpdated.value,
+                    onDismiss = { updateBannerDismissed = true },
+                    title = "في تحديث جديد للتطبيق",
+                    message = pending?.let { com.example.update.UpdateText.title(it) }.orEmpty(),
+                    autoDismissMs = 15_000,
+                    onClick = {
+                        updateBannerDismissed = true
+                        when (pending?.status) {
+                            com.example.update.UpdateStatus.READY -> lifecycleScope.launch { com.example.update.AppUpdater.updateNow(applicationContext) }
+                            com.example.update.UpdateStatus.NEEDS_PERMISSION -> startActivity(com.example.update.AppUpdater.permissionSettingsIntent(this@MainActivity))
+                            com.example.update.UpdateStatus.WRONG_SIGNATURE -> runCatching {
+                                startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(pending?.apkUrl.orEmpty())))
+                            }
+                            else -> Unit
+                        }
+                    }
+                )
             }
         }
     }

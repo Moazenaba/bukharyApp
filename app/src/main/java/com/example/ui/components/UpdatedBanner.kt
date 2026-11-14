@@ -43,11 +43,20 @@ import com.example.ui.motion.rememberReducedMotion
  * itself (or on a tap). [visible] is true only on the first open of a new version.
  */
 @Composable
-fun UpdatedBanner(visible: Boolean, onDismiss: () -> Unit, modifier: Modifier = Modifier) {
+fun UpdatedBanner(
+    visible: Boolean,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+    title: String = WhatsNew.TITLE,
+    message: String = WhatsNew.MESSAGE,
+    autoDismissMs: Long = 9_000,
+    /** What a tap does; by default it just closes the banner. */
+    onClick: (() -> Unit)? = null
+) {
     val reduced = rememberReducedMotion()
     LaunchedEffect(visible) {
         if (visible) {
-            kotlinx.coroutines.delay(9_000)
+            kotlinx.coroutines.delay(autoDismissMs)
             onDismiss()
         }
     }
@@ -67,7 +76,7 @@ fun UpdatedBanner(visible: Boolean, onDismiss: () -> Unit, modifier: Modifier = 
                     .padding(horizontal = 12.dp, vertical = 8.dp)
                     .fillMaxWidth()
                     .background(Color(0xFF0F766E), RoundedCornerShape(16.dp))
-                    .clickable(onClickLabel = "إغلاق") { onDismiss() }
+                    .clickable(onClickLabel = if (onClick != null) "فتح" else "إغلاق") { (onClick ?: onDismiss)() }
                     .padding(14.dp)
                     .semantics { liveRegion = LiveRegionMode.Polite },
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -75,8 +84,8 @@ fun UpdatedBanner(visible: Boolean, onDismiss: () -> Unit, modifier: Modifier = 
             ) {
                 Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color.White)
                 Column {
-                    Text(WhatsNew.TITLE, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Black, color = Color.White)
-                    Text(WhatsNew.MESSAGE, style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.92f))
+                    Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Black, color = Color.White)
+                    Text(message, style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.92f))
                 }
             }
         }

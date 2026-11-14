@@ -194,6 +194,7 @@ private fun SimpleTopBar(
     onFullView: () -> Unit
 ) {
     var open by remember { mutableStateOf(false) }
+    var showUpdate by remember { mutableStateOf(false) }
     TopAppBar(
         title = { Text("مسابقات الإمام البخاري", fontWeight = FontWeight.Bold) },
         actions = {
@@ -215,9 +216,18 @@ private fun SimpleTopBar(
                         text = { Text("المظهر: ${themeMode.label}") },
                         onClick = { onThemeMode(ThemeMode.entries[(themeMode.ordinal + 1) % ThemeMode.entries.size]) }
                     )
+                    DropdownMenuItem(text = { Text("تحديث التطبيق") }, onClick = { open = false; showUpdate = true })
                     DropdownMenuItem(text = { Text("تغيير كلمة السر") }, onClick = { open = false; onChangePassword() })
                     DropdownMenuItem(text = { Text("العرض الكامل") }, onClick = { open = false; onFullView() })
                     DropdownMenuItem(text = { Text("تسجيل الخروج") }, onClick = { open = false; onLogout() })
+                }
+                if (showUpdate) {
+                    androidx.compose.material3.AlertDialog(
+                        onDismissRequest = { showUpdate = false },
+                        title = { Text("تحديث التطبيق") },
+                        text = { com.example.ui.components.UpdateRow() },
+                        confirmButton = { androidx.compose.material3.TextButton(onClick = { showUpdate = false }) { Text("إغلاق") } }
+                    )
                 }
             }
         }
