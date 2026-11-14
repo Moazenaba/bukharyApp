@@ -38,6 +38,8 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -49,6 +51,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.data.remote.AssignableUserDto
+import com.example.data.remote.Permissions
 import com.example.data.model.Committee
 import com.example.domain.DayText
 import com.example.domain.NextStep
@@ -94,6 +97,9 @@ fun SimpleCommitteeScreen(
     onBack: () -> Unit,
     onDoStep: () -> Unit,
     onOpenForm: (tab: Int) -> Unit,
+    /** The exam papers the server lets this user see, and how to open one. */
+    exams: List<com.example.data.model.Exam> = emptyList(),
+    onOpenExam: (com.example.data.model.Exam) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     BackHandler(onBack = onBack)
@@ -129,7 +135,21 @@ fun SimpleCommitteeScreen(
                     modifier = Modifier.fillMaxWidth().heightIn(min = 6.dp, max = 6.dp),
                     color = tFg(Primary600), trackColor = tBg(Primary100)
                 )
-                Text("أنجزنا ${step.done} من ${step.total} مراحل", style = MaterialTheme.typography.labelMedium, color = tFg(TextMuted))
+                // A stage was just completed: the count pops with a springy settle (not when the screen first opens).
+                val pop = remember { androidx.compose.animation.core.Animatable(1f) }
+                var seenDone by remember { mutableStateOf(step.done) }
+                androidx.compose.runtime.LaunchedEffect(step.done) {
+                    if (step.done > seenDone && !reduced) {
+                        pop.snapTo(0.7f)
+                        pop.animateTo(1f, spring(dampingRatio = 0.45f, stiffness = Spring.StiffnessMedium))
+                    }
+                    seenDone = step.done
+                }
+                Text(
+                    "أنجزنا ${step.done} من ${step.total} مراحل",
+                    style = MaterialTheme.typography.labelMedium, color = tFg(TextMuted),
+                    modifier = Modifier.graphicsLayer { scaleX = pop.value; scaleY = pop.value }
+                )
             }
 
             // 2. Next step
@@ -175,6 +195,23 @@ fun SimpleCommitteeScreen(
                     }
                 }
                 TextButton(onClick = { onOpenForm(LEGACY_EDIT_TAB) }) { Text("تعديل بيانات اللجنة") }
+            }
+
+            // 3b. The exam paper of this committee's book, with its lock («تُتاح الأحد 10 ص») when it is still closed.
+            val paper = exams.firstOrNull { it.hasFile && it.book.trim() == committee.competitionBook.trim() && Permissions.canOpenExam(it.id) }
+            if (paper != null) {
+                val lock = com.example.ui.screens.exams.ExamLock.text(paper)
+                val closed = lock?.first == true
+                SimpleCard {
+                    SectionTitle("ورقة الامتحان")
+                    Text(paper.pdfFileName.ifBlank { paper.title }, style = MaterialTheme.typography.bodyMedium, color = tFg(Color(0xFF0F172A)))
+                    if (lock != null) Text(lock.second, style = MaterialTheme.typography.bodySmall, color = tFg(if (closed) Color(0xFFB91C1C) else TextMuted))
+                    Button(
+                        onClick = { onOpenExam(paper) },
+                        enabled = !closed,
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                    ) { Text(if (closed) "مقفولة حاليًا" else "فتح ورقة الامتحان", fontWeight = FontWeight.Bold) }
+                }
             }
 
             // 4. Team

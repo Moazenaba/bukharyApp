@@ -1,0 +1,71 @@
+name: Auto merge
+
+# Merges a pull request by itself once the "CI" workflow has passed on its latest commit, so a
+# change never reaches main before its tests have finished (and one that fails never does).
+#
+# - It merges exactly the commit that was tested (--match-head-commit): if a commit was pushed
+#   after the tests started, nothing is merged until the new commit has passed too.
+# - Drafts, pull requests from forks and pull requests labelled "no-auto-merge" are left alone.
+# - A merge conflict makes this run fail and the pull request stays open.
+# - Merge commit, like a manual merge.
+#
+# Token: with the secret AUTO_MERGE_TOKEN (a token for this repository only: Contents and Pull
+# requests, read and write) the merge is made as its owner, and GitHub then runs CI on main for
+# it. Without the secret the workflow's own token merges, which works too, but GitHub does not
+# start any workflow for a push made by that token, so CI does not run on main afterwards.
+# (A workflow_run workflow only runs from the default branch, so changes to this file take
+# effect once they are on main.)
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  merge:
+    name: Merge after CI
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.conclusion == 'success'
+    steps:
+      - name: Merge the tested commit
+        env:
+          GH_TOKEN: ${{ secrets.AUTO_MERGE_TOKEN || secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          SHA: ${{ github.event.workflow_run.head_sha }}
+          HEAD_REPO: ${{ github.event.workflow_run.head_repository.full_name }}
+          BRANCH: ${{ github.event.workflow_run.head_branch }}
+        run: |
+          set -euo pipefail
+          if [ "$HEAD_REPO" != "$REPO" ]; then
+            echo "Pull request from a fork: not merged automatically."
+            exit 0
+          fi
+          prs=$(gh pr list --repo "$REPO" --head "$BRANCH" --state open \
+            --json number,isDraft,headRefOid,baseRefName,labels)
+          count=$(echo "$prs" | jq 'length')
+          if [ "$count" -eq 0 ]; then
+            echo "No open pull request for $BRANCH (already merged or closed)."
+            exit 0
+          fi
+          echo "$prs" | jq -c '.[]' | while read -r pr; do
+            number=$(echo "$pr" | jq -r '.number')
+            if [ "$(echo "$pr" | jq -r '.baseRefName')" != "$DEFAULT_BRANCH" ]; then
+              echo "#$number does not target $DEFAULT_BRANCH: skipped."; continue
+            fi
+            if [ "$(echo "$pr" | jq -r '.isDraft')" = "true" ]; then
+              echo "#$number is a draft: skipped."; continue
+            fi
+            if echo "$pr" | jq -e '[.labels[].name] | index("no-auto-merge")' > /dev/null; then
+              echo "#$number has the no-auto-merge label: skipped."; continue
+            fi
+            if [ "$(echo "$pr" | jq -r '.headRefOid')" != "$SHA" ]; then
+              echo "#$number has a newer commit than the one that passed: waiting for its CI."; continue
+            fi
+            echo "CI passed on $SHA: merging #$number."
+            gh pr merge "$number" --repo "$REPO" --merge --match-head-commit "$SHA"
+          done

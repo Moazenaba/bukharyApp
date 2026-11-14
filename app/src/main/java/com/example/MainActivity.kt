@@ -119,6 +119,24 @@ class MainActivity : ComponentActivity() {
             (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES
         com.example.ui.theme.ThemeState.dark = com.example.ui.theme.ThemeMode.isDark(themeMode.value, phoneIsDark())
 
+        // After an update: once, on the first open of the new version, a banner at the top and a notification in
+        // the phone's notification list (not on a fresh install, and not on the next opens of the same version).
+        val justUpdated = androidx.compose.runtime.mutableStateOf(false)
+        run {
+            val stored = if (uiPrefs.contains("last_version_code")) uiPrefs.getInt("last_version_code", 0) else null
+            val info = runCatching { packageManager.getPackageInfo(packageName, 0) }.getOrNull()
+            val announce = com.example.domain.WhatsNew.shouldAnnounce(
+                stored, BuildConfig.VERSION_CODE, info?.firstInstallTime ?: 0L, info?.lastUpdateTime ?: 0L
+            )
+            uiPrefs.edit().putInt("last_version_code", BuildConfig.VERSION_CODE).apply()
+            if (announce) {
+                justUpdated.value = true
+                com.example.push.PushNotifications.show(
+                    this, com.example.domain.WhatsNew.TITLE, com.example.domain.WhatsNew.MESSAGE, "info"
+                )
+            }
+        }
+
         setContent {
             BukhariTheme(lightBackgroundBehindStatusBar = !viewModel.isLoggedIn.collectAsStateWithLifecycle().value) {
                 val isLoggedIn by viewModel.isLoggedIn.collectAsStateWithLifecycle()
@@ -445,6 +463,8 @@ class MainActivity : ComponentActivity() {
                                     uiPrefs.edit().putString("shell_pref", com.example.domain.ShellPref.FULL.key).apply()
                                 },
                                 legacyForm = { c, tab, close -> committeeModal(c, tab, close) },
+                                exams = exams,
+                                onOpenExam = { exam -> viewModel.openExamFile(exam) { openPdf(it) } },
                                 modifier = Modifier.padding(innerPadding)
                             )
                         } else Row(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
@@ -662,6 +682,7 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                 }
+                com.example.ui.components.UpdatedBanner(visible = justUpdated.value, onDismiss = { justUpdated.value = false })
             }
         }
     }
