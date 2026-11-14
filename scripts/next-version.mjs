@@ -11,8 +11,10 @@ import fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
 export function nextVersion(gradleText, published) {
-  const code = Number(gradleText.match(/versionCode\s*=\s*(\d+)/)?.[1]);
-  const name = gradleText.match(/versionName\s*=\s*"([^"]+)"/)?.[1];
+  // build.gradle.kts reads an override and falls back to a literal: `versionCode = (...) ?: 12`, so take the
+  // literal after the last `?:` when there is one.
+  const code = Number(gradleText.match(/versionCode\s*=\s*(?:.*\?:\s*)?(\d+)/)?.[1]);
+  const name = gradleText.match(/versionName\s*=\s*(?:.*\?:\s*)?"([^"]+)"/)?.[1];
   if (!Number.isInteger(code) || !name) throw new Error('versionCode / versionName not found in build.gradle.kts');
   const publishedCode = Number(published?.versionCode) || 0;
   const next = Math.max(code, publishedCode + 1);
