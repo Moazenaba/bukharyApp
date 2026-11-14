@@ -31,6 +31,15 @@
 ## مهارات مراجعة التصميم (UI/UX)
 في `.claude/skills/` أربع مهارات لمراجعة وتحسين تصميم **التطبيق فقط** (مش الموقع): `impeccable` و`frontend-design` و`ui-ux-pro-max` و`web-design-guidelines`. المصدر والترخيص وما اتغيّر في كل واحدة في `.claude/skills/SOURCES.md`. مكتوبة للويب، فالمبادئ بتنطبق على Compose والقواعد الخاصة بالويب بتتترجم لمعادلها في أندرويد.
 
+## الدمج التلقائي
+
+أي PR بيتدمج لوحده لما الـ CI (`CI`) يعدّي على آخر commit فيه (`.github/workflows/auto-merge.yml`):
+- بيدمج نفس الـ commit اللي اتختبر بالظبط. لو اتضاف commit بعدها، بيستنى الـ CI بتاعه.
+- بيسيب الـ drafts وPRs الـ forks وأي PR عليه label اسمه `no-auto-merge` (استخدمه لو عايز تدمج بإيدك).
+- الـ CI لو فشل، مفيش دمج. ولو فيه conflict، الـ PR بيفضل مفتوح والـ workflow بيفشل.
+- الأفضل تضيف سر باسم `AUTO_MERGE_TOKEN` (توكن للريبو ده بس: Contents وPull requests قراءة وكتابة): بيخلي الدمج باسمك وبيشغّل الـ CI على `main` بعده. من غيره بيدمج برضه، بس الـ CI ما بيشتغلش على `main` بعد الدمج.
+- لو عايز تمنع الدمج اليدوي المبكر: Settings > Branches > قاعدة على `main` > Require status checks > `Unit tests and builds`.
+
 ## الاختبارات
 ```bash
 ./gradlew testDebugUnitTest
