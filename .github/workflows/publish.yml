@@ -55,26 +55,6 @@ jobs:
           java-version: 17
       - uses: gradle/actions/setup-gradle@v4
 
-      - name: Unit tests
-        run: chmod +x gradlew && ./gradlew --no-daemon testDebugUnitTest
-
-      - name: Build the signed release
-        run: |
-          chmod +x gradlew
-          echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
-          KEYSTORE_PATH="$RUNNER_TEMP/release.jks" ./gradlew --no-daemon assembleRelease -PrequireReleaseSigning=true -PAPI_BASE_URL="$API_BASE_URL"
-          ls -l app/build/outputs/apk/release/
-
-      - name: Remove the key from the runner
-        if: always()
-        run: rm -f "$RUNNER_TEMP/release.jks"
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: bukhari-release-apk
-          path: app/build/outputs/apk/release/*.apk
-          retention-days: 30
-
       - name: Check out the web app
         uses: actions/checkout@v4
         with:
@@ -86,6 +66,32 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+
+      # The next versionCode is the published one + 1 (or the one in build.gradle.kts if that is
+      # higher), so the button never fails with "versionCode is not newer".
+      - name: Work out the version
+        id: version
+        run: node scripts/next-version.mjs app/build.gradle.kts web/public/app/android.json
+
+      - name: Unit tests
+        run: chmod +x gradlew && ./gradlew --no-daemon testDebugUnitTest
+
+      - name: Build the signed release
+        run: |
+          chmod +x gradlew
+          echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
+          KEYSTORE_PATH="$RUNNER_TEMP/release.jks" ./gradlew --no-daemon assembleRelease -PrequireReleaseSigning=true -PAPI_BASE_URL="$API_BASE_URL" -PversionCodeOverride=${{ steps.version.outputs.code }} -PversionNameOverride=${{ steps.version.outputs.name }}
+          ls -l app/build/outputs/apk/release/
+
+      - name: Remove the key from the runner
+        if: always()
+        run: rm -f "$RUNNER_TEMP/release.jks"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bukhari-release-apk
+          path: app/build/outputs/apk/release/*.apk
+          retention-days: 30
 
       # Rejects an APK that is another app, signed with another key, or not newer than the
       # published one (Android would refuse such an update).
