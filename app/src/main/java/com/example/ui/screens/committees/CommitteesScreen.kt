@@ -35,6 +35,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -391,6 +392,9 @@ fun CommitteeCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
+            val step = com.example.domain.NextStep.of(committee) { com.example.data.remote.Permissions.canOn(it, committee.id) }
+            val late = com.example.ui.components.Overdue.committees(listOf(committee), com.example.data.remote.AppSettings.current.overdueDays).firstOrNull()
+            // Header: number, name, and who/where in one line; call and edit are icons, not rows of their own.
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
                     modifier = Modifier
@@ -417,12 +421,29 @@ fun CommitteeCard(
                         color = tFg(Primary900)
                     )
                     Text(
-                        text = "${committee.branch} • ${if (committee.isWomenCommittee) "مصلى الأخوات" else "مصلى الرجال"} • ${committee.studentsCount} طالباً",
+                        text = listOf(
+                            committee.sheikhName,
+                            committee.sheikhCountry.ifBlank { committee.branch },
+                            if (committee.studentsCount > 0) "${committee.studentsCount} طالب" else ""
+                        ).filter { it.isNotBlank() }.joinToString(" • "),
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
                         style = MaterialTheme.typography.bodySmall,
                         color = tFg(TextMuted)
                     )
                 }
-                // ✏️ Edit the committee's data (what was entered when it was added).
+                if (committee.sheikhPhone.isNotBlank()) {
+                    IconButton(onClick = {
+                        try {
+                            context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:${committee.sheikhPhone}")))
+                        } catch (e: ActivityNotFoundException) {
+                            com.example.ui.components.UiMessages.show("لا يوجد تطبيق اتصال على هذا الجهاز")
+                        }
+                    }) {
+                        Icon(Icons.Default.Call, contentDescription = "اتصال بالشيخ ${committee.sheikhName}", tint = tFg(Primary700))
+                    }
+                }
+                // Edit the committee's data (what was entered when it was added).
                 if (onEdit != null) {
                     IconButton(onClick = onEdit, modifier = Modifier.testTag("btn_edit_committee_${committee.id}")) {
                         Icon(Icons.Default.Edit, contentDescription = "تعديل بيانات اللجنة", tint = tFg(Primary700))
@@ -430,26 +451,42 @@ fun CommitteeCard(
                 }
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
-
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.MenuBook,
-                    contentDescription = "كتاب المسابقة",
-                    tint = tFg(TextMuted),
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                Text(
-                    text = committee.competitionBook,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = tFg(Primary900)
-                )
+            if (committee.competitionBook.isNotBlank()) {
+                Spacer(modifier = Modifier.height(6.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.MenuBook,
+                        contentDescription = "كتاب المسابقة",
+                        tint = tFg(TextMuted),
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = committee.competitionBook,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = tFg(Primary900)
+                    )
+                }
             }
 
+            // What it is waiting for, in red when late (with how long); the exam day beside it.
+            Spacer(modifier = Modifier.height(8.dp))
+            val nowBg = when { step.kind == com.example.domain.StepKind.DONE -> Color(0xFFECFDF5); late != null -> Color(0xFFFFF1F2); else -> Color(0xFFFFFBEB) }
+            val nowInk = when { step.kind == com.example.domain.StepKind.DONE -> Color(0xFF065F46); late != null -> Color(0xFFB91C1C); else -> Color(0xFF92400E) }
+            Text(
+                text = when {
+                    step.kind == com.example.domain.StepKind.DONE -> "اكتملت كل المراحل"
+                    late != null -> "متأخرة — ${late.reason}"
+                    else -> "المطلوب الآن: ${step.waiting}"
+                },
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold,
+                color = tFg(nowInk),
+                modifier = Modifier.fillMaxWidth().background(tBg(nowBg), RoundedCornerShape(10.dp)).padding(horizontal = 10.dp, vertical = 8.dp)
+            )
             // Web: «الامتحان النهارده» / «بكرة» / «فات ميعاده» while the exam is not recorded.
             com.example.ui.components.ExamDates.status(committee)?.let { st ->
                 val (bg, fg) = when (st.tone) {
@@ -468,40 +505,9 @@ fun CommitteeCard(
                 )
             }
 
-            if (committee.sheikhName.isNotBlank()) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "الشيخ: ${committee.sheikhName}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = tFg(Color(0xFF334155))
-                    )
-                    if (committee.sheikhPhone.isNotBlank()) {
-                        TextButton(onClick = {
-                            try {
-                                context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:${committee.sheikhPhone}")))
-                            } catch (e: ActivityNotFoundException) {
-                                com.example.ui.components.UiMessages.show("لا يوجد تطبيق اتصال على هذا الجهاز")
-                            }
-                        }) {
-                            Icon(
-                                imageVector = Icons.Default.Call,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("اتصال بالشيخ", style = MaterialTheme.typography.labelMedium)
-                        }
-                    }
-                }
-            }
-
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Progress: one readable fact instead of nine unlabeled dots.
+            // Progress: the state in words, the count, and a bar.
             Column(
                 modifier = Modifier.semantics(mergeDescendants = true) {
                     contentDescription = "المرحلة الحالية: $activeName، أنجزت $doneCount من $totalStages مراحل"
@@ -512,10 +518,11 @@ fun CommitteeCard(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    StageBadge(
-                        stageKey = activeStageKey,
-                        completed = true,
-                        showActiveLabel = true
+                    Text(
+                        text = activeName,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = tFg(Primary700)
                     )
                     Text(
                         text = "$doneCount من $totalStages",
@@ -523,7 +530,7 @@ fun CommitteeCard(
                         color = tFg(TextMuted)
                     )
                 }
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(6.dp))
                 LinearProgressIndicator(
                     progress = { doneCount / totalStages.toFloat() },
                     modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)),
@@ -532,26 +539,20 @@ fun CommitteeCard(
                 )
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Web: reception and exam readiness, each with who and when, straight from the card.
-            if (onReceive != null || onApproveReadiness != null) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    if (onReceive != null) {
-                        OutlinedButton(onClick = onReceive, modifier = Modifier.weight(1f)) {
-                            Text(if (committee.receivedByAssistant != null) "إلغاء الاستلام" else "📥 توثيق الاستلام", style = MaterialTheme.typography.labelMedium)
-                        }
-                    }
-                    if (onApproveReadiness != null) {
-                        OutlinedButton(onClick = onApproveReadiness, modifier = Modifier.weight(1f)) {
-                            Text(if (committee.examApprovedBy != null) "إلغاء الجاهزية" else "✅ اعتماد الجاهزية", style = MaterialTheme.typography.labelMedium)
-                        }
-                    }
+            // Only the step that is pending (reception, then exam readiness); undoing either is in the details.
+            if (committee.receivedByAssistant == null && onReceive != null) {
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedButton(onClick = onReceive, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                    Text("توثيق استلام اللجنة", style = MaterialTheme.typography.labelLarge)
                 }
-                committee.receivedByAssistant?.let { Text("استلمها: ${it.receivedByName} — ${com.example.ui.components.Dates.displayTime(it.receivedAt)}", style = MaterialTheme.typography.labelSmall, color = tFg(Color(0xFF047857))) }
-                committee.examApprovedBy?.let { Text("اعتمد الجاهزية: ${it.approvedByName} — ${com.example.ui.components.Dates.displayTime(it.approvedAt)}", style = MaterialTheme.typography.labelSmall, color = tFg(Color(0xFF1D4ED8))) }
+            } else if (committee.examApprovedBy == null && onApproveReadiness != null) {
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedButton(onClick = onApproveReadiness, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                    Text("اعتماد جاهزية الامتحان", style = MaterialTheme.typography.labelLarge)
+                }
             }
 
+            Spacer(modifier = Modifier.height(4.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,

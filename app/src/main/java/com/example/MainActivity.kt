@@ -445,6 +445,8 @@ class MainActivity : ComponentActivity() {
                                     uiPrefs.edit().putString("shell_pref", com.example.domain.ShellPref.FULL.key).apply()
                                 },
                                 legacyForm = { c, tab, close -> committeeModal(c, tab, close) },
+                                exams = exams,
+                                onOpenExam = { exam -> viewModel.openExamFile(exam) { openPdf(it) } },
                                 modifier = Modifier.padding(innerPadding)
                             )
                         } else Row(modifier = Modifier.fillMaxSize().padding(innerPadding)) {

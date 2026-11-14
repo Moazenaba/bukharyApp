@@ -2,6 +2,13 @@ package com.example.ui.simple
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -25,6 +32,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -87,6 +95,8 @@ fun SimpleShell(
     onLogout: () -> Unit,
     onFullView: () -> Unit,
     legacyForm: @Composable (Committee, Int, onClose: () -> Unit) -> Unit,
+    exams: List<com.example.data.model.Exam> = emptyList(),
+    onOpenExam: (com.example.data.model.Exam) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var tabIndex by rememberSaveable { mutableStateOf(0) }
@@ -134,22 +144,37 @@ fun SimpleShell(
             }
         }
 
-        if (selected != null) {
-            val step = NextStep.of(selected) { a -> Permissions.canOn(a, selected.id) }
-            val form = legacyTab
-            Box(Modifier.fillMaxSize().padding(0.dp)) {
-                if (form == null) {
-                    SimpleCommitteeScreen(
-                        committee = selected, step = step, today = today, myId = user.id,
-                        candidates = candidates, onLoadCandidates = onLoadCandidates,
-                        onSaveStaff = { ids -> onSaveStaff(selected, ids) },
-                        onBack = onCloseCommittee,
-                        onDoStep = { if (step.oneTap) onOneTap(selected, step) else legacyTab = legacyTabFor(step.kind) },
-                        onOpenForm = { legacyTab = it },
-                        modifier = Modifier.fillMaxSize().let { it }
-                    )
-                } else {
-                    legacyForm(selected, form) { legacyTab = null }
+        // The committee page arrives with a quick start and a long gentle stop (and leaves faster than it came);
+        // with «remove animations» on the phone it just appears. The last committee is kept while it leaves.
+        var lastSelected by remember { mutableStateOf<Committee?>(null) }
+        SideEffect { if (selected != null) lastSelected = selected }
+        AnimatedVisibility(
+            visible = selected != null,
+            enter = if (reduced) EnterTransition.None else
+                slideInVertically(tween(MotionSpec.MEDIUM, easing = MotionSpec.EmphasizedDecelerate)) { it / 10 } +
+                    fadeIn(tween(MotionSpec.MEDIUM, easing = MotionSpec.EmphasizedDecelerate)),
+            exit = if (reduced) ExitTransition.None else
+                fadeOut(tween(MotionSpec.SHORT, easing = MotionSpec.EmphasizedAccelerate))
+        ) {
+            val shown = selected ?: lastSelected
+            if (shown != null) {
+                val step = NextStep.of(shown) { a -> Permissions.canOn(a, shown.id) }
+                val form = legacyTab
+                Box(Modifier.fillMaxSize()) {
+                    if (form == null) {
+                        SimpleCommitteeScreen(
+                            committee = shown, step = step, today = today, myId = user.id,
+                            candidates = candidates, onLoadCandidates = onLoadCandidates,
+                            onSaveStaff = { ids -> onSaveStaff(shown, ids) },
+                            onBack = onCloseCommittee,
+                            onDoStep = { if (step.oneTap) onOneTap(shown, step) else legacyTab = legacyTabFor(step.kind) },
+                            onOpenForm = { legacyTab = it },
+                            exams = exams, onOpenExam = onOpenExam,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    } else {
+                        legacyForm(shown, form) { legacyTab = null }
+                    }
                 }
             }
         }
