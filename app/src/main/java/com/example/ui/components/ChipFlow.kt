@@ -3,7 +3,7 @@ package com.example.ui.components
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.FlowRowScope
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -20,12 +20,14 @@ import androidx.compose.ui.unit.dp
 fun ChipFlow(
     modifier: Modifier = Modifier,
     spacing: Dp = 6.dp,
-    content: @Composable FlowRowScope.() -> Unit
+    content: @Composable RowScope.() -> Unit
 ) {
     FlowRow(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(spacing),
-        verticalArrangement = Arrangement.spacedBy(spacing),
-        content = content
-    )
+        verticalArrangement = Arrangement.spacedBy(spacing)
+    ) {
+        // FlowRowScope is a RowScope; callers only see the stable type, so none of them needs an opt-in.
+        content()
+    }
 }

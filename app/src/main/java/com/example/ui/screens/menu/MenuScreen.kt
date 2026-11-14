@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.AddCircle
 import androidx.compose.material.icons.filled.Badge
 import androidx.compose.material.icons.filled.CalendarMonth
@@ -153,7 +154,7 @@ fun MenuScreen(
             }
         }
         // For sheikhs and committee heads: the simple look is the first thing in the menu, not buried at the bottom.
-        onTrySimple?.let { go -> item { MenuRow("جرّب الواجهة المبسطة (أسهل وأوضح)", androidx.compose.material.icons.Icons.Default.AutoAwesome, null, onClick = go) } }
+        onTrySimple?.let { go -> item { MenuRow("جرّب الواجهة المبسطة (أسهل وأوضح)", Icons.Default.AutoAwesome, null, onClick = go) } }
         sections.forEach { (title, entries) ->
             val visible = entries.filter { user.canAccessScreen(it.screen) }
             if (visible.isNotEmpty()) {
