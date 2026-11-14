@@ -15,7 +15,7 @@
 
 ## نشر تحديث للأجهزة (بدون متجر)
 التطبيق بيفحص السيرفر لما يتفتح، ولو فيه نسخة أحدث بينزّلها ويثبّتها لوحده (`AppUpdater`). لنشر نسخة:
-1. ارفع `versionCode` و`versionName` في `app/build.gradle.kts`، واعمل merge على `main`.
+1. اعمل merge على `main`. رقم الإصدار بيزيد لوحده: الزرار بياخد آخر رقم منشور ويزوّد عليه 1 (`scripts/next-version.mjs`)، فمفيش داعي ترفع `versionCode` بإيدك. تغيّر أول رقمين من `versionName` في `app/build.gradle.kts` بس لما تبدأ نسخة رئيسية جديدة.
 2. من GitHub: **Actions > Publish Android > Run workflow**، واكتب «ما الجديد».
 3. الـ workflow بيبني نسخة موقّعة ويحطها في مستودع الموقع (`public/app`)، ولما الموقع يتنشر الأجهزة تاخد التحديث.
 
@@ -46,4 +46,4 @@
 - اختبار العقد: `ContractPayloadTest` بيكتب الطلبات في `app/build/contract-payloads/android.json`؛ انسخه لـ
   `tests/contract/android-payloads.json` في مستودع الويب لما الطلبات تتغير.
 - نسخة release للمستخدمين لازم تتوقع: `./gradlew assembleRelease -PrequireReleaseSigning=true -PAPI_BASE_URL=https://...`
-  مع `KEYSTORE_PATH` و`STORE_PASSWORD` و`KEY_PASSWORD`، وارفع `versionCode` في كل إصدار.
+  مع `KEYSTORE_PATH` و`STORE_PASSWORD` و`KEY_PASSWORD`، (الزرار بيحدد `versionCode` تلقائيًا؛ ارفعه بإيدك فقط لو بتبني على جهازك).

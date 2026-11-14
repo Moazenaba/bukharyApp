@@ -39,8 +39,10 @@ android {
     minSdk = 24
     targetSdk = 36
     // Raise on every release: the server can require a minimum versionCode (MIN_ANDROID_VERSION_CODE).
-    versionCode = 12
-    versionName = "1.1.10"
+    // "Publish Android" overrides both with the next number (scripts/next-version.mjs), so they
+    // only matter for builds made on a computer. Change the first two numbers of the name to start a new line.
+    versionCode = (project.findProperty("versionCodeOverride") as String?)?.toIntOrNull() ?: 12
+    versionName = (project.findProperty("versionNameOverride") as String?) ?: "1.1.10"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     firebase.forEach { (k, v) -> buildConfigField("String", "FIREBASE_$k", "\"$v\"") }
