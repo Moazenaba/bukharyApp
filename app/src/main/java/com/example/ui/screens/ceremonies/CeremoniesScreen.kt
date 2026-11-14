@@ -1,5 +1,6 @@
 package com.example.ui.screens.ceremonies
 
+import com.example.ui.components.ChipFlow
 import com.example.ui.theme.tEdge
 import com.example.ui.theme.tBg
 import com.example.ui.theme.tFg
@@ -137,7 +138,7 @@ fun CeremoniesScreen(
                 "مربوطة ببيانات اللجان: أي ميعاد حفل تحدده يظهر في التنبيهات اليومية وتقويم المواعيد.",
                 Icons.Default.Celebration, listOf(Color(0xFF78350F), Primary800)
             ) {
-                Row(Modifier.padding(top = 8.dp).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                ChipFlow(Modifier.padding(top = 8.dp), 6.dp) {
                     OutlinedButton(onClick = onNavigateDailyAlerts) { Text("التنبيهات اليومية ($todayCount حفل اليوم) ↗", color = Color.White) }
                     OutlinedButton(onClick = onNavigateCalendar) { Text("عرض التقويم العام ↗", color = Color.White) }
                 }
@@ -162,13 +163,13 @@ fun CeremoniesScreen(
                 query, { query = it }, Modifier.fillMaxWidth(), singleLine = true, leadingIcon = { Icon(Icons.Default.Search, null) },
                 placeholder = { Text("بحث برقم اللجنة، الشيخ، الكتاب، المسجد...") }, shape = RoundedCornerShape(14.dp)
             )
-            Row(Modifier.padding(top = 6.dp).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            ChipFlow(Modifier.padding(top = 6.dp), 6.dp) {
                 listOf(
                     "all" to "الكل (${committees.size})", "today" to "حفلات اليوم ($todayCount)", "scheduled" to "المجدولة ($upcoming)",
                     "completed" to "المكتملة ($done)", "unscheduled" to "بدون موعد"
                 ).forEach { (k, l) -> FilterChip(selected = filter == k, onClick = { filter = k }, label = { Text(l) }) }
             }
-            if (books.isNotEmpty()) Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            if (books.isNotEmpty()) ChipFlow(Modifier, 6.dp) {
                 FilterChip(selected = book == "all", onClick = { book = "all" }, label = { Text("كافة المتون والكتب") })
                 books.forEach { b -> FilterChip(selected = book == b, onClick = { book = b }, label = { Text(b) }) }
             }
@@ -249,7 +250,7 @@ fun CeremoniesScreen(
                             modifier = Modifier.fillMaxWidth()
                         ) { Text("دعوة الشيخ للحفل على واتساب") }
                     }
-                    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    ChipFlow(Modifier, 6.dp) {
                         if (canFinalize) {
                             OutlinedButton(onClick = { scheduling = c }) { Text(if (date.isNotBlank()) "تعديل الميعاد واليوم" else "جدولة الميعاد واليوم") }
                             Button(
@@ -281,7 +282,7 @@ fun CeremoniesScreen(
                 Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("${c.committeeName} — ${c.competitionBook}", style = MaterialTheme.typography.bodySmall, color = tFg(TextMuted))
                     Text("اختر يوم الحفل *", fontWeight = FontWeight.Bold)
-                    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    ChipFlow(Modifier, 4.dp) {
                         ARABIC_DAYS.forEach { d -> FilterChip(selected = arabicDayName(date) == d, onClick = { date = nextDateForDay(d) }, label = { Text(d) }) }
                     }
                     Text("✓ اليوم المحدد حالياً: يوم ${arabicDayName(date)}", style = MaterialTheme.typography.labelSmall, color = tFg(Color(0xFF047857)))

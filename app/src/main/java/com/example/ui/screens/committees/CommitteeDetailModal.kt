@@ -1,5 +1,6 @@
 package com.example.ui.screens.committees
 
+import com.example.ui.components.ChipFlow
 import com.example.ui.theme.tEdge
 import com.example.ui.theme.tBg
 import com.example.ui.theme.tFg
@@ -228,7 +229,9 @@ fun CommitteeDetailModal(
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // Sheikh & Meta Card
+            // What this committee is waiting for, then its facts in two columns (it used to be one tall box).
+            com.example.ui.components.CommitteeNowCard(committee, onGoTo = { activeTab = it })
+            Spacer(modifier = Modifier.height(10.dp))
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
@@ -236,62 +239,37 @@ fun CommitteeDetailModal(
                 border = androidx.compose.foundation.BorderStroke(1.dp, tEdge(Color(0xFFE2E8F0)))
             ) {
                 Column(modifier = Modifier.padding(14.dp)) {
-                    Text(
-                        text = "📖 الكتاب: ${committee.competitionBook}",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = tFg(Color(0xFF0F766E))
-                    )
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = "الشيخ: ${committee.sheikhName}",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Medium
+                    com.example.ui.components.InfoGrid(
+                        listOf(
+                            "الكتاب" to committee.competitionBook,
+                            "الشيخ" to committee.sheikhName,
+                            "المكان" to committee.sheikhCountry.ifBlank { committee.branch },
+                            "النوع" to (if (committee.isWomenCommittee) "مصلى الأخوات" else "مصلى الرجال"),
+                            "عدد الطلاب" to (if (committee.studentsCount > 0) "${committee.studentsCount}" else "لم يُسجَّل بعد")
                         )
-                        Text(
-                            text = "${committee.studentsCount} طالباً",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = tFg(Color(0xFFB45309))
-                        )
-                    }
-                    Text(
-                        text = "المكان: ${committee.sheikhCountry.ifBlank { committee.branch.ifBlank { "—" } }} • ${if (committee.isWomenCommittee) "مصلى الأخوات" else "مصلى الرجال"}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = tFg(TextMuted)
                     )
-                    if (inScope && Permissions.can("committees.update")) {
-                        androidx.compose.material3.TextButton(
-                            onClick = { activeTab = COMMITTEE_DATA_TAB },
-                            modifier = Modifier.testTag("btn_edit_committee_data")
-                        ) { Text("تعديل بيانات اللجنة (الرقم، الاسم، الشيخ، المكان، الكتاب، الطلاب)") }
-                    }
                 }
             }
 
             Spacer(modifier = Modifier.height(14.dp))
 
             // Detail Navigation Tabs
-            Row(
+            // Wraps onto two lines so every tab is visible (it used to scroll sideways, 2.5 tabs showing),
+            // in the order the work happens; editing the committee's data is last.
+            ChipFlow(
                 modifier = Modifier
-                    .fillMaxWidth()
                     .clip(RoundedCornerShape(12.dp))
                     .background(tBg(Color(0xFFE2E8F0)))
-                    .horizontalScroll(rememberScrollState())
                     .padding(4.dp),
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                spacing = 4.dp
             ) {
                 listOf(
                     0 to "المراحل التسع 📌",
-                    COMMITTEE_DATA_TAB to "تعديل بيانات اللجنة",
                     1 to "الاستلام والجاهزية 🤝",
                     2 to "التصحيح والتجميع ✏️",
                     5 to "كشف الدرجات 🟣",
-                    3 to "حفل التكريم 🎓"
+                    3 to "حفل التكريم 🎓",
+                    COMMITTEE_DATA_TAB to "تعديل بيانات اللجنة"
                 ).forEach { (idx, title) ->
                     val isSel = activeTab == idx
                     Box(

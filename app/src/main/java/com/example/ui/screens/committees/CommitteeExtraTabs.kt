@@ -1,5 +1,6 @@
 package com.example.ui.screens.committees
 
+import com.example.ui.components.ChipFlow
 import com.example.ui.theme.tEdge
 import com.example.ui.theme.tBg
 import com.example.ui.theme.tFg
@@ -110,11 +111,11 @@ fun CommitteeBaseDataTab(
                 Switch(isWomen, { isWomen = it }, enabled = canEditBase)
             }
             Text("الدورة", fontWeight = FontWeight.Bold)
-            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            ChipFlow(Modifier, 6.dp) {
                 courses.forEach { c -> FilterChip(selected = courseId == c.id, onClick = { if (canEditBase) courseId = c.id }, enabled = canEditBase, label = { Text(c.name) }) }
             }
             Text("أعضاء اللجنة", fontWeight = FontWeight.Bold)
-            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            ChipFlow(Modifier, 4.dp) {
                 members.forEachIndexed { i, m ->
                     InputChip(selected = false, enabled = canEditBase, onClick = { members = members.filterIndexed { j, _ -> j != i } }, label = { Text(if (canEditBase) "$m ✕" else m) })
                 }
@@ -186,7 +187,7 @@ fun QuestionScorersSection(
                         Checkbox(q.completed, { if (canScore) onUpdate(q.id, it, q.scorers, q.score, q.notes) }, enabled = canScore)
                         Text(q.label.ifBlank { "السؤال ${q.questionNumber}" }, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
                     }
-                    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    ChipFlow(Modifier, 4.dp) {
                         q.scorers.forEach { s ->
                             InputChip(selected = false, enabled = canScore, onClick = { onUpdate(q.id, q.completed, q.scorers - s, q.score, q.notes) }, label = { Text(if (canScore) "$s ✕" else s) })
                         }

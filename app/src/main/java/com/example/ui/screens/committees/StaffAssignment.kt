@@ -1,5 +1,6 @@
 package com.example.ui.screens.committees
 
+import com.example.ui.components.ChipFlow
 import com.example.ui.theme.tEdge
 import com.example.ui.theme.tBg
 import com.example.ui.theme.tFg
@@ -79,7 +80,7 @@ fun CommitteeStaffSection(
             if (committee.staff.isEmpty()) {
                 Text("لم يُضف أحد لهذه اللجنة بعد.", style = MaterialTheme.typography.bodySmall, color = tFg(TextMuted))
             } else {
-                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                ChipFlow(Modifier, 6.dp) {
                     committee.staff.forEach { s ->
                         AssistChip(onClick = {}, label = { Text(if (s.role == "committee_head") "${s.name} · رئيس لجنة" else s.name) })
                     }

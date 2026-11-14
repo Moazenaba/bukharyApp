@@ -92,19 +92,23 @@ fun InteractiveStageStepper(
 
             Spacer(modifier = Modifier.height(12.dp))
 
+            // The first stage not done yet is marked in red («المطلوب الآن»); the ones after it are plain,
+            // so a committee with 8 of 9 done shows at a glance which one is missing.
+            val nextKey = OrderedStageKeys.firstOrNull { !stages.getStage(it.first).completed }?.first
             OrderedStageKeys.forEachIndexed { index, (key, title) ->
                 val stageItem = stages.getStage(key)
                 val stageSet = StageColorMap[key]
+                val isNext = key == nextKey
 
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 4.dp)
                         .clip(RoundedCornerShape(12.dp))
-                        .background(if (stageItem.completed) stageSet?.bg?.let { tBg(it) } ?: tBg(Color(0xFFF0FDF4)) else tBg(Color(0xFFFAFAFA)))
+                        .background(if (stageItem.completed) stageSet?.bg?.let { tBg(it) } ?: tBg(Color(0xFFF0FDF4)) else if (isNext) tBg(Color(0xFFFFF1F2)) else tBg(Color(0xFFFAFAFA)))
                         .border(
-                            1.dp,
-                            if (stageItem.completed) stageSet?.border?.let { tEdge(it) } ?: tEdge(Color(0xFFBBF7D0)) else tEdge(Color(0xFFEEEEEE)),
+                            if (isNext) 2.dp else 1.dp,
+                            if (stageItem.completed) stageSet?.border?.let { tEdge(it) } ?: tEdge(Color(0xFFBBF7D0)) else if (isNext) tEdge(Color(0xFFFECDD3)) else tEdge(Color(0xFFEEEEEE)),
                             RoundedCornerShape(12.dp)
                         )
                         .clickable(enabled = canEditStage(key)) {
@@ -120,7 +124,7 @@ fun InteractiveStageStepper(
                             .size(28.dp)
                             .clip(CircleShape)
                             .background(
-                                if (stageItem.completed) stageSet?.dot ?: Primary700 else tBg(Color(0xFFE2E8F0))
+                                if (stageItem.completed) stageSet?.dot ?: Primary700 else if (isNext) Color(0xFFE11D48) else tBg(Color(0xFFE2E8F0))
                             ),
                         contentAlignment = Alignment.Center
                     ) {
@@ -136,7 +140,7 @@ fun InteractiveStageStepper(
                                 text = "${index + 1}",
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = tFg(TextMuted)
+                                color = if (isNext) Color.White else tFg(TextMuted)
                             )
                         }
                     }
@@ -160,7 +164,7 @@ fun InteractiveStageStepper(
                                 text = title,
                                 style = MaterialTheme.typography.bodyMedium,
                                 fontWeight = if (stageItem.completed) FontWeight.Bold else FontWeight.Medium,
-                                color = if (stageItem.completed) stageSet?.text?.let { tFg(it) } ?: tFg(Color(0xFF0F172A)) else tFg(Color(0xFF475569))
+                                color = if (stageItem.completed) stageSet?.text?.let { tFg(it) } ?: tFg(Color(0xFF0F172A)) else if (isNext) tFg(Color(0xFFB91C1C)) else tFg(Color(0xFF475569))
                             )
                         }
 
@@ -174,14 +178,14 @@ fun InteractiveStageStepper(
                         }
                     }
 
-                    // Action label
-                    if (canEditStage(key)) {
+                    // Action label: the missing stage says so, even to someone who may not change it.
+                    if (canEditStage(key) || isNext) {
                         Text(
-                            text = if (stageItem.completed) "مكتمل ✓" else "تحديد كمنجز",
+                            text = if (stageItem.completed) "مكتمل ✓" else if (isNext) (if (canEditStage(key)) "المطلوب الآن · تحديد كمنجز" else "المطلوب الآن") else "تحديد كمنجز",
                             style = MaterialTheme.typography.labelSmall,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
-                            color = if (stageItem.completed) stageSet?.text?.let { tFg(it) } ?: tFg(Primary700) else tFg(TextMuted)
+                            color = if (stageItem.completed) stageSet?.text?.let { tFg(it) } ?: tFg(Primary700) else if (isNext) tFg(Color(0xFFB91C1C)) else tFg(TextMuted)
                         )
                     }
                 }

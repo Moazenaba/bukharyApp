@@ -31,7 +31,7 @@ fun NameSuggestions(title: String, names: List<String>, chosen: List<String>, on
     if (left.isEmpty()) return
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
         Text(title, style = MaterialTheme.typography.labelSmall, color = tFg(TextMuted))
-        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        ChipFlow(Modifier, 4.dp) {
             left.forEach { n -> SuggestionChip(onClick = { onPick(n) }, label = { Text("+ $n") }) }
         }
     }

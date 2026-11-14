@@ -1,5 +1,6 @@
 package com.example.ui.screens.exams
 
+import com.example.ui.components.ChipFlow
 import com.example.ui.theme.tEdge
 import com.example.ui.theme.tBg
 import com.example.ui.theme.tFg
@@ -215,7 +216,7 @@ fun ExamsScreen(
             }
             if (tab == 0) {
                 item {
-                Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                ChipFlow(Modifier.fillMaxWidth().padding(vertical = 6.dp), 6.dp) {
                     FilterChip(selected = bookFilter == "all", onClick = { bookFilter = "all" }, label = { Text("كافة الكتب (${exams.size})") })
                     bookNames.forEach { b -> FilterChip(selected = bookFilter == b, onClick = { bookFilter = b }, label = { Text("$b (${exams.count { it.book == b }})") }) }
                 }
@@ -652,7 +653,7 @@ fun AddExamDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
                 if (bookSuggestions.isNotEmpty()) {
-                    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    ChipFlow(Modifier.fillMaxWidth(), 6.dp) {
                         bookSuggestions.filter { book.isBlank() || it.contains(book) }.take(12).forEach { b ->
                             FilterChip(selected = book == b, onClick = { book = b }, label = { Text(b) })
                         }
@@ -666,12 +667,7 @@ fun AddExamDialog(
                     color = tFg(Primary800)
                 )
 
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
+                ChipFlow(Modifier.fillMaxWidth(), 6.dp) {
                     branches.forEach { bName ->
                         val isSel = branch == bName
                         Box(
