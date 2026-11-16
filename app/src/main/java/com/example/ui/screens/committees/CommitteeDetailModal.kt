@@ -316,7 +316,9 @@ fun CommitteeDetailModal(
 
             // Tab 0: Interactive 9 Stages Stepper
             if (activeTab == 0) {
+                MyObservationSection(committee)
                 CommitteeStaffSection(committee, currentUser?.id, staffCandidates, onLoadStaffCandidates, onSaveStaff)
+                CommitteeObserversSection(committee)
                 InteractiveStageStepper(
                     stages = committee.stages,
                     onToggleStage = onToggleStage,

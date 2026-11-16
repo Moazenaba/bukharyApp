@@ -77,6 +77,7 @@ class AuthenticationService(
         Permissions.actions = permissions.actions
         Permissions.role = user.role.roleKey
         Permissions.grantableRoles = permissions.grantableRoles
+        Permissions.observing = permissions.observing
         Permissions.applyServerScope(permissions.committeeScope, permissions.exams)
     }
 
@@ -90,6 +91,7 @@ class AuthenticationService(
         } ?: return
         Permissions.actions = saved.actions
         Permissions.grantableRoles = saved.grantableRoles
+        Permissions.observing = saved.observing
         Permissions.applyServerScope(saved.committeeScope, saved.exams)
     }
 

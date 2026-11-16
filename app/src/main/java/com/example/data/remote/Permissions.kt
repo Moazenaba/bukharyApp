@@ -27,6 +27,13 @@ object Permissions {
     @Volatile
     var grantableRoles: List<String> = listOf("sheikh")
 
+    /** Active «مراقب» assignments: read-only powers on other committees, on top of the role. */
+    @Volatile
+    var observing: List<ObservedRef> = emptyList()
+
+    /** The user's active assignments on this committee (empty when none). */
+    fun observingOn(committeeId: String): List<ObservedRef> = observing.filter { it.committeeId == committeeId }
+
     fun can(action: String): Boolean = actions[action] == true
 
     fun inScope(committeeId: String): Boolean = committeeScope?.contains(committeeId) ?: true
@@ -57,6 +64,7 @@ object Permissions {
         actions = emptyMap()
         role = ""
         grantableRoles = listOf("sheikh")
+        observing = emptyList()
         committeeScope = emptySet()
         examScope = emptySet()
     }

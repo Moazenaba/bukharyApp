@@ -39,6 +39,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material3.Icon
+import com.example.data.remote.Permissions
+import com.example.domain.AssignmentText
 import com.example.domain.DayText
 import com.example.domain.Logistics
 import com.example.domain.NextStep
@@ -152,6 +154,10 @@ fun CommitteeSummaryCard(
             androidx.compose.material3.OutlinedButton(
                 onClick = { callPhone(context, head.phone) }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
             ) { Icon(Icons.Default.Phone, null); Text("  اتصال برئيس اللجنة: ${head.name}") }
+        }
+        // A committee that is only here because the person was sent to observe it.
+        Permissions.observingOn(committee.id).takeIf { it.isNotEmpty() }?.let { refs ->
+            StatusPill("مراقب: " + refs.joinToString(" و ") { AssignmentText.task(it.task) }, Tone.WARN)
         }
         if (status.isNotBlank()) Text(status, style = MaterialTheme.typography.labelMedium, color = tFg(TextMuted))
         when {
