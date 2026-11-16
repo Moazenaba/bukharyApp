@@ -67,6 +67,7 @@ import com.example.ui.theme.Primary100
 import com.example.ui.theme.Primary600
 import com.example.ui.theme.StageColorMap
 import com.example.ui.theme.TextMuted
+import com.example.domain.Logistics
 import com.example.ui.theme.tBg
 import com.example.ui.theme.tFg
 
@@ -121,6 +122,17 @@ fun SimpleCommitteeScreen(
             Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            // 0. Where to go, whom to call there, how many students: what a sheikh needs first.
+            val head = Logistics.headOf(committee)
+            SimpleCard {
+                SectionTitle("رايح فين؟")
+                PlaceRow(Logistics.placeOf(committee))
+                val when_ = committee.examDate?.takeIf { it.isNotBlank() }?.let { DayText.relative(it, today) }.orEmpty()
+                val facts = listOfNotNull(when_.takeIf { it.isNotBlank() }?.let { "الامتحان: $it" }, Logistics.studentsText(committee.studentsCount))
+                if (facts.isNotEmpty()) Text(facts.joinToString(" · "), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold, color = tFg(Color(0xFF0F172A)))
+                ContactRow("رئيس اللجنة", head?.name.orEmpty(), head?.phone.orEmpty(), "لسه ما اتسندش رئيس لجنة")
+            }
+
             // 1. Status line
             SimpleCard {
                 Text(committee.committeeName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black, color = tFg(Color(0xFF0F172A)))
@@ -180,10 +192,7 @@ fun SimpleCommitteeScreen(
             SimpleCard {
                 SectionTitle("معلومات اللجنة")
                 InfoRow("الشيخ", committee.sheikhName)
-                InfoRow("المكان", committee.associationName.ifBlank { committee.branch })
                 InfoRow("الكتاب", committee.competitionBook)
-                InfoRow("عدد الطلاب", committee.studentsCount.takeIf { it > 0 }?.toString().orEmpty())
-                InfoRow("ميعاد الامتحان", committee.examDate?.takeIf { it.isNotBlank() }?.let { DayText.relative(it, today) }.orEmpty())
                 if (committee.sheikhPhone.isNotBlank()) {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         OutlinedButton(onClick = { callPhone(context, committee.sheikhPhone) }, modifier = Modifier.heightIn(min = 48.dp)) {
