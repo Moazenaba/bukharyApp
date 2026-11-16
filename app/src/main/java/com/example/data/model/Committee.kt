@@ -137,7 +137,13 @@ data class CeremonyDetails(
 data class CeremonyAttendee(val id: String = "", val name: String = "")
 
 /** A committee head or sheikh assigned to a committee (set by the server). */
-data class CommitteeStaff(val id: String = "", val name: String = "", val role: String = "sheikh")
+data class CommitteeStaff(
+    val id: String = "",
+    val name: String = "",
+    val role: String = "sheikh",
+    /** Sent by the server for committee heads only (so a sheikh can call the head). Empty otherwise or on old data. */
+    val phone: String = ""
+)
 
 data class AssistantReception(
     val assistantId: String = "",

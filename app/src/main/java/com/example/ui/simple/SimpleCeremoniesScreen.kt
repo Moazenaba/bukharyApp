@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import com.example.data.model.Committee
 import com.example.data.model.ScheduleTask
 import com.example.domain.DayText
+import com.example.domain.Logistics
 import com.example.ui.components.WhatsApp
 import com.example.ui.motion.staggerIn
 import com.example.ui.theme.AppBackground
@@ -64,8 +65,10 @@ fun SimpleCeremoniesScreen(
                     style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black, color = tFg(Color(0xFF78350F))
                 )
                 Text("حفل تكريم لجنة ${c.committeeNumber} — ${c.committeeName}", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
-                if (d.venue.isNotBlank()) Text("المكان: ${d.venue}", style = MaterialTheme.typography.bodyMedium)
-                if (d.honoreesCount > 0) Text("عدد المكرمين: ${d.honoreesCount}", style = MaterialTheme.typography.bodySmall, color = tFg(TextMuted))
+                PlaceRow(Logistics.ceremonyPlaceOf(c))
+                if (d.honoreesCount > 0) Text("عدد المكرمين: ${d.honoreesCount}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                val head = Logistics.headOf(c)
+                ContactRow("رئيس اللجنة", head?.name.orEmpty(), head?.phone.orEmpty(), "لسه ما اتسندش رئيس لجنة")
                 if (others.isNotEmpty()) Text("معك: ${others.joinToString("، ") { it.name }}", style = MaterialTheme.typography.bodySmall, color = tFg(TextMuted))
                 if (d.notes.isNotBlank()) Text(d.notes, style = MaterialTheme.typography.bodySmall, color = tFg(TextMuted))
                 if (c.stages.ceremony.completed) StatusPill("تم الحفل", Tone.SUCCESS)

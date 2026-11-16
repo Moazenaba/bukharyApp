@@ -23,3 +23,9 @@ fun openLink(context: Context, url: String) {
         UiMessages.show("لا يوجد تطبيق يفتح هذا الرابط")
     }
 }
+
+/** Opens the place in the Maps app by name (browser if no Maps app). */
+fun openMaps(context: Context, place: String) {
+    val url = com.example.domain.Logistics.mapsUrl(place) ?: return
+    openLink(context, url)
+}

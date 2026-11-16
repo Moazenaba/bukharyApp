@@ -19,7 +19,11 @@ data class FeedItem(
     val taskId: String?,
     val overdue: Boolean,
     val urgent: Boolean,
-    val today: Boolean
+    val today: Boolean,
+    /** Where to go (empty when the item has no place), and the committee head to call there. */
+    val place: String = "",
+    val headName: String = "",
+    val headPhone: String = ""
 )
 
 /** [now] is the one thing to look at first; [later] is the rest, in the order it matters. */
@@ -87,10 +91,9 @@ object TodayFeedBuilder {
             val ceremonyDay = ceremonyDateOf(c, tasks).take(10)
             val mine = myId != null && c.ceremonyDetails.attendees.any { it.id == myId }
             if (!c.stages.getStage("ceremony").completed && ceremonyDay.isNotBlank() && (mine || canOn("committees.finalize", c.id))) {
-                val place = c.ceremonyDetails.venue
                 items += FeedItem(
                     key = "ceremony-${c.id}", kind = FeedKind.CEREMONY, title = "حفل تكريم ${label(c)}",
-                    subtitle = if (place.isBlank()) c.committeeName else "${c.committeeName} — $place",
+                    subtitle = c.committeeName,
                     date = ceremonyDay, time = c.ceremonyDetails.time, committeeId = c.id, taskId = null,
                     overdue = false, urgent = false, today = false
                 )
@@ -110,8 +113,17 @@ object TodayFeedBuilder {
             )
         }
 
-        val marked = items.map {
-            it.copy(overdue = it.date.isNotBlank() && it.date < today, today = it.date == today)
+        val byId = committees.associateBy { it.id }
+        val marked = items.map { item ->
+            val c = item.committeeId?.let { byId[it] }
+            val withWhere = if (c == null || item.kind == FeedKind.TASK) item else {
+                val head = Logistics.headOf(c)
+                item.copy(
+                    place = if (item.kind == FeedKind.CEREMONY) Logistics.ceremonyPlaceOf(c) else Logistics.placeOf(c),
+                    headName = head?.name.orEmpty(), headPhone = head?.phone.orEmpty()
+                )
+            }
+            withWhere.copy(overdue = item.date.isNotBlank() && item.date < today, today = item.date == today)
         }
         // Late first (the most late first), then today (by hour), then steps with no day, then the future.
         fun rank(i: FeedItem) = when {

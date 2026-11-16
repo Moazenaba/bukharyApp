@@ -34,7 +34,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.data.model.Committee
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material.icons.filled.Place
+import androidx.compose.material3.Icon
 import com.example.domain.DayText
+import com.example.domain.Logistics
 import com.example.domain.NextStep
 import com.example.ui.components.currentStageKey
 import com.example.ui.motion.MotionSpec
@@ -111,9 +117,11 @@ fun CommitteeSummaryCard(
 ) {
     val stage = StageColorMap[currentStageKey(committee.stages)]
     val status = stage?.activeLabel.orEmpty()
-    val place = committee.associationName.ifBlank { committee.branch }
+    val place = Logistics.placeOf(committee)
     val exam = committee.examDate?.takeIf { it.isNotBlank() }?.let { DayText.relative(it, today) }.orEmpty()
-    val line = listOf(status, exam, place).filter { it.isNotBlank() }.joinToString(" · ")
+    val line = listOfNotNull(exam.takeIf { it.isNotBlank() }, Logistics.studentsText(committee.studentsCount)).joinToString(" · ")
+    val head = Logistics.headOf(committee)
+    val context = androidx.compose.ui.platform.LocalContext.current
     SimpleCard(modifier = modifier, onClick = onClick, onClickLabel = "فتح لجنة ${committee.committeeNumber}") {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(
@@ -125,6 +133,10 @@ fun CommitteeSummaryCard(
             )
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(committee.committeeName, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis, color = tFg(Color(0xFF0F172A)))
+                if (place.isNotBlank()) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Icon(Icons.Default.Place, null, tint = tFg(Primary600), modifier = Modifier.size(16.dp))
+                    Text(place, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis, color = tFg(Color(0xFF0F172A)))
+                }
                 if (line.isNotBlank()) Text(line, style = MaterialTheme.typography.bodySmall, color = tFg(TextMuted), maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
         }
@@ -136,6 +148,12 @@ fun CommitteeSummaryCard(
             modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(50)),
             color = tFg(Primary600), trackColor = tBg(Primary100)
         )
+        if (head != null && head.phone.isNotBlank()) {
+            androidx.compose.material3.OutlinedButton(
+                onClick = { callPhone(context, head.phone) }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+            ) { Icon(Icons.Default.Phone, null); Text("  اتصال برئيس اللجنة: ${head.name}") }
+        }
+        if (status.isNotBlank()) Text(status, style = MaterialTheme.typography.labelMedium, color = tFg(TextMuted))
         when {
             step.kind == com.example.domain.StepKind.DONE -> StatusPill("اكتملت كل المراحل", Tone.SUCCESS)
             step.canDo -> StatusPill("الخطوة الجاية: ${step.title}", Tone.INFO)
