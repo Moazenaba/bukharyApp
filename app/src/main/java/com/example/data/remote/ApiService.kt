@@ -36,8 +36,13 @@ data class ServerPermissions(
     val exams: Any? = null,
     /** Roles this user may give to others. */
     val grantableRoles: List<String> = listOf("sheikh"),
+    /** Active extra assignments (read-only powers on other committees); the server enforces them. */
+    val observing: List<ObservedRef> = emptyList(),
     val mustChangePassword: Boolean = false
 )
+
+/** One active «مراقب» assignment of this user (from /auth/me). */
+data class ObservedRef(val id: String = "", val committeeId: String = "", val task: String = "")
 
 data class MeResponse(
     val success: Boolean = false,

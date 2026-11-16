@@ -1,6 +1,7 @@
 package com.example.data.remote
 
 import org.junit.After
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -50,5 +51,17 @@ class PermissionsTest {
         Permissions.applyServerScope("all", listOf("exam-a"))
         assertTrue(Permissions.canOpenExam("exam-a"))
         assertFalse(Permissions.canOpenExam("exam-b"))
+    }
+
+    @Test
+    fun `an observer assignment is limited to its committee and gives no write scope`() {
+        Permissions.applyServerScope(listOf("own"), null)
+        Permissions.observing = listOf(ObservedRef("a1", "other", "exam"))
+        assertEquals(listOf("a1"), Permissions.observingOn("other").map { it.id })
+        assertTrue(Permissions.observingOn("third").isEmpty())
+        // The assignment never widens the scope the server evaluated for writes.
+        assertFalse(Permissions.inScope("other"))
+        Permissions.clear()
+        assertTrue(Permissions.observing.isEmpty())
     }
 }

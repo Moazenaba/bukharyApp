@@ -50,6 +50,31 @@ object OnlineApi {
         return ApiClient.moshi.adapter(cls).fromJsonValue(raw)
     }
 
+    // ------------------------------------------------- extra assignments («مراقب»)
+
+    suspend fun assignments(committeeId: String? = null, userId: String? = null): List<com.example.data.model.CommitteeAssignment> {
+        val query = listOfNotNull(committeeId?.let { "committeeId=${enc(it)}" }, userId?.let { "userId=${enc(it)}" }).joinToString("&")
+        return get("api/assignments" + if (query.isEmpty()) "" else "?$query", "assignments", com.example.data.model.CommitteeAssignment::class.java)
+    }
+
+    suspend fun createAssignment(userId: String, committeeId: String, task: String, endsOn: String?): com.example.data.model.CommitteeAssignment? =
+        one(
+            "POST", "api/assignments",
+            buildMap<String, Any?> {
+                put("userId", userId); put("committeeId", committeeId); put("task", task)
+                if (!endsOn.isNullOrBlank()) put("endsOn", endsOn)
+            },
+            "assignment", com.example.data.model.CommitteeAssignment::class.java
+        )
+
+    /** `how` is "end" (a normal finish) or "cancel"; both stop the powers at once and keep the history. */
+    suspend fun finishAssignment(id: String, how: String) { call("POST", "api/assignments/${enc(id)}/$how") }
+
+    suspend fun observations(assignmentId: String): List<com.example.data.model.AssignmentNote> =
+        get("api/assignments/${enc(assignmentId)}/observations", "observations", com.example.data.model.AssignmentNote::class.java)
+
+    suspend fun addObservation(assignmentId: String, note: String) { call("POST", "api/assignments/${enc(assignmentId)}/observations", mapOf("note" to note)) }
+
     // ---------------------------------------------------------------- courses
 
     /** Short fingerprint of all server data (GET /api/sync/state); null on an older server. */
