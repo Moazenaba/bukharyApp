@@ -160,7 +160,8 @@ class MainActivity : ComponentActivity() {
                 val logoutConfirmation by viewModel.logoutConfirmation.collectAsStateWithLifecycle()
                 val foreignUnsentWork by viewModel.foreignUnsentWork.collectAsStateWithLifecycle()
                 val assignableUsers by viewModel.assignableUsers.collectAsStateWithLifecycle()
-                val useSimple = currentUser?.let { com.example.domain.RoleShell.useSimple(it.role, shellPref.value) } == true
+                val useV2 = currentUser != null && shellPref.value == com.example.domain.ShellPref.V2
+                val useSimple = !useV2 && currentUser?.let { com.example.domain.RoleShell.useSimple(it.role, shellPref.value) } == true
                 var showChangePassword by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(false) }
                 val sheetRows by viewModel.sheetRows.collectAsStateWithLifecycle()
                 val databaseStatus by viewModel.databaseStatus.collectAsStateWithLifecycle()
@@ -317,7 +318,7 @@ class MainActivity : ComponentActivity() {
                     )
                 }
 
-                BackHandler(enabled = isLoggedIn && (selectedCommitteeId != null || currentScreen != AppNavScreen.HOME)) {
+                BackHandler(enabled = isLoggedIn && !useV2 && (selectedCommitteeId != null || currentScreen != AppNavScreen.HOME)) {
                     if (selectedCommitteeId != null) viewModel.closeCommitteeDetail()
                     else viewModel.navigateBack()
                 }
@@ -352,7 +353,7 @@ class MainActivity : ComponentActivity() {
                 // One Scaffold for every state, so messages (e.g. login errors) are always visible.
                 Scaffold(
                     topBar = {
-                        if (isLoggedIn && !useSimple) {
+                        if (isLoggedIn && !useSimple && !useV2) {
                             BukhariTopBar(
                                 currentUser = currentUser,
                                 notifications = notifications,
@@ -371,7 +372,7 @@ class MainActivity : ComponentActivity() {
                         }
                     },
                     bottomBar = {
-                        if (isLoggedIn && !isWide && !useSimple) {
+                        if (isLoggedIn && !isWide && !useSimple && !useV2) {
                             BukhariBottomNavBar(
                                 currentUser = currentUser,
                                 currentScreen = currentScreen,
@@ -423,7 +424,81 @@ class MainActivity : ComponentActivity() {
                             modifier = Modifier.padding(innerPadding)
                         )
 
-                        else -> if (useSimple && currentUser != null) {
+                        else -> if (useV2 && currentUser != null) {
+                            val staffNow by viewModel.staffUsers.collectAsStateWithLifecycle()
+                            val staffBusy by viewModel.staffLoading.collectAsStateWithLifecycle()
+                            com.example.ui.v2.V2Theme(dark = com.example.ui.theme.ThemeMode.isDark(themeMode.value, phoneIsDark())) {
+                                com.example.ui.v2.V2Shell(
+                                    data = com.example.ui.v2.V2Data(
+                                        user = currentUser!!,
+                                        committees = committees,
+                                        tasks = tasks,
+                                        exams = exams,
+                                        notifications = notifications,
+                                        staff = staffNow,
+                                        staffLoading = staffBusy,
+                                        candidates = viewModel.ceremonyCandidates.collectAsStateWithLifecycle().value,
+                                        courses = courses,
+                                        selectedCourseId = selectedCourseId ?: defaultCourse?.id,
+                                        isOnline = isNetworkAvailable && lastSyncOk,
+                                        themeMode = themeMode.value,
+                                        today = com.example.ui.components.Dates.today()
+                                    ),
+                                    actions = com.example.ui.v2.V2Actions(
+                                        oneTap = { c, step ->
+                                            when (step.kind) {
+                                                com.example.domain.StepKind.RECEIVE -> viewModel.recordAssistantReception(c.id, currentUser?.phone.orEmpty(), false)
+                                                com.example.domain.StepKind.EXAM_READY -> viewModel.approveExamReadiness(c.id, false)
+                                                else -> step.stageKey?.let { viewModel.toggleStage(c.id, it, false) }
+                                            }
+                                        },
+                                        toggleTask = { viewModel.toggleTask(it) },
+                                        openExam = { exam -> viewModel.openExamFile(exam) { openPdf(it) } },
+                                        readNotification = { n -> viewModel.markNotificationRead(n.id) },
+                                        readAll = { viewModel.markAllNotificationsRead() },
+                                        sync = { viewModel.syncNow() },
+                                        changePassword = { showChangePassword = true },
+                                        logout = { viewModel.requestLogout() },
+                                        leaveV2 = {
+                                            shellPref.value = com.example.domain.ShellPref.AUTO
+                                            uiPrefs.edit().putString("shell_pref", com.example.domain.ShellPref.AUTO.key).apply()
+                                        },
+                                        openClassic = { screen ->
+                                            shellPref.value = com.example.domain.ShellPref.FULL
+                                            uiPrefs.edit().putString("shell_pref", com.example.domain.ShellPref.FULL.key).apply()
+                                            viewModel.navigateTo(screen)
+                                        },
+                                        saveStaff = { c, ids -> viewModel.saveAssignments(mapOf(c.id to ids), emptyMap(), "تم تحديث شيوخ اللجنة ✓") },
+                                        loadCandidates = { viewModel.loadCeremonyCandidates() },
+                                        loadStaff = { viewModel.loadStaff() },
+                                        approve = { u ->
+                                            viewModel.saveStaffUser(
+                                                mapOf("id" to u.id, "name" to u.name, "phone" to u.phone, "email" to u.email.ifBlank { null }, "expectedUpdatedAt" to u.updatedAt, "status" to "approved"),
+                                                "تم اعتماد حساب ${u.name} ✓"
+                                            ) { }
+                                        },
+                                        reject = { u ->
+                                            viewModel.saveStaffUser(
+                                                mapOf("id" to u.id, "name" to u.name, "phone" to u.phone, "email" to u.email.ifBlank { null }, "expectedUpdatedAt" to u.updatedAt, "status" to "rejected"),
+                                                "تم تسجيل الاعتذار عن طلب ${u.name}"
+                                            ) { }
+                                        },
+                                        sendNotice = { t, b, done -> viewModel.sendNotification(t, b, "info", null, done) },
+                                        selectCourse = { viewModel.setSelectedCourseId(it) },
+                                        themeMode = { chosen ->
+                                            themeMode.value = chosen
+                                            uiPrefs.edit().putString("theme_mode", chosen.key).apply()
+                                            com.example.ui.theme.ThemeState.dark = com.example.ui.theme.ThemeMode.isDark(chosen, phoneIsDark())
+                                        }
+                                    ),
+                                    selectedCommitteeId = selectedCommitteeId,
+                                    onOpenCommittee = { viewModel.openCommitteeDetail(it) },
+                                    onCloseCommittee = { viewModel.closeCommitteeDetail() },
+                                    legacyForm = { c, tab, close -> committeeModal(c, tab, close) },
+                                    modifier = Modifier.padding(innerPadding)
+                                )
+                            }
+                        } else if (useSimple && currentUser != null) {
                             com.example.ui.simple.SimpleShell(
                                 user = currentUser!!,
                                 committees = committees,
@@ -662,6 +737,11 @@ class MainActivity : ComponentActivity() {
                                         },
                                         onExport = { showExport = true },
                                         onChangePassword = { showChangePassword = true },
+                                        onTryV2 = {
+                                            shellPref.value = com.example.domain.ShellPref.V2
+                                            uiPrefs.edit().putString("shell_pref", com.example.domain.ShellPref.V2.key).apply()
+                                            viewModel.closeCommitteeDetail()
+                                        },
                                         onLogout = { viewModel.requestLogout() },
                                         themeMode = themeMode.value,
                                         onThemeMode = { chosen ->

@@ -7,7 +7,9 @@ enum class ShellPref(val key: String) {
     /** Follow the app's default for the person's role. */
     AUTO("auto"),
     SIMPLE("simple"),
-    FULL("full");
+    FULL("full"),
+    /** «الواجهات 2»: the new screens built from scratch (docs/V2-ROLES.md). */
+    V2("v2");
 
     companion object {
         fun fromKey(key: String?): ShellPref = values().firstOrNull { it.key == key } ?: AUTO
@@ -36,7 +38,7 @@ object RoleShell {
     fun useSimple(role: UserRole, pref: ShellPref, simpleByDefault: Boolean = SIMPLE_BY_DEFAULT_FOR_FIELD_ROLES): Boolean =
         when (pref) {
             ShellPref.SIMPLE -> true
-            ShellPref.FULL -> false
+            ShellPref.FULL, ShellPref.V2 -> false
             ShellPref.AUTO -> simpleByDefault && isFieldRole(role)
         }
 }
