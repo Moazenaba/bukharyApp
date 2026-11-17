@@ -83,6 +83,8 @@ fun MenuScreen(
     onChangePassword: () -> Unit,
     /** Switch to the simple look (sheikhs and committee heads); null hides the row. */
     onTrySimple: (() -> Unit)? = null,
+    /** Open «الواجهات 2» (the new screens); null hides the row. */
+    onTryV2: (() -> Unit)? = null,
     onLogout: () -> Unit,
     /** The look the person chose (light until they pick another). */
     themeMode: ThemeMode = ThemeMode.LIGHT,
@@ -154,6 +156,7 @@ fun MenuScreen(
             }
         }
         // For sheikhs and committee heads: the simple look is the first thing in the menu, not buried at the bottom.
+        onTryV2?.let { go -> item { MenuRow("الواجهات 2 (التصميم الجديد)", Icons.Default.AutoAwesome, "جديد", onClick = go) } }
         onTrySimple?.let { go -> item { MenuRow("جرّب الواجهة المبسطة (أسهل وأوضح)", Icons.Default.AutoAwesome, null, onClick = go) } }
         sections.forEach { (title, entries) ->
             val visible = entries.filter { user.canAccessScreen(it.screen) }

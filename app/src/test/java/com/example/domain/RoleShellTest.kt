@@ -42,6 +42,12 @@ class RoleShellTest {
         assertEquals(ShellPref.FULL, ShellPref.fromKey("full"))
         assertEquals(ShellPref.AUTO, ShellPref.fromKey(null))
         assertEquals(ShellPref.AUTO, ShellPref.fromKey("x"))
+        assertEquals(ShellPref.V2, ShellPref.fromKey("v2"))
+    }
+
+    @org.junit.Test
+    fun `the new screens (V2) never turn on the simple look`() {
+        UserRole.values().forEach { assertFalse(RoleShell.useSimple(it, ShellPref.V2, simpleByDefault = true)) }
     }
 
     @Test
