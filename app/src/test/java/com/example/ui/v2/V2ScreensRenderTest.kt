@@ -125,8 +125,9 @@ class V2ScreensRenderTest {
         val density = compose.density.density
         val small = compose.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsActions.OnClick), useUnmergedTree = false)
             .fetchSemanticsNodes()
-            .filter { n -> val b = n.boundsInRoot; b.width > 0 && (b.height / density < 44f || b.width / density < 44f) }
-            .map { n -> (n.config.getOrElseNullable(SemanticsProperties.Text) { null }?.joinToString() ?: n.config.getOrElseNullable(SemanticsProperties.ContentDescription) { null }?.joinToString() ?: "?") + " ${n.boundsInRoot}" }
+            // The element's own size, not its visible part: a row cut by the bottom of the screen is still finger-sized.
+            .filter { n -> n.boundsInRoot.width > 0 && n.boundsInRoot.height > 0 && (n.size.height / density < 44f || n.size.width / density < 44f) }
+            .map { n -> (n.config.getOrElseNullable(SemanticsProperties.Text) { null }?.joinToString() ?: n.config.getOrElseNullable(SemanticsProperties.ContentDescription) { null }?.joinToString() ?: "?") + " ${n.size}" }
         assertTrue("$where: too small to tap: $small", small.isEmpty())
     }
 
