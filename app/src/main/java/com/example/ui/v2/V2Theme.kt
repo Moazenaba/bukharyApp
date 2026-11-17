@@ -8,6 +8,7 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -18,36 +19,39 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.sp
 import com.example.R
+import com.example.domain.v2.V2ThemeSpec
+import com.example.domain.v2.V2Themes
 
 /**
- * The «الواجهات 2» look, on its own: ink-blue text on cool paper, saffron only for the one thing to do now,
- * leaf for done and brick for late. Nothing here is shared with the classic screens.
+ * The «الواجهات 2» look, on its own. Every theme is two calm colours (paper and ink, with their soft
+ * in-betweens) and one loud colour kept for the action that matters (`cta`): blur the screen and the only
+ * thing that still pops is where to tap. The themes themselves live in domain/v2/V2Themes (checked by tests).
  */
 @Immutable
 data class V2Palette(
     val ink: Color,
     val paper: Color,
     val sheet: Color,
-    val saffron: Color,
-    val onSaffron: Color,
+    /** The loud colour: primary buttons only. */
+    val cta: Color,
+    val onCta: Color,
     val leaf: Color,
     val brick: Color,
     val mist: Color,
     val muted: Color,
-    val dark: Boolean
+    val dark: Boolean,
+    /** The focal block («what to do now»): calm and deep, so its action-coloured button is the one bright spot. */
+    val hero: Color,
+    val onHero: Color
 )
 
-val V2Light = V2Palette(
-    ink = Color(0xFF1E2B4F), paper = Color(0xFFF5F6FA), sheet = Color(0xFFFFFFFF), saffron = Color(0xFFD9971A),
-    onSaffron = Color(0xFF2E2104), leaf = Color(0xFF2F7A55), brick = Color(0xFFB4412F), mist = Color(0xFFE2E6EF),
-    muted = Color(0xFF5B6583), dark = false
+fun V2ThemeSpec.palette() = V2Palette(
+    ink = Color(ink), paper = Color(paper), sheet = Color(sheet), cta = Color(cta), onCta = Color(onCta),
+    leaf = Color(leaf), brick = Color(brick), mist = Color(mist), muted = Color(muted), dark = dark,
+    hero = Color(hero), onHero = Color(onHero)
 )
 
-val V2Dark = V2Palette(
-    ink = Color(0xFFDCE3F5), paper = Color(0xFF121828), sheet = Color(0xFF1A2236), saffron = Color(0xFFE6A93A),
-    onSaffron = Color(0xFF241A02), leaf = Color(0xFF5DB389), brick = Color(0xFFE07A66), mist = Color(0xFF2A3450),
-    muted = Color(0xFF9AA5C3), dark = true
-)
+val V2Light = V2Themes.SAND.palette()
 
 val LocalV2 = staticCompositionLocalOf { V2Light }
 
@@ -72,17 +76,17 @@ object V2Type {
 }
 
 @Composable
-fun V2Theme(dark: Boolean = isSystemInDarkTheme(), content: @Composable () -> Unit) {
-    val p = if (dark) V2Dark else V2Light
-    val scheme = if (dark) {
+fun V2Theme(theme: V2ThemeSpec = V2Themes.of(null, isSystemInDarkTheme()), content: @Composable () -> Unit) {
+    val p = remember(theme) { theme.palette() }
+    val scheme = if (p.dark) {
         darkColorScheme(
-            primary = p.ink, onPrimary = p.paper, secondary = p.saffron, onSecondary = p.onSaffron,
+            primary = p.ink, onPrimary = p.paper, secondary = p.cta, onSecondary = p.onCta,
             background = p.paper, onBackground = p.ink, surface = p.sheet, onSurface = p.ink,
             surfaceVariant = p.paper, onSurfaceVariant = p.muted, outline = p.mist, error = p.brick
         )
     } else {
         lightColorScheme(
-            primary = p.ink, onPrimary = p.paper, secondary = p.saffron, onSecondary = p.onSaffron,
+            primary = p.ink, onPrimary = p.paper, secondary = p.cta, onSecondary = p.onCta,
             background = p.paper, onBackground = p.ink, surface = p.sheet, onSurface = p.ink,
             surfaceVariant = p.paper, onSurfaceVariant = p.muted, outline = p.mist, error = p.brick
         )

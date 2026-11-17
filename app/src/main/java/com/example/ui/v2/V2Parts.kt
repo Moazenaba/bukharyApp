@@ -32,6 +32,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -51,7 +52,7 @@ fun V2Tag(text: String, tone: V2Tone) {
         V2Tone.DONE -> p.leaf.copy(alpha = 0.15f) to p.leaf
         V2Tone.WAIT -> p.paper to p.muted
         V2Tone.LATE -> p.brick.copy(alpha = 0.14f) to p.brick
-        V2Tone.WATCH -> p.saffron.copy(alpha = 0.24f) to p.ink
+        V2Tone.WATCH -> p.ink.copy(alpha = 0.12f) to p.ink
     }
     Text(
         text, style = V2Type.smallStrong, color = ink, maxLines = 1, overflow = TextOverflow.Ellipsis,
@@ -120,22 +121,30 @@ fun V2Row(
     }
 }
 
-/** The one strong block on a screen: what to do now. */
+/**
+ * The one strong block on a screen: what to do now, in the ink colour, with its time or reason under the title
+ * (no label above it). Its main button uses the action colour, the brightest thing on the screen.
+ */
 @Composable
-fun V2NowCard(eyebrow: String, title: String, modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit = {}) {
+fun V2NowCard(meta: String, title: String, modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit = {}) {
     val p = LocalV2.current
     Column(
-        modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(p.saffron).padding(16.dp),
+        modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(p.hero).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        Text(eyebrow, style = V2Type.smallStrong, color = p.onSaffron.copy(alpha = 0.85f))
-        Text(title, style = V2Type.hero, color = p.onSaffron)
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(title, style = V2Type.hero, color = p.onHero)
+            if (meta.isNotBlank()) Text(meta, style = V2Type.bodyStrong, color = p.onHero.copy(alpha = 0.8f))
+        }
         content()
     }
 }
 
-/** Buttons: solid (the action), outline (the second choice), quiet (on a sheet). Always at least 48dp tall. */
-enum class V2ButtonKind { SOLID, OUTLINE, QUIET }
+/**
+ * Buttons: CTA (the one action that matters, in the loud colour), SOLID (ink), OUTLINE (second choice, on the
+ * focal block), QUIET (on a sheet). Always at least 48dp tall.
+ */
+enum class V2ButtonKind { CTA, SOLID, OUTLINE, QUIET }
 
 @Composable
 fun V2Button(
@@ -150,6 +159,7 @@ fun V2Button(
     val p = LocalV2.current
     val shape = RoundedCornerShape(14.dp)
     val (bg, fg) = when (kind) {
+        V2ButtonKind.CTA -> p.cta to p.onCta
         V2ButtonKind.SOLID -> p.ink to p.paper
         V2ButtonKind.OUTLINE -> Color.Transparent to (contentColor ?: p.ink)
         V2ButtonKind.QUIET -> p.sheet to p.ink
@@ -181,7 +191,7 @@ fun V2Steps(done: Int, total: Int = 9, modifier: Modifier = Modifier) {
         repeat(total) { i ->
             val c = when {
                 i < done -> p.leaf
-                i == done -> p.saffron
+                i == done -> p.ink.copy(alpha = 0.45f)
                 else -> p.mist
             }
             Box(Modifier.weight(1f).height(6.dp).clip(RoundedCornerShape(3.dp)).background(c))
@@ -217,7 +227,8 @@ fun V2Chip(text: String, selected: Boolean, onClick: () -> Unit) {
         text, style = V2Type.smallStrong, color = if (selected) p.paper else p.ink,
         modifier = Modifier.heightIn(min = 40.dp).clip(shape).background(if (selected) p.ink else p.sheet)
             .border(1.dp, if (selected) p.ink else p.mist, shape)
-            .clickable(role = Role.Button, onClick = onClick).padding(horizontal = 14.dp, vertical = 10.dp)
+            .clickable(role = Role.Tab, onClick = onClick).semantics { this.selected = selected }
+            .padding(horizontal = 14.dp, vertical = 10.dp)
     )
 }
 
@@ -236,4 +247,27 @@ object V2Intents {
 
     fun open(context: Context, url: String) =
         start(context, Intent(Intent.ACTION_VIEW, Uri.parse(url)), "لا يوجد تطبيق يفتح هذا الرابط")
+}
+
+/**
+ * «تُتاح الأحد 20 نوفمبر، 10:00 ص (بتوقيت القاهرة)»: the same wording and time zone as the classic exams screen,
+ * written as a date (never «أمس»), with SimpleDateFormat so it works on Android 7 too.
+ */
+fun v2OpensText(iso: String): String {
+    val date = listOf("yyyy-MM-dd'T'HH:mm:ss.SSSSSSX", "yyyy-MM-dd'T'HH:mm:ss.SSSX", "yyyy-MM-dd'T'HH:mm:ssX").firstNotNullOfOrNull { f ->
+        runCatching { java.text.SimpleDateFormat(f, java.util.Locale.US).apply { isLenient = false }.parse(iso) }.getOrNull()
+    } ?: return iso.take(16).replace('T', ' ')
+    val text = java.text.SimpleDateFormat("EEEE d MMMM، h:mm a", java.util.Locale("ar"))
+        .apply { timeZone = java.util.TimeZone.getTimeZone("Africa/Cairo") }.format(date)
+    return "$text (بتوقيت القاهرة)"
+}
+
+/** Three dots: the theme's paper, ink and action colour, so a theme can be picked by eye. */
+@Composable
+fun V2Swatch(spec: com.example.domain.v2.V2ThemeSpec) {
+    Row(horizontalArrangement = Arrangement.spacedBy((-6).dp)) {
+        listOf(spec.paper, spec.ink, spec.cta).forEach { c ->
+            Box(Modifier.size(22.dp).clip(CircleShape).background(Color(c)).border(1.dp, LocalV2.current.mist, CircleShape))
+        }
+    }
 }

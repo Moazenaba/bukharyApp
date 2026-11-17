@@ -17,6 +17,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -62,7 +64,6 @@ import com.example.domain.v2.V2Stages
 import com.example.domain.v2.V2Tab
 import com.example.domain.v2.V2Tool
 import com.example.domain.v2.V2Tools
-import com.example.ui.theme.ThemeMode
 
 /** Everything the new screens read. They hold no data of their own. */
 data class V2Data(
@@ -77,8 +78,9 @@ data class V2Data(
     val courses: List<Course>,
     val selectedCourseId: String?,
     val isOnline: Boolean,
-    val themeMode: ThemeMode,
-    val today: String
+    val today: String,
+    /** The chosen colour theme (V2Themes key, or "auto"). */
+    val themeKey: String = "auto"
 )
 
 /** Everything the new screens can do; each goes through the same view model calls the classic app uses. */
@@ -101,7 +103,7 @@ class V2Actions(
     val reject: (StaffUserDto) -> Unit,
     val sendNotice: (title: String, body: String, done: (Boolean) -> Unit) -> Unit,
     val selectCourse: (String?) -> Unit,
-    val themeMode: (ThemeMode) -> Unit
+    val v2Theme: (String) -> Unit = {}
 )
 
 /** Pages that open on top of a tab (with a back arrow). */
@@ -130,6 +132,9 @@ fun V2Shell(
     var filter by rememberSaveable { mutableStateOf(V2Filter.ALL) }
     var legacy by rememberSaveable { mutableStateOf<Pair<String, Int>?>(null) }
 
+    // Admins see the number of join requests on the board, so the people list loads once on entry.
+    androidx.compose.runtime.LaunchedEffect(role) { if (V2Tool.USERS in tools && V2Tools.isAdmin(role)) actions.loadStaff() }
+
     val open = selectedCommitteeId?.let { id -> data.committees.firstOrNull { it.id == id } }
     val legacyCommittee = legacy?.let { (id, _) -> data.committees.firstOrNull { it.id == id } }
 
@@ -143,12 +148,12 @@ fun V2Shell(
     }
 
     if (legacyCommittee != null) {
-        legacyForm(legacyCommittee, legacy!!.second) { legacy = null }
+        Box(modifier.fillMaxSize().systemBarsPadding()) { legacyForm(legacyCommittee, legacy!!.second) { legacy = null } }
         return
     }
 
     val unread = data.notifications.count { !it.read }
-    Column(modifier.fillMaxSize().background(p.paper)) {
+    Column(modifier.fillMaxSize().background(p.paper).statusBarsPadding()) {
         val title = when {
             open != null -> "لجنة ${open.committeeNumber}"
             page != null -> page!!.title
@@ -166,7 +171,7 @@ fun V2Shell(
             },
             onBell = { page = V2Page.INBOX }
         )
-        Box(Modifier.weight(1f).fillMaxWidth()) {
+        Box(Modifier.weight(1f).fillMaxWidth().then(if (open != null) Modifier.navigationBarsPadding() else Modifier)) {
             AnimatedContent(
                 targetState = Triple(open?.id, page, tab),
                 transitionSpec = { fadeIn() togetherWith fadeOut() },
@@ -225,7 +230,7 @@ private fun V2Header(hello: String, title: String, unread: Int, isOnline: Boolea
     ) {
         if (onBack != null) {
             Box(
-                Modifier.size(44.dp).clip(RoundedCornerShape(12.dp)).clickable(role = Role.Button, onClickLabel = "رجوع", onClick = onBack),
+                Modifier.size(48.dp).clip(RoundedCornerShape(12.dp)).clickable(role = Role.Button, onClickLabel = "رجوع", onClick = onBack),
                 contentAlignment = Alignment.Center
             ) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "رجوع", tint = p.ink) }
         }
@@ -237,7 +242,7 @@ private fun V2Header(hello: String, title: String, unread: Int, isOnline: Boolea
             Text(title, style = V2Type.title, color = p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         Box(
-            Modifier.size(44.dp).clip(RoundedCornerShape(12.dp)).background(p.sheet).border(1.dp, p.mist, RoundedCornerShape(12.dp))
+            Modifier.size(48.dp).clip(RoundedCornerShape(12.dp)).background(p.sheet).border(1.dp, p.mist, RoundedCornerShape(12.dp))
                 .clickable(role = Role.Button, onClick = onBell)
                 .semantics { contentDescription = if (unread > 0) "الإشعارات، $unread جديد" else "الإشعارات" },
             contentAlignment = Alignment.Center
@@ -276,7 +281,7 @@ private fun V2TabBar(tabs: List<V2Tab>, current: V2Tab, unreadForMe: Int, onSele
                 ) {
                     Box(
                         Modifier.size(width = 52.dp, height = 30.dp).clip(RoundedCornerShape(15.dp))
-                            .background(if (on) p.saffron.copy(alpha = 0.32f) else p.sheet),
+                            .background(if (on) p.ink.copy(alpha = 0.12f) else p.sheet),
                         contentAlignment = Alignment.Center
                     ) { Icon(iconFor(t), null, tint = if (on) p.ink else p.muted, modifier = Modifier.size(22.dp)) }
                     Text(t.label, style = V2Type.smallStrong, color = if (on) p.ink else p.muted, maxLines = 1)

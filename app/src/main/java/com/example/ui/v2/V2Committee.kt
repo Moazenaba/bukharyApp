@@ -90,11 +90,12 @@ fun V2CommitteeScreen(c: Committee, data: V2Data, actions: V2Actions, tools: Set
         item(key = "step") {
             when {
                 step.kind == StepKind.DONE -> V2Group { V2Row("اكتملت كل مراحل اللجنة", mark = { V2Mark(icon = Icons.Default.CheckCircle) }) }
-                step.canDo -> V2NowCard("الخطوة الجاية", step.title) {
+                step.canDo -> V2NowCard("الخطوة الجاية في اللجنة", step.title) {
                     V2Button(
                         if (step.oneTap) step.title else "افتح النموذج",
                         { if (step.oneTap) confirm = true else onLegacy(formTabFor(step.kind)) },
-                        Modifier.fillMaxWidth()
+                        Modifier.fillMaxWidth(),
+                        kind = V2ButtonKind.CTA
                     )
                 }
                 else -> V2Group { V2Row("اللجنة منتظرة", step.waiting, mark = { V2Mark(icon = Icons.Default.RadioButtonUnchecked) }) }
@@ -126,7 +127,7 @@ fun V2CommitteeScreen(c: Committee, data: V2Data, actions: V2Actions, tools: Set
                 )
                 if (head != null && head.phone.isNotBlank()) {
                     Row(Modifier.padding(start = 14.dp, end = 14.dp, bottom = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        V2Button("اتصال", { V2Intents.call(context, head.phone) }, Modifier.weight(1f), icon = Icons.Default.Phone)
+                        V2Button("اتصال", { V2Intents.call(context, head.phone) }, Modifier.weight(1f), kind = V2ButtonKind.SOLID, icon = Icons.Default.Phone)
                         WhatsApp.link(head.phone, "السلام عليكم ورحمة الله")?.let { link ->
                             V2Button("واتساب", { V2Intents.open(context, link) }, Modifier.weight(1f), kind = V2ButtonKind.QUIET, icon = Icons.Default.Chat)
                         }
@@ -148,7 +149,7 @@ fun V2CommitteeScreen(c: Committee, data: V2Data, actions: V2Actions, tools: Set
                 V2Group {
                     V2Row(
                         "ورقة الامتحان",
-                        if (locked) "تُتاح ${paper.lockedUntil!!.take(16).replace('T', ' ')}" else paper.pdfFileName.ifBlank { paper.title },
+                        if (locked) "تُتاح ${v2OpensText(paper.lockedUntil!!)}" else paper.pdfFileName.ifBlank { paper.title },
                         mark = { V2Mark(icon = Icons.Default.Description) },
                         trailing = { if (locked) V2Tag("مقفولة", V2Tone.WAIT) else V2Tag("فتح", V2Tone.GO) },
                         onClick = if (locked) null else ({ actions.openExam(paper) })
