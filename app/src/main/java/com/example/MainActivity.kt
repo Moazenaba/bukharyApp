@@ -115,6 +115,7 @@ class MainActivity : ComponentActivity() {
         val uiPrefs = getSharedPreferences("bukhari_ui", MODE_PRIVATE)
         val themeMode = androidx.compose.runtime.mutableStateOf(com.example.ui.theme.ThemeMode.fromKey(uiPrefs.getString("theme_mode", null)))
         val shellPref = androidx.compose.runtime.mutableStateOf(com.example.domain.ShellPref.fromKey(uiPrefs.getString("shell_pref", null)))
+        val v2Theme = androidx.compose.runtime.mutableStateOf(uiPrefs.getString("v2_theme", null) ?: com.example.domain.v2.V2Themes.AUTO)
         fun phoneIsDark() =
             (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES
         com.example.ui.theme.ThemeState.dark = com.example.ui.theme.ThemeMode.isDark(themeMode.value, phoneIsDark())
@@ -138,7 +139,14 @@ class MainActivity : ComponentActivity() {
         }
 
         setContent {
-            BukhariTheme(lightBackgroundBehindStatusBar = !viewModel.isLoggedIn.collectAsStateWithLifecycle().value) {
+            // «الواجهات 2» has its own colour themes: the system bars follow the chosen one, not the classic look.
+            val signedIn = viewModel.isLoggedIn.collectAsStateWithLifecycle().value
+            val inV2 = signedIn && shellPref.value == com.example.domain.ShellPref.V2
+            val v2Spec = com.example.domain.v2.V2Themes.of(v2Theme.value, phoneIsDark())
+            BukhariTheme(
+                darkTheme = if (inV2) v2Spec.dark else com.example.ui.theme.ThemeState.dark,
+                lightBackgroundBehindStatusBar = !signedIn || (inV2 && !v2Spec.dark)
+            ) {
                 val isLoggedIn by viewModel.isLoggedIn.collectAsStateWithLifecycle()
                 val isRestoring by viewModel.isRestoringSession.collectAsStateWithLifecycle()
                 val isSubmitting by viewModel.isSubmitting.collectAsStateWithLifecycle()
@@ -427,7 +435,7 @@ class MainActivity : ComponentActivity() {
                         else -> if (useV2 && currentUser != null) {
                             val staffNow by viewModel.staffUsers.collectAsStateWithLifecycle()
                             val staffBusy by viewModel.staffLoading.collectAsStateWithLifecycle()
-                            com.example.ui.v2.V2Theme(dark = com.example.ui.theme.ThemeMode.isDark(themeMode.value, phoneIsDark())) {
+                            com.example.ui.v2.V2Theme(theme = v2Spec) {
                                 com.example.ui.v2.V2Shell(
                                     data = com.example.ui.v2.V2Data(
                                         user = currentUser!!,
@@ -441,8 +449,8 @@ class MainActivity : ComponentActivity() {
                                         courses = courses,
                                         selectedCourseId = selectedCourseId ?: defaultCourse?.id,
                                         isOnline = isNetworkAvailable && lastSyncOk,
-                                        themeMode = themeMode.value,
-                                        today = com.example.ui.components.Dates.today()
+                                        today = com.example.ui.components.Dates.today(),
+                                        themeKey = v2Theme.value
                                     ),
                                     actions = com.example.ui.v2.V2Actions(
                                         oneTap = { c, step ->
@@ -485,17 +493,16 @@ class MainActivity : ComponentActivity() {
                                         },
                                         sendNotice = { t, b, done -> viewModel.sendNotification(t, b, "info", null, done) },
                                         selectCourse = { viewModel.setSelectedCourseId(it) },
-                                        themeMode = { chosen ->
-                                            themeMode.value = chosen
-                                            uiPrefs.edit().putString("theme_mode", chosen.key).apply()
-                                            com.example.ui.theme.ThemeState.dark = com.example.ui.theme.ThemeMode.isDark(chosen, phoneIsDark())
+                                        v2Theme = { key ->
+                                            v2Theme.value = key
+                                            uiPrefs.edit().putString("v2_theme", key).apply()
                                         }
                                     ),
                                     selectedCommitteeId = selectedCommitteeId,
                                     onOpenCommittee = { viewModel.openCommitteeDetail(it) },
                                     onCloseCommittee = { viewModel.closeCommitteeDetail() },
-                                    legacyForm = { c, tab, close -> committeeModal(c, tab, close) },
-                                    modifier = Modifier.padding(innerPadding)
+                                    legacyForm = { c, tab, close -> committeeModal(c, tab, close) }
+                                    // No innerPadding: V2 draws its own colours behind the status and navigation bars.
                                 )
                             }
                         } else if (useSimple && currentUser != null) {

@@ -65,7 +65,6 @@ import com.example.domain.v2.V2Stages
 import com.example.domain.v2.V2Tool
 import com.example.ui.AppNavScreen
 import com.example.ui.components.Overdue
-import com.example.ui.theme.ThemeMode
 
 /** Every V2 page scrolls the same way: one column, 16dp sides, 14dp between blocks. */
 @Composable
@@ -128,27 +127,27 @@ fun V2NowScreen(data: V2Data, actions: V2Actions, onOpen: (String) -> Unit) {
                 val committee = now.committeeId?.let { id -> data.committees.firstOrNull { it.id == id } }
                 val step = committee?.let { NextStep.of(it) { a -> canOn(a, it.id) } }
                 val whenText = listOf(DayText.relative(now.date, data.today), now.time).filter { it.isNotBlank() }.joinToString(" · ")
-                V2NowCard(eyebrow = whenText.ifBlank { "مطلوب منك" }, title = now.title) {
+                V2NowCard(meta = whenText.ifBlank { "مطلوب منك" }, title = now.title) {
                     if (now.place.isNotBlank()) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Icon(Icons.Default.Place, null, tint = LocalV2.current.onSaffron)
-                            Text(now.place, style = V2Type.bodyStrong, color = LocalV2.current.onSaffron)
+                            Icon(Icons.Default.Place, null, tint = LocalV2.current.onHero)
+                            Text(now.place, style = V2Type.bodyStrong, color = LocalV2.current.onHero)
                         }
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         when {
                             now.kind == FeedKind.TASK && now.taskId != null ->
-                                V2Button("تمت المهمة", { actions.toggleTask(now.taskId) }, Modifier.weight(1f), icon = Icons.Default.CheckCircle)
+                                V2Button("تمت المهمة", { actions.toggleTask(now.taskId) }, Modifier.weight(1f), kind = V2ButtonKind.CTA, icon = Icons.Default.CheckCircle)
                             step != null && committee != null && step.canDo && step.oneTap && now.kind == FeedKind.ACTION ->
-                                V2Button(step.title, { actions.oneTap(committee, step) }, Modifier.weight(1f))
-                            committee != null -> V2Button("افتح اللجنة", { onOpen(committee.id) }, Modifier.weight(1f))
+                                V2Button(step.title, { actions.oneTap(committee, step) }, Modifier.weight(1f), kind = V2ButtonKind.CTA)
+                            committee != null -> V2Button("افتح اللجنة", { onOpen(committee.id) }, Modifier.weight(1f), kind = V2ButtonKind.CTA)
                         }
                         Logistics.mapsUrl(now.place)?.let { url ->
-                            V2Button("الخرائط", { V2Intents.open(context, url) }, Modifier.weight(1f), kind = V2ButtonKind.OUTLINE, icon = Icons.Default.Place, contentColor = LocalV2.current.onSaffron)
+                            V2Button("الخرائط", { V2Intents.open(context, url) }, Modifier.weight(1f), kind = V2ButtonKind.OUTLINE, icon = Icons.Default.Place, contentColor = LocalV2.current.onHero)
                         }
                     }
                     if (now.headPhone.isNotBlank()) {
-                        V2Button("اتصال برئيس اللجنة ${now.headName}".trim(), { V2Intents.call(context, now.headPhone) }, Modifier.fillMaxWidth(), kind = V2ButtonKind.OUTLINE, icon = Icons.Default.Phone, contentColor = LocalV2.current.onSaffron)
+                        V2Button("اتصال برئيس اللجنة ${now.headName}".trim(), { V2Intents.call(context, now.headPhone) }, Modifier.fillMaxWidth(), kind = V2ButtonKind.OUTLINE, icon = Icons.Default.Phone, contentColor = LocalV2.current.onHero)
                     }
                 }
             }
@@ -204,16 +203,16 @@ fun V2BoardScreen(data: V2Data, onOpen: (String) -> Unit, onShow: (V2Filter) -> 
     val late = remember(data.committees, data.tasks, data.today) { lateIds(data) }
     val counts = remember(data.committees) { V2Stages.counts(data.committees) }
     val examsToday = data.committees.count { it.examDate?.take(10) == data.today && !it.stages.getStage("exam").completed }
-    val pending = data.staff.count { it.status == "pending" }
+    val pending = data.staff.count { it.status == "pending" && it.role != "super_admin" }
     V2Scroll {
         item(key = "hero") {
             if (late.isNotEmpty()) {
-                V2NowCard("يحتاج تدخّلك", "${late.size} ${if (late.size in 3..10) "لجان متأخرة" else "لجنة متأخرة"} عن مهلة ${AppSettings.current.overdueDays} أيام") {
-                    V2Button("عرض المتأخر", { onShow(V2Filter.LATE) }, Modifier.fillMaxWidth())
+                V2NowCard("مهلة كل مرحلة ${AppSettings.current.overdueDays} أيام", "${late.size} ${if (late.size in 3..10) "لجان متأخرة" else "لجنة متأخرة"}") {
+                    V2Button("عرض المتأخر", { onShow(V2Filter.LATE) }, Modifier.fillMaxWidth(), kind = V2ButtonKind.CTA)
                 }
             } else {
-                V2NowCard("النهارده", if (examsToday > 0) "$examsToday امتحان النهارده، ومفيش لجان متأخرة" else "مفيش لجان متأخرة") {
-                    V2Button("كل اللجان", { onShow(V2Filter.ALL) }, Modifier.fillMaxWidth())
+                V2NowCard(if (examsToday > 0) "$examsToday امتحان النهارده" else "النهارده", "مفيش لجان متأخرة") {
+                    V2Button("كل اللجان", { onShow(V2Filter.ALL) }, Modifier.fillMaxWidth(), kind = V2ButtonKind.CTA)
                 }
             }
         }
@@ -421,7 +420,8 @@ fun V2StaffDialog(c: Committee, data: V2Data, onDismiss: () -> Unit, onSave: (Li
 @Composable
 fun V2PeopleScreen(data: V2Data, actions: V2Actions, tools: Set<V2Tool>) {
     val context = LocalContext.current
-    LaunchedEffect(Unit) { actions.loadStaff() }
+    // Admins load the list once on entering V2 (V2Shell); a committee head loads it here.
+    LaunchedEffect(Unit) { if (!com.example.domain.v2.V2Tools.isAdmin(data.user.role.roleKey)) actions.loadStaff() }
     var query by rememberSaveable { mutableStateOf("") }
     var rejecting by remember { mutableStateOf<StaffUserDto?>(null) }
     val requests = data.staff.filter { it.status == "pending" && it.role != "super_admin" }
@@ -559,7 +559,9 @@ private fun V2AccountRows(data: V2Data, actions: V2Actions) {
     V2Group {
         V2Row(data.user.name, roleName(data.user.role.roleKey), mark = { V2Avatar(data.user.name) })
         V2Divider()
-        V2Row("المظهر", when (data.themeMode) { ThemeMode.DARK -> "داكن"; ThemeMode.SYSTEM -> "حسب الموبايل"; else -> "فاتح" }, mark = { V2Mark(icon = Icons.Default.DarkMode) }, onClick = { choosingTheme = true })
+        val theme = com.example.domain.v2.V2Themes.ALL.firstOrNull { it.key == data.themeKey }
+        V2Row("الألوان", theme?.let { "${it.name}: ${it.story}" } ?: "تلقائي (حسب الموبايل)", mark = { V2Mark(icon = Icons.Default.DarkMode) },
+            trailing = { theme?.let { V2Swatch(it) } }, onClick = { choosingTheme = true })
         V2Divider()
         V2Row("مزامنة الآن", if (data.isOnline) "متصل" else "بدون اتصال", mark = { V2Mark(icon = Icons.Default.Sync) }, onClick = actions.sync)
         V2Divider()
@@ -572,12 +574,17 @@ private fun V2AccountRows(data: V2Data, actions: V2Actions) {
     if (choosingTheme) {
         AlertDialog(
             onDismissRequest = { choosingTheme = false },
-            title = { Text("المظهر", style = V2Type.heading) },
+            title = { Text("الألوان", style = V2Type.heading) },
             text = {
-                Column {
-                    listOf(ThemeMode.LIGHT to "فاتح", ThemeMode.DARK to "داكن", ThemeMode.SYSTEM to "حسب الموبايل").forEach { (m, label) ->
-                        V2Row(label, onClick = { actions.themeMode(m); choosingTheme = false },
-                            mark = { Icon(if (m == data.themeMode) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked, null) })
+                LazyColumn {
+                    item {
+                        V2Row("تلقائي", "فاتح أو غامق حسب الموبايل", onClick = { actions.v2Theme(com.example.domain.v2.V2Themes.AUTO); choosingTheme = false },
+                            mark = { Icon(if (data.themeKey == com.example.domain.v2.V2Themes.AUTO) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked, null) })
+                    }
+                    items(com.example.domain.v2.V2Themes.ALL, key = { it.key }) { t ->
+                        V2Row(t.name, t.story, onClick = { actions.v2Theme(t.key); choosingTheme = false },
+                            mark = { Icon(if (t.key == data.themeKey) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked, null) },
+                            trailing = { V2Swatch(t) })
                     }
                 }
             },
@@ -648,7 +655,7 @@ fun V2ExamsScreen(data: V2Data, actions: V2Actions) {
                         title = e.title.ifBlank { e.book },
                         subtitle = when {
                             !e.hasFile -> "لم يُرفع الملف بعد"
-                            locked -> "تُتاح ${e.lockedUntil!!.take(16).replace('T', ' ')}"
+                            locked -> "تُتاح ${v2OpensText(e.lockedUntil!!)}"
                             else -> e.book
                         },
                         mark = { V2Mark(icon = Icons.Default.Description) },
