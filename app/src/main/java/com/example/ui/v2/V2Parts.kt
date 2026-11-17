@@ -225,7 +225,7 @@ fun V2Chip(text: String, selected: Boolean, onClick: () -> Unit) {
     val shape = RoundedCornerShape(50)
     Text(
         text, style = V2Type.smallStrong, color = if (selected) p.paper else p.ink,
-        modifier = Modifier.heightIn(min = 40.dp).clip(shape).background(if (selected) p.ink else p.sheet)
+        modifier = Modifier.heightIn(min = 48.dp).clip(shape).background(if (selected) p.ink else p.sheet)
             .border(1.dp, if (selected) p.ink else p.mist, shape)
             .clickable(role = Role.Tab, onClick = onClick).semantics { this.selected = selected }
             .padding(horizontal = 14.dp, vertical = 10.dp)
