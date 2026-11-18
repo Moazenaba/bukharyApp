@@ -23,16 +23,16 @@ import com.example.domain.v2.V2ThemeSpec
 import com.example.domain.v2.V2Themes
 
 /**
- * The «الواجهات 2» look, on its own. Every theme is two calm colours (paper and ink, with their soft
- * in-betweens) and one loud colour kept for the action that matters (`cta`): blur the screen and the only
- * thing that still pops is where to tap. The themes themselves live in domain/v2/V2Themes (checked by tests).
+ * The «الواجهات 2» look, on its own: soft and rounded. Every theme is mostly neutral (paper, white sheets, ink)
+ * with one refined accent (`cta`) for the action that matters; blur the screen and the accent is still where to
+ * tap. The themes themselves live in domain/v2/V2Themes (checked by tests).
  */
 @Immutable
 data class V2Palette(
     val ink: Color,
     val paper: Color,
     val sheet: Color,
-    /** The loud colour: primary buttons only. */
+    /** The accent: the one filled button of a view, the current tab and the current step. */
     val cta: Color,
     val onCta: Color,
     val leaf: Color,
@@ -43,7 +43,10 @@ data class V2Palette(
     /** The focal block («what to do now»): calm and deep, so its action-coloured button is the one bright spot. */
     val hero: Color,
     val onHero: Color
-)
+) {
+    /** The quiet fill of secondary buttons, marks, chips and avatars: ink, barely there. */
+    val tonal: Color get() = ink.copy(alpha = if (dark) 0.10f else 0.06f)
+}
 
 fun V2ThemeSpec.palette() = V2Palette(
     ink = Color(ink), paper = Color(paper), sheet = Color(sheet), cta = Color(cta), onCta = Color(onCta),
@@ -62,17 +65,18 @@ val PlexArabic = FontFamily(
     Font(R.font.plex_arabic_bold, FontWeight.Bold)
 )
 
-/** One scale for every screen; nothing is smaller than 13sp. */
+/** One scale for every screen: a large title, 16sp reading text, nothing smaller than 13sp. */
 object V2Type {
-    val title = TextStyle(fontFamily = PlexArabic, fontWeight = FontWeight.Bold, fontSize = 24.sp, lineHeight = 32.sp)
-    val hero = TextStyle(fontFamily = PlexArabic, fontWeight = FontWeight.Bold, fontSize = 21.sp, lineHeight = 29.sp)
+    val title = TextStyle(fontFamily = PlexArabic, fontWeight = FontWeight.Bold, fontSize = 30.sp, lineHeight = 38.sp)
+    val hero = TextStyle(fontFamily = PlexArabic, fontWeight = FontWeight.Bold, fontSize = 22.sp, lineHeight = 31.sp)
     val heading = TextStyle(fontFamily = PlexArabic, fontWeight = FontWeight.Bold, fontSize = 18.sp, lineHeight = 26.sp)
-    val body = TextStyle(fontFamily = PlexArabic, fontWeight = FontWeight.Normal, fontSize = 15.sp, lineHeight = 23.sp)
-    val bodyStrong = TextStyle(fontFamily = PlexArabic, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, lineHeight = 22.sp)
-    val small = TextStyle(fontFamily = PlexArabic, fontWeight = FontWeight.Normal, fontSize = 13.sp, lineHeight = 19.sp)
-    val smallStrong = TextStyle(fontFamily = PlexArabic, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, lineHeight = 19.sp)
+    val body = TextStyle(fontFamily = PlexArabic, fontWeight = FontWeight.Normal, fontSize = 16.sp, lineHeight = 25.sp)
+    val bodyStrong = TextStyle(fontFamily = PlexArabic, fontWeight = FontWeight.SemiBold, fontSize = 16.sp, lineHeight = 24.sp)
+    val small = TextStyle(fontFamily = PlexArabic, fontWeight = FontWeight.Normal, fontSize = 14.sp, lineHeight = 21.sp)
+    val smallStrong = TextStyle(fontFamily = PlexArabic, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, lineHeight = 21.sp)
+    val label = TextStyle(fontFamily = PlexArabic, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, lineHeight = 18.sp)
     val number = TextStyle(fontFamily = PlexArabic, fontWeight = FontWeight.Bold, fontSize = 17.sp, lineHeight = 22.sp)
-    val bigNumber = TextStyle(fontFamily = PlexArabic, fontWeight = FontWeight.Bold, fontSize = 26.sp, lineHeight = 32.sp)
+    val bigNumber = TextStyle(fontFamily = PlexArabic, fontWeight = FontWeight.Bold, fontSize = 28.sp, lineHeight = 34.sp)
 }
 
 @Composable
@@ -82,13 +86,19 @@ fun V2Theme(theme: V2ThemeSpec = V2Themes.of(null, isSystemInDarkTheme()), conte
         darkColorScheme(
             primary = p.ink, onPrimary = p.paper, secondary = p.cta, onSecondary = p.onCta,
             background = p.paper, onBackground = p.ink, surface = p.sheet, onSurface = p.ink,
-            surfaceVariant = p.paper, onSurfaceVariant = p.muted, outline = p.mist, error = p.brick
+            surfaceVariant = p.paper, onSurfaceVariant = p.muted, outline = p.muted, outlineVariant = p.mist, error = p.brick,
+            // Dialogs, menus and sheets read these: without them they come out in Material's default lavender/grey.
+            surfaceTint = p.sheet, surfaceContainerLowest = p.sheet, surfaceContainerLow = p.sheet, surfaceContainer = p.sheet,
+            surfaceContainerHigh = p.sheet, surfaceContainerHighest = p.sheet, surfaceBright = p.sheet, surfaceDim = p.paper
         )
     } else {
         lightColorScheme(
             primary = p.ink, onPrimary = p.paper, secondary = p.cta, onSecondary = p.onCta,
             background = p.paper, onBackground = p.ink, surface = p.sheet, onSurface = p.ink,
-            surfaceVariant = p.paper, onSurfaceVariant = p.muted, outline = p.mist, error = p.brick
+            surfaceVariant = p.paper, onSurfaceVariant = p.muted, outline = p.muted, outlineVariant = p.mist, error = p.brick,
+            // Dialogs, menus and sheets read these: without them they come out in Material's default lavender/grey.
+            surfaceTint = p.sheet, surfaceContainerLowest = p.sheet, surfaceContainerLow = p.sheet, surfaceContainer = p.sheet,
+            surfaceContainerHigh = p.sheet, surfaceContainerHighest = p.sheet, surfaceBright = p.sheet, surfaceDim = p.paper
         )
     }
     val base = Typography()

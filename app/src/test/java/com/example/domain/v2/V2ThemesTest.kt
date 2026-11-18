@@ -29,9 +29,17 @@ class V2ThemesTest {
             val calmest = V2Themes.calm(t).maxOf { V2Themes.chroma(it) }
             val loud = V2Themes.chroma(t.cta)
             assertTrue("${t.key}: action chroma ${fmt(loud)} vs calm ${fmt(calmest)}", loud - calmest >= 0.4)
-            assertTrue("${t.key}: action vs paper ${fmt(V2Themes.contrast(t.cta, t.paper))}", V2Themes.contrast(t.cta, t.paper) >= 2.0)
+            assertTrue("${t.key}: action vs paper ${fmt(V2Themes.contrast(t.cta, t.paper))}", V2Themes.contrast(t.cta, t.paper) >= 3.0)
             // The action button also sits on the focal block: it must stand out there too.
-            assertTrue("${t.key}: action vs focal block ${fmt(V2Themes.contrast(t.cta, t.hero))}", V2Themes.contrast(t.cta, t.hero) >= 2.0)
+            assertTrue("${t.key}: action vs focal block ${fmt(V2Themes.contrast(t.cta, t.hero))}", V2Themes.contrast(t.cta, t.hero) >= 3.0)
+        }
+    }
+
+    @Test fun `the hero is a calm tint, never a second loud block`() {
+        V2Themes.ALL.forEach { t ->
+            assertTrue("${t.key}: hero chroma ${fmt(V2Themes.chroma(t.hero))}", V2Themes.chroma(t.hero) <= 0.12)
+            // The hero sits with the paper (a tint of it in light themes, a lifted surface in dark ones).
+            assertTrue("${t.key}: hero vs paper ${fmt(V2Themes.contrast(t.hero, t.paper))}", V2Themes.contrast(t.hero, t.paper) < 1.6)
         }
     }
 

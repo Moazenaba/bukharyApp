@@ -6,6 +6,10 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -224,13 +228,13 @@ enum class V2Filter(val label: String) {
 private fun V2Header(hello: String, title: String, unread: Int, isOnline: Boolean, onBack: (() -> Unit)?, onBell: () -> Unit) {
     val p = LocalV2.current
     Row(
-        Modifier.fillMaxWidth().padding(start = 16.dp, end = 12.dp, top = 12.dp, bottom = 8.dp),
+        Modifier.fillMaxWidth().padding(start = 20.dp, end = 16.dp, top = 14.dp, bottom = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         if (onBack != null) {
             Box(
-                Modifier.size(48.dp).clip(RoundedCornerShape(12.dp)).clickable(role = Role.Button, onClickLabel = "رجوع", onClick = onBack),
+                Modifier.size(48.dp).v2Sheet(CircleShape).clickable(role = Role.Button, onClickLabel = "رجوع", onClick = onBack),
                 contentAlignment = Alignment.Center
             ) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "رجوع", tint = p.ink) }
         }
@@ -239,16 +243,16 @@ private fun V2Header(hello: String, title: String, unread: Int, isOnline: Boolea
                 if (isOnline) hello else "$hello · بدون اتصال", style = V2Type.small,
                 color = if (isOnline) p.muted else p.brick, maxLines = 1, overflow = TextOverflow.Ellipsis
             )
-            Text(title, style = V2Type.title, color = p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(title, style = V2Type.title, color = p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.semantics { heading() })
         }
         Box(
-            Modifier.size(48.dp).clip(RoundedCornerShape(12.dp)).background(p.sheet).border(1.dp, p.mist, RoundedCornerShape(12.dp))
+            Modifier.size(48.dp).v2Sheet(CircleShape)
                 .clickable(role = Role.Button, onClick = onBell)
                 .semantics { contentDescription = if (unread > 0) "الإشعارات، $unread جديد" else "الإشعارات" },
             contentAlignment = Alignment.Center
         ) {
             Icon(Icons.Default.Notifications, null, tint = p.ink)
-            if (unread > 0) Box(Modifier.align(Alignment.TopStart).padding(9.dp).size(9.dp).clip(CircleShape).background(p.brick))
+            if (unread > 0) Box(Modifier.align(Alignment.TopStart).padding(11.dp).size(9.dp).clip(CircleShape).background(p.cta))
         }
     }
 }
@@ -264,27 +268,24 @@ private fun iconFor(tab: V2Tab): ImageVector = when (tab) {
     V2Tab.MORE -> Icons.Default.MoreHoriz
 }
 
+/** A floating capsule over the paper: four tabs, the current one in the accent colour. */
 @Composable
 private fun V2TabBar(tabs: List<V2Tab>, current: V2Tab, unreadForMe: Int, onSelect: (V2Tab) -> Unit) {
     val p = LocalV2.current
-    Column(Modifier.fillMaxWidth().background(p.sheet)) {
-        V2Divider()
-        Row(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 6.dp, vertical = 6.dp)) {
+    Box(Modifier.fillMaxWidth().background(p.paper).navigationBarsPadding().padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 10.dp)) {
+        Row(Modifier.fillMaxWidth().v2Sheet(RoundedCornerShape(50)).padding(horizontal = 6.dp, vertical = 6.dp)) {
             tabs.forEach { t ->
                 val on = t == current
+                val tint by animateColorAsState(if (on) p.cta else p.muted, label = "tab")
                 Column(
-                    Modifier.weight(1f).heightIn(min = 56.dp).clip(RoundedCornerShape(14.dp))
-                        .clickable(role = Role.Tab, onClick = { onSelect(t) })
-                        .semantics { selected = on },
+                    Modifier.weight(1f).heightIn(min = 56.dp).clip(RoundedCornerShape(50))
+                        .background(if (on) p.cta.copy(alpha = 0.10f) else Color.Transparent)
+                        .selectable(selected = on, role = Role.Tab, onClick = { onSelect(t) }),
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(3.dp, Alignment.CenterVertically)
+                    verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically)
                 ) {
-                    Box(
-                        Modifier.size(width = 52.dp, height = 30.dp).clip(RoundedCornerShape(15.dp))
-                            .background(if (on) p.ink.copy(alpha = 0.12f) else p.sheet),
-                        contentAlignment = Alignment.Center
-                    ) { Icon(iconFor(t), null, tint = if (on) p.ink else p.muted, modifier = Modifier.size(22.dp)) }
-                    Text(t.label, style = V2Type.smallStrong, color = if (on) p.ink else p.muted, maxLines = 1)
+                    Icon(iconFor(t), null, tint = tint, modifier = Modifier.size(24.dp))
+                    Text(t.label, style = V2Type.label, color = if (on) p.cta else p.muted, maxLines = 1)
                 }
             }
         }

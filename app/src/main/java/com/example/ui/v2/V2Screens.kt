@@ -118,9 +118,19 @@ fun V2NowScreen(data: V2Data, actions: V2Actions, onOpen: (String) -> Unit) {
         TodayFeedBuilder.build(data.committees, data.tasks, data.user.id, ::canOn, data.today)
     }
     val late = remember(data.committees, data.tasks, data.today) { lateIds(data) }
+    // The hero is what needs me most among what is due (late, today, or a step with no day): a step I can do,
+    // then an exam, then a ceremony, then a task — late before on time. Everything else is «قادم».
+    val (hero, rest) = remember(feed) {
+        val all = listOfNotNull(feed.now) + feed.later
+        val weight = mapOf(FeedKind.ACTION to 0, FeedKind.EXAM to 1, FeedKind.CEREMONY to 2, FeedKind.TASK to 3)
+        val due = all.filter { it.overdue || it.today || it.date.isBlank() }
+        val pick = due.minWithOrNull(compareBy<com.example.domain.FeedItem>({ weight[it.kind] }, { if (it.overdue) 0 else 1 })) ?: all.firstOrNull()
+        pick to all.filter { it !== pick }
+    }
+    var confirmStep by remember { mutableStateOf(false) }
     V2Scroll {
         item(key = "now") {
-            val now = feed.now
+            val now = hero
             if (now == null) {
                 V2Empty("مفيش حاجة مطلوبة منك دلوقتي", "أول ما يتسند لك امتحان أو حفل أو مهمة هتلاقيه هنا.")
             } else {
@@ -139,7 +149,7 @@ fun V2NowScreen(data: V2Data, actions: V2Actions, onOpen: (String) -> Unit) {
                             now.kind == FeedKind.TASK && now.taskId != null ->
                                 V2Button("تمت المهمة", { actions.toggleTask(now.taskId) }, Modifier.weight(1f), kind = V2ButtonKind.CTA, icon = Icons.Default.CheckCircle)
                             step != null && committee != null && step.canDo && step.oneTap && now.kind == FeedKind.ACTION ->
-                                V2Button(step.title, { actions.oneTap(committee, step) }, Modifier.weight(1f), kind = V2ButtonKind.CTA)
+                                V2Button(step.title, { confirmStep = true }, Modifier.weight(1f), kind = V2ButtonKind.CTA)
                             committee != null -> V2Button("افتح اللجنة", { onOpen(committee.id) }, Modifier.weight(1f), kind = V2ButtonKind.CTA)
                         }
                         Logistics.mapsUrl(now.place)?.let { url ->
@@ -152,15 +162,15 @@ fun V2NowScreen(data: V2Data, actions: V2Actions, onOpen: (String) -> Unit) {
                 }
             }
         }
-        if (feed.later.isNotEmpty()) {
+        if (rest.isNotEmpty()) {
             item(key = "later-title") { V2Section("قادم") }
             item(key = "later") {
                 V2Group {
-                    feed.later.forEachIndexed { i, f ->
+                    rest.forEachIndexed { i, f ->
                         if (i > 0) V2Divider()
                         val c = f.committeeId?.let { id -> data.committees.firstOrNull { it.id == id } }
                         V2Row(
-                            title = f.title,
+                            title = v2FeedTitle(f, c),
                             subtitle = listOf(DayText.relative(f.date, data.today), f.place).filter { it.isNotBlank() }.joinToString(" · "),
                             mark = {
                                 if (c != null) V2Mark(c.committeeNumber.toString(), late = f.overdue)
@@ -193,6 +203,18 @@ fun V2NowScreen(data: V2Data, actions: V2Actions, onOpen: (String) -> Unit) {
             }
         }
     }
+    // A stage step can't be taken back from here, so the hero asks first — the same as the committee screen.
+    val stepCommittee = hero?.committeeId?.let { id -> data.committees.firstOrNull { it.id == id } }
+    val heroStep = stepCommittee?.let { c -> NextStep.of(c) { a -> canOn(a, c.id) } }
+    if (confirmStep && stepCommittee != null && heroStep != null) {
+        AlertDialog(
+            onDismissRequest = { confirmStep = false },
+            title = { Text(heroStep.title, style = V2Type.heading) },
+            text = { Text("لجنة ${stepCommittee.committeeNumber}: تأكيد الخطوة؟", style = V2Type.body) },
+            confirmButton = { TextButton(onClick = { confirmStep = false; actions.oneTap(stepCommittee, heroStep) }) { Text("تأكيد", style = V2Type.bodyStrong) } },
+            dismissButton = { TextButton(onClick = { confirmStep = false }) { Text("إلغاء", style = V2Type.body) } }
+        )
+    }
 }
 
 // ------------------------------------------------------------------------------------------- لوحة الإدارة
@@ -207,13 +229,20 @@ fun V2BoardScreen(data: V2Data, onOpen: (String) -> Unit, onShow: (V2Filter) -> 
     V2Scroll {
         item(key = "hero") {
             if (late.isNotEmpty()) {
-                V2NowCard("مهلة كل مرحلة ${AppSettings.current.overdueDays} أيام", "${late.size} ${if (late.size in 3..10) "لجان متأخرة" else "لجنة متأخرة"}") {
+                V2NowCard("مهلة كل مرحلة ${AppSettings.current.overdueDays} أيام", v2Count(late.size, "لجنة متأخرة", "لجنتين متأخرتين", "لجان متأخرة", "لجنة متأخرة")) {
                     V2Button("عرض المتأخر", { onShow(V2Filter.LATE) }, Modifier.fillMaxWidth(), kind = V2ButtonKind.CTA)
                 }
-            } else {
-                V2NowCard(if (examsToday > 0) "$examsToday امتحان النهارده" else "النهارده", "مفيش لجان متأخرة") {
-                    V2Button("كل اللجان", { onShow(V2Filter.ALL) }, Modifier.fillMaxWidth(), kind = V2ButtonKind.CTA)
+            } else if (pending > 0) {
+                // Nothing is late: the next thing that waits on the admin is people asking to join.
+                V2NowCard("مفيش لجان متأخرة", v2Count(pending, "طلب انضمام مستني", "طلبين انضمام مستنيين", "طلبات انضمام مستنية", "طلب انضمام مستني")) {
+                    V2Button("راجع الطلبات", onPeople, Modifier.fillMaxWidth(), kind = V2ButtonKind.CTA)
                 }
+            } else if (examsToday > 0) {
+                V2NowCard("مفيش لجان متأخرة", v2Count(examsToday, "امتحان النهارده", "امتحانين النهارده", "امتحانات النهارده", "امتحان النهارده")) {
+                    V2Button("عرض امتحانات النهارده", { onShow(V2Filter.EXAM) }, Modifier.fillMaxWidth(), kind = V2ButtonKind.CTA)
+                }
+            } else {
+                V2NowCard("كل اللجان ماشية في مواعيدها", "مفيش حاجة مستنياك")
             }
         }
         item(key = "stats") {
@@ -227,9 +256,12 @@ fun V2BoardScreen(data: V2Data, onOpen: (String) -> Unit, onShow: (V2Filter) -> 
         item(key = "stages") {
             V2Group {
                 V2Stages.Group.values().forEachIndexed { i, g ->
-                    if (i > 0) V2Divider()
+                    if (i > 0) V2Divider(inset = 16.dp)
                     val f = V2Filter.values().first { it.group() == g }
-                    V2Row(title = g.label, mark = { V2Mark((counts[g] ?: 0).toString()) }, onClick = { onShow(f) })
+                    V2Row(
+                        title = g.label, onClick = { onShow(f) }, actionLabel = "عرض اللجان",
+                        trailing = { Text((counts[g] ?: 0).toString(), style = V2Type.number, color = p.muted) }
+                    )
                 }
             }
         }
@@ -258,11 +290,11 @@ private fun V2Stat(label: String, value: Int, alert: Boolean, modifier: Modifier
     val p = LocalV2.current
     V2Group(modifier) {
         Column(
-            Modifier.fillMaxWidth().clickable(role = Role.Button, onClickLabel = label, onClick = onClick).padding(horizontal = 12.dp, vertical = 10.dp),
+            Modifier.fillMaxWidth().clickable(role = Role.Button, onClickLabel = label, onClick = onClick).padding(horizontal = 14.dp, vertical = 14.dp),
             verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {
             Text(value.toString(), style = V2Type.bigNumber, color = if (alert) p.brick else p.ink)
-            Text(label, style = V2Type.small, color = p.muted, maxLines = 1)
+            Text(label, style = V2Type.small, color = p.muted, maxLines = 2)
         }
     }
 }
@@ -289,7 +321,7 @@ fun V2CommitteeListScreen(data: V2Data, onOpen: (String) -> Unit, filter: V2Filt
                     value = query, onValueChange = { query = it }, singleLine = true,
                     leadingIcon = { Icon(Icons.Default.Search, null) },
                     placeholder = { Text("رقم اللجنة أو اسمها أو الشيخ", style = V2Type.body) },
-                    shape = RoundedCornerShape(14.dp), textStyle = V2Type.body, modifier = Modifier.fillMaxWidth()
+                    shape = RoundedCornerShape(50), textStyle = V2Type.body, colors = v2FieldColors(), modifier = Modifier.fillMaxWidth()
                 )
             }
             item(key = "chips") {
@@ -451,7 +483,7 @@ fun V2PeopleScreen(data: V2Data, actions: V2Actions, tools: Set<V2Tool>) {
                 value = query, onValueChange = { query = it }, singleLine = true,
                 leadingIcon = { Icon(Icons.Default.Search, null) },
                 placeholder = { Text("الاسم أو رقم الموبايل", style = V2Type.body) },
-                shape = RoundedCornerShape(14.dp), textStyle = V2Type.body, modifier = Modifier.fillMaxWidth()
+                shape = RoundedCornerShape(50), textStyle = V2Type.body, colors = v2FieldColors(), modifier = Modifier.fillMaxWidth()
             )
         }
         item(key = "users-title") { V2Section(if (data.staffLoading && data.staff.isEmpty()) "جارٍ التحميل…" else "المستخدمون (${approved.size})") }
@@ -459,7 +491,7 @@ fun V2PeopleScreen(data: V2Data, actions: V2Actions, tools: Set<V2Tool>) {
             if (approved.isNotEmpty()) V2Group {
                 approved.forEachIndexed { i, u ->
                     if (i > 0) V2Divider()
-                    val committees = if (u.allCommitteesAllowed) "كل اللجان" else if (u.assignedCommitteeIds.isEmpty()) "بدون لجان" else "${u.assignedCommitteeIds.size} لجان"
+                    val committees = if (u.allCommitteesAllowed) "كل اللجان" else if (u.assignedCommitteeIds.isEmpty()) "بدون لجان" else v2Count(u.assignedCommitteeIds.size, "لجنة واحدة", "لجنتين", "لجان", "لجنة")
                     V2Row(
                         title = u.name,
                         subtitle = "${roleName(u.role)} · $committees",
@@ -500,13 +532,13 @@ fun V2MoreScreen(data: V2Data, actions: V2Actions, tools: Set<V2Tool>, onPage: (
     V2Scroll {
         item(key = "work") {
             V2Group {
-                V2Row("الإشعارات", if (unread > 0) "$unread جديد" else "لا جديد", mark = { V2Mark(icon = Icons.Default.Notifications) }, onClick = { onPage(V2Page.INBOX) })
+                V2Row("الإشعارات", if (unread > 0) v2Count(unread, "إشعار جديد", "إشعارين جداد", "إشعارات جديدة", "إشعار جديد") else "لا جديد", mark = { V2Mark(icon = Icons.Default.Notifications) }, onClick = { onPage(V2Page.INBOX) })
                 if (V2Tool.EXAMS in tools || V2Tool.EXAM_PAPER in tools) {
                     V2Divider()
-                    V2Row("الامتحانات", "${data.exams.size} ورقة", mark = { V2Mark(icon = Icons.Default.Description) }, onClick = { onPage(V2Page.EXAMS) })
+                    V2Row("الامتحانات", v2Count(data.exams.size, "ورقة واحدة", "ورقتين", "ورقات", "ورقة"), mark = { V2Mark(icon = Icons.Default.Description) }, onClick = { onPage(V2Page.EXAMS) })
                 }
                 V2Divider()
-                V2Row("التقويم", if (todays > 0) "$todays أعمال النهارده" else "المواعيد والمهام", mark = { V2Mark(icon = Icons.Default.CalendarMonth) }, onClick = { onPage(V2Page.CALENDAR) })
+                V2Row("التقويم", if (todays > 0) v2Count(todays, "مهمة النهارده", "مهمتين النهارده", "مهام النهارده", "مهمة النهارده") else "المواعيد والمهام", mark = { V2Mark(icon = Icons.Default.CalendarMonth) }, onClick = { onPage(V2Page.CALENDAR) })
                 if (V2Tool.SEND_NOTICE in tools) {
                     V2Divider()
                     V2Row("إرسال تنبيه", "يوصل لكل المستخدمين", mark = { V2Mark(icon = Icons.Default.Campaign) }, onClick = { sending = true })
@@ -710,5 +742,18 @@ private fun V2TaskGroup(list: List<com.example.data.model.ScheduleTask>, data: V
                 onClick = { actions.toggleTask(t.id) }
             )
         }
+    }
+}
+
+/**
+ * The row's badge already shows the committee number, so the title drops the "لجنة #N" the shared
+ * feed puts in front, and the kind (exam, ceremony) is said once, by the tag.
+ */
+internal fun v2FeedTitle(f: com.example.domain.FeedItem, c: com.example.data.model.Committee?): String {
+    if (c == null) return f.title
+    return when (f.kind) {
+        FeedKind.EXAM, FeedKind.CEREMONY -> c.committeeName.ifBlank { f.title }
+        FeedKind.ACTION -> f.title.replace(Regex("^لجنة #\\d+:\\s*"), "").ifBlank { f.title }
+        FeedKind.TASK -> f.title
     }
 }

@@ -1,5 +1,11 @@
 package com.example.ui.v2
 
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.border
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -9,6 +15,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Chat
+import androidx.compose.material.icons.filled.HourglassEmpty
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.EditNote
@@ -29,6 +36,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -81,7 +89,8 @@ fun V2CommitteeScreen(c: Committee, data: V2Data, actions: V2Actions, tools: Set
         item(key = "title") {
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(c.committeeName, style = V2Type.heading, color = p.ink)
-                Text(listOf(c.competitionBook, c.courseName).filter { it.isNotBlank() }.joinToString(" · "), style = V2Type.small, color = p.muted)
+                val about = listOf(c.competitionBook, c.courseName).filter { it.isNotBlank() && it != c.committeeName }.distinct().joinToString(" · ")
+                if (about.isNotBlank()) Text(about, style = V2Type.small, color = p.muted)
                 V2Steps(step.done, step.total)
             }
         }
@@ -98,7 +107,7 @@ fun V2CommitteeScreen(c: Committee, data: V2Data, actions: V2Actions, tools: Set
                         kind = V2ButtonKind.CTA
                     )
                 }
-                else -> V2Group { V2Row("اللجنة منتظرة", step.waiting, mark = { V2Mark(icon = Icons.Default.RadioButtonUnchecked) }) }
+                else -> V2Group { V2Row("اللجنة منتظرة", step.waiting, mark = { V2Mark(icon = Icons.Default.HourglassEmpty) }) }
             }
         }
 
@@ -125,7 +134,7 @@ fun V2CommitteeScreen(c: Committee, data: V2Data, actions: V2Actions, tools: Set
                     subtitle = if (head == null) null else if (head.phone.isBlank()) "رئيس اللجنة · لم يُسجل له رقم" else "رئيس اللجنة",
                     mark = { V2Avatar(head?.name ?: "؟") }
                 )
-                if (head != null && head.phone.isNotBlank()) {
+                if (head != null && head.phone.isNotBlank() && head.id != data.user.id) {
                     Row(Modifier.padding(start = 14.dp, end = 14.dp, bottom = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         V2Button("اتصال", { V2Intents.call(context, head.phone) }, Modifier.weight(1f), kind = V2ButtonKind.SOLID, icon = Icons.Default.Phone)
                         WhatsApp.link(head.phone, "السلام عليكم ورحمة الله")?.let { link ->
@@ -190,13 +199,28 @@ fun V2CommitteeScreen(c: Committee, data: V2Data, actions: V2Actions, tools: Set
         item(key = "stages-t") { V2Section("المراحل") }
         item(key = "stages") {
             V2Group {
+                val current = STAGE_ORDER.firstOrNull { !c.stages.getStage(it).completed }
                 STAGE_ORDER.forEachIndexed { i, key ->
-                    if (i > 0) V2Divider()
+                    if (i > 0) V2Divider(inset = 56.dp)
                     val s = c.stages.getStage(key)
+                    val now = key == current
                     V2Row(
                         V2Stages.LABEL[key] ?: key,
-                        if (s.completed) s.completedBy?.takeIf { it.isNotBlank() } else null,
-                        mark = { Icon(if (s.completed) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked, null, tint = if (s.completed) p.leaf else p.muted) }
+                        when {
+                            s.completed -> listOfNotNull("تمت", s.completedBy?.takeIf { it.isNotBlank() }).joinToString(" · ")
+                            now -> "المرحلة الحالية"
+                            else -> null
+                        },
+                        mark = {
+                            // Done: a green check. Now: an accent dot. Ahead: a faint ring. The words above say the same.
+                            Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) {
+                                when {
+                                    s.completed -> Icon(Icons.Default.CheckCircle, null, tint = p.leaf, modifier = Modifier.size(24.dp))
+                                    now -> Box(Modifier.size(14.dp).clip(CircleShape).background(p.cta))
+                                    else -> Box(Modifier.size(14.dp).clip(CircleShape).border(2.dp, p.mist, CircleShape))
+                                }
+                            }
+                        }
                     )
                 }
             }
