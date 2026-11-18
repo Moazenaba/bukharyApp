@@ -160,7 +160,7 @@ fun V2NowScreen(data: V2Data, actions: V2Actions, onOpen: (String) -> Unit) {
                         if (i > 0) V2Divider()
                         val c = f.committeeId?.let { id -> data.committees.firstOrNull { it.id == id } }
                         V2Row(
-                            title = f.title,
+                            title = v2FeedTitle(f, c),
                             subtitle = listOf(DayText.relative(f.date, data.today), f.place).filter { it.isNotBlank() }.joinToString(" · "),
                             mark = {
                                 if (c != null) V2Mark(c.committeeNumber.toString(), late = f.overdue)
@@ -710,5 +710,18 @@ private fun V2TaskGroup(list: List<com.example.data.model.ScheduleTask>, data: V
                 onClick = { actions.toggleTask(t.id) }
             )
         }
+    }
+}
+
+/**
+ * The row's badge already shows the committee number, so the title drops the "لجنة #N" the shared
+ * feed puts in front, and the kind (exam, ceremony) is said once, by the tag.
+ */
+internal fun v2FeedTitle(f: com.example.domain.FeedItem, c: com.example.data.model.Committee?): String {
+    if (c == null) return f.title
+    return when (f.kind) {
+        FeedKind.EXAM, FeedKind.CEREMONY -> c.committeeName.ifBlank { f.title }
+        FeedKind.ACTION -> f.title.replace(Regex("^لجنة #\\d+:\\s*"), "").ifBlank { f.title }
+        FeedKind.TASK -> f.title
     }
 }

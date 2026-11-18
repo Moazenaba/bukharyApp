@@ -81,7 +81,8 @@ fun V2CommitteeScreen(c: Committee, data: V2Data, actions: V2Actions, tools: Set
         item(key = "title") {
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(c.committeeName, style = V2Type.heading, color = p.ink)
-                Text(listOf(c.competitionBook, c.courseName).filter { it.isNotBlank() }.joinToString(" · "), style = V2Type.small, color = p.muted)
+                val about = listOf(c.competitionBook, c.courseName).filter { it.isNotBlank() && it != c.committeeName }.distinct().joinToString(" · ")
+                if (about.isNotBlank()) Text(about, style = V2Type.small, color = p.muted)
                 V2Steps(step.done, step.total)
             }
         }
