@@ -601,6 +601,7 @@ fun V2AccountScreen(data: V2Data, actions: V2Actions) {
 @Composable
 private fun V2AccountRows(data: V2Data, actions: V2Actions) {
     var choosingTheme by remember { mutableStateOf(false) }
+    var leaving by remember { mutableStateOf(false) }
     V2Group {
         V2Row(data.user.name, roleName(data.user.role.roleKey), mark = { V2Avatar(data.user.name) })
         V2Divider()
@@ -614,7 +615,16 @@ private fun V2AccountRows(data: V2Data, actions: V2Actions) {
         V2Divider()
         V2Row("الرجوع للواجهة القديمة", "تقدر ترجع للواجهات 2 من القائمة", mark = { V2Mark(icon = Icons.Default.SwapHoriz) }, onClick = actions.leaveV2)
         V2Divider()
-        V2Row("تسجيل الخروج", mark = { V2Mark(icon = Icons.AutoMirrored.Filled.Logout, late = true) }, onClick = actions.logout)
+        V2Row("تسجيل الخروج", mark = { V2Mark(icon = Icons.AutoMirrored.Filled.Logout, late = true) }, onClick = { leaving = true })
+    }
+    if (leaving) {
+        AlertDialog(
+            onDismissRequest = { leaving = false },
+            title = { Text("تسجيل الخروج؟", style = V2Type.heading) },
+            text = { Text("هتحتاج رقم الموبايل وكلمة المرور عشان تدخل تاني.", style = V2Type.body) },
+            confirmButton = { TextButton(onClick = { leaving = false; actions.logout() }) { Text("خروج", style = V2Type.bodyStrong, color = LocalV2.current.brick) } },
+            dismissButton = { TextButton(onClick = { leaving = false }) { Text("رجوع", style = V2Type.body) } }
+        )
     }
     if (choosingTheme) {
         AlertDialog(
@@ -642,6 +652,7 @@ private fun V2AccountRows(data: V2Data, actions: V2Actions) {
 private fun V2NoticeDialog(onDismiss: () -> Unit, onSend: (String, String) -> Unit) {
     var title by remember { mutableStateOf("") }
     var body by remember { mutableStateOf("") }
+    var sent by remember { mutableStateOf(false) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("إرسال تنبيه للجميع", style = V2Type.heading) },
@@ -651,7 +662,7 @@ private fun V2NoticeDialog(onDismiss: () -> Unit, onSend: (String, String) -> Un
                 OutlinedTextField(body, { body = it }, label = { Text("التفاصيل") }, minLines = 3, textStyle = V2Type.body, modifier = Modifier.fillMaxWidth())
             }
         },
-        confirmButton = { TextButton(enabled = title.isNotBlank(), onClick = { onSend(title.trim(), body.trim()) }) { Text("إرسال", style = V2Type.bodyStrong) } },
+        confirmButton = { TextButton(enabled = title.isNotBlank() && !sent, onClick = { sent = true; onSend(title.trim(), body.trim()) }) { Text("إرسال", style = V2Type.bodyStrong) } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("إلغاء", style = V2Type.body) } }
     )
 }

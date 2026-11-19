@@ -12,8 +12,11 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
@@ -137,6 +140,12 @@ fun <T> LazyListScope.v2Rows(rows: List<T>, key: (T) -> Any, row: @Composable (T
     }
 }
 
+/** A row that says a load failed and offers to try again (never an empty list that only looks like «nothing»). */
+@Composable
+fun V2Retry(what: String, onRetry: () -> Unit) {
+    V2Row("تعذر تحميل $what", "تأكد من الاتصال واضغط هنا للمحاولة تاني", mark = { V2Mark(icon = Icons.Default.Refresh, late = true) }, onClick = onRetry, actionLabel = "إعادة المحاولة")
+}
+
 /** The space between blocks of a screen. */
 val V2Gap = 14.dp
 
@@ -226,6 +235,12 @@ fun V2Button(
 ) {
     val p = LocalV2.current
     val source = remember { MutableInteractionSource() }
+    // A second tap within a moment is the same tap (slow phones, shaky fingers): it never runs twice.
+    var lastTap by remember { mutableLongStateOf(0L) }
+    val tap = {
+        val now = android.os.SystemClock.elapsedRealtime()
+        if (now - lastTap > 900) { lastTap = now; onClick() }
+    }
     val (bg, fg) = when (kind) {
         V2ButtonKind.CTA -> p.cta to p.onCta
         V2ButtonKind.SOLID -> p.tonal to p.ink
@@ -234,7 +249,7 @@ fun V2Button(
     }
     Row(
         modifier.heightIn(min = 52.dp).v2Press(source).clip(Capsule).background(if (enabled) bg else bg.copy(alpha = bg.alpha * 0.5f))
-            .clickable(interactionSource = source, indication = LocalIndication.current, enabled = enabled, role = Role.Button, onClick = onClick)
+            .clickable(interactionSource = source, indication = LocalIndication.current, enabled = enabled, role = Role.Button, onClick = tap)
             .padding(horizontal = 18.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center
@@ -322,6 +337,14 @@ fun v2FieldColors() = LocalV2.current.let { p ->
         focusedBorderColor = p.cta, unfocusedBorderColor = p.mist,
         focusedLeadingIconColor = p.ink, unfocusedLeadingIconColor = p.muted, cursorColor = p.cta
     )
+}
+
+/** [today] («yyyy-MM-dd») plus [days], in the same form. */
+fun v2PlusDays(today: String, days: Int): String {
+    val f = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).apply { isLenient = false }
+    val d = runCatching { f.parse(today.take(10)) }.getOrNull() ?: return ""
+    val cal = java.util.Calendar.getInstance().apply { time = d; add(java.util.Calendar.DAY_OF_MONTH, days) }
+    return f.format(cal.time)
 }
 
 /**

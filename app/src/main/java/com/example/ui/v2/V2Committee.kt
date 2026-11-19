@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Box
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.border
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -251,18 +252,26 @@ private fun V2ObserverNotes(c: Committee, mine: List<Pair<String, String>>) {
     val p = LocalV2.current
     val scope = rememberCoroutineScope()
     val assignmentId = mine.first().first
-    var notes by remember(assignmentId) { mutableStateOf<List<AssignmentNote>>(emptyList()) }
+    var notes by remember(assignmentId) { mutableStateOf<List<AssignmentNote>?>(null) }
+    var failed by remember(assignmentId) { mutableStateOf(false) }
     var text by remember { mutableStateOf("") }
     var saving by remember { mutableStateOf(false) }
     var reload by remember { mutableIntStateOf(0) }
     LaunchedEffect(assignmentId, reload) {
-        notes = try { OnlineApi.observations(assignmentId) } catch (e: CancellationException) { throw e } catch (e: Exception) { emptyList() }
+        failed = false
+        notes = try { OnlineApi.observations(assignmentId) } catch (e: CancellationException) { throw e } catch (e: Exception) { failed = true; null }
     }
     V2Group {
         V2Row(AssignmentText.mine(mine.map { it.second }), "صلاحيتك هنا للقراءة وكتابة الملاحظات، وتنتهي بانتهاء التكليف.", mark = { V2Mark(icon = Icons.Default.Visibility) })
-        notes.forEach { n ->
-            V2Divider()
-            V2Row(n.note, n.at.take(16).replace('T', ' '))
+        V2Divider()
+        when {
+            failed -> V2Retry("الملاحظات") { reload++ }
+            notes == null -> V2Row("جارٍ تحميل الملاحظات…")
+            notes!!.isEmpty() -> V2Row("لسه مفيش ملاحظات", "اكتب أول ملاحظة تحت.")
+            else -> notes!!.forEachIndexed { i, n ->
+                if (i > 0) V2Divider()
+                V2Row(n.note, v2OpensText(n.at).removeSuffix(" (بتوقيت القاهرة)"))
+            }
         }
         V2Divider()
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -296,19 +305,20 @@ private fun V2ObserversSection(c: Committee, data: V2Data, actions: V2Actions) {
     val p = LocalV2.current
     val scope = rememberCoroutineScope()
     var list by remember(c.id) { mutableStateOf<List<CommitteeAssignment>?>(null) }
+    var failed by remember(c.id) { mutableStateOf(false) }
     var reload by remember { mutableIntStateOf(0) }
     var adding by remember { mutableStateOf(false) }
     var finishing by remember { mutableStateOf<Pair<CommitteeAssignment, String>?>(null) }
     LaunchedEffect(c.id, reload) {
-        list = try { OnlineApi.assignments(committeeId = c.id) } catch (e: CancellationException) { throw e } catch (e: Exception) {
-            UiMessages.show(failure(e, "تعذر تحميل المراقبين")); emptyList()
-        }
+        failed = false
+        list = try { OnlineApi.assignments(committeeId = c.id) } catch (e: CancellationException) { throw e } catch (e: Exception) { failed = true; null }
     }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         V2Section("المراقبون")
         V2Group {
             val rows = list
             when {
+                failed -> V2Retry("المراقبين") { reload++ }
                 rows == null -> V2Row("جارٍ التحميل…")
                 rows.isEmpty() -> V2Row("لا يوجد مراقبون مكلّفون", "المراقب يفضل على رتبته ويشوف اللجنة للقراءة فقط.")
                 else -> rows.forEachIndexed { i, a ->
@@ -358,6 +368,7 @@ private fun V2ObserversSection(c: Committee, data: V2Data, actions: V2Actions) {
         var picked by remember { mutableStateOf<String?>(null) }
         var task by remember { mutableStateOf("exam") }
         var endsOn by remember { mutableStateOf("") }
+        var search by remember { mutableStateOf("") }
         var saving by remember { mutableStateOf(false) }
         val onCommittee = c.staff.map { it.id }.toSet()
         val people = data.candidates?.filter { (it.role == "sheikh" || it.role == "committee_head") && it.id !in onCommittee && it.id != data.user.id }
@@ -373,11 +384,22 @@ private fun V2ObserversSection(c: Committee, data: V2Data, actions: V2Actions) {
                         }
                     }
                     item {
-                        OutlinedTextField(endsOn, { endsOn = it.take(10) }, singleLine = true, textStyle = V2Type.body,
-                            label = { Text("ينتهي في (اختياري) YYYY-MM-DD") }, modifier = Modifier.fillMaxWidth())
+                        // When the observing ends: picked, never typed (no date format to get wrong).
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text("ينتهي", style = V2Type.smallStrong, color = p.muted)
+                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                listOf("" to "مفتوح", v2PlusDays(data.today, 7) to "أسبوع", v2PlusDays(data.today, 30) to "شهر").forEach { (d, label) ->
+                                    V2Chip(label, endsOn == d) { endsOn = d }
+                                }
+                            }
+                        }
+                    }
+                    if ((people?.size ?: 0) > 8) item {
+                        OutlinedTextField(search, { search = it }, singleLine = true, textStyle = V2Type.body, shape = RoundedCornerShape(50),
+                            colors = v2FieldColors(), placeholder = { Text("ابحث بالاسم", style = V2Type.body) }, modifier = Modifier.fillMaxWidth())
                     }
                     if (people == null) item { Text("جارٍ تحميل الأسماء…", style = V2Type.body, color = p.muted) }
-                    items(people.orEmpty(), key = { it.id }) { person ->
+                    items(people.orEmpty().filter { search.isBlank() || it.name.contains(search.trim()) }, key = { it.id }) { person ->
                         val on = picked == person.id
                         V2Row(person.name, roleName(person.role),
                             mark = { Icon(if (on) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked, null, tint = if (on) p.leaf else p.muted) },
