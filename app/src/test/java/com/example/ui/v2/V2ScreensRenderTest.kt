@@ -177,7 +177,7 @@ class V2ScreensRenderTest {
         run(UserRole.SHEIKH, V2Themes.ALL, listOf("الآن", "لجاني", "الحفلات", "حسابي"), listOf("الآن", "لجاني", "الحفلات", "حسابي"))
 
     @Test fun `committee head`() =
-        run(UserRole.COMMITTEE_HEAD, listOf(V2Themes.INK), listOf("الآن", "لجاني", "الفريق", "حسابي"), listOf("الفريق", "لجانك"))
+        run(UserRole.COMMITTEE_HEAD, listOf(V2Themes.INK), listOf("الآن", "لجاني", "الفريق", "حسابي"), listOf("الفريق", "مطلوب النهارده"))
 
     @Test fun `admin`() =
         run(UserRole.ADMIN, listOf(V2Themes.SAND, V2Themes.COFFEE), listOf("لوحة", "اللجان", "الناس", "المزيد"), listOf("لوحة", "المراحل", "الناس"))
