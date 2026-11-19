@@ -54,7 +54,7 @@ fun V2ThemeSpec.palette() = V2Palette(
     hero = Color(hero), onHero = Color(onHero)
 )
 
-val V2Light = V2Themes.SAND.palette()
+val V2Light = V2Themes.INK.palette()
 
 val LocalV2 = staticCompositionLocalOf { V2Light }
 
@@ -67,8 +67,8 @@ val PlexArabic = FontFamily(
 
 /** One scale for every screen: a large title, 16sp reading text, nothing smaller than 13sp. */
 object V2Type {
-    val title = TextStyle(fontFamily = PlexArabic, fontWeight = FontWeight.Bold, fontSize = 30.sp, lineHeight = 38.sp)
-    val hero = TextStyle(fontFamily = PlexArabic, fontWeight = FontWeight.Bold, fontSize = 22.sp, lineHeight = 31.sp)
+    val title = TextStyle(fontFamily = PlexArabic, fontWeight = FontWeight.Bold, fontSize = 28.sp, lineHeight = 36.sp)
+    val hero = TextStyle(fontFamily = PlexArabic, fontWeight = FontWeight.Bold, fontSize = 24.sp, lineHeight = 33.sp)
     val heading = TextStyle(fontFamily = PlexArabic, fontWeight = FontWeight.Bold, fontSize = 18.sp, lineHeight = 26.sp)
     val body = TextStyle(fontFamily = PlexArabic, fontWeight = FontWeight.Normal, fontSize = 16.sp, lineHeight = 25.sp)
     val bodyStrong = TextStyle(fontFamily = PlexArabic, fontWeight = FontWeight.SemiBold, fontSize = 16.sp, lineHeight = 24.sp)

@@ -83,7 +83,7 @@ fun Modifier.v2Sheet(shape: Shape = SheetShape, color: Color? = null, lift: Bool
 @Composable
 fun Modifier.v2Press(source: MutableInteractionSource): Modifier {
     val pressed by source.collectIsPressedAsState()
-    val scale by animateFloatAsState(if (pressed) 0.97f else 1f, spring(dampingRatio = 0.55f, stiffness = 700f), label = "press")
+    val scale by animateFloatAsState(if (pressed) 0.97f else 1f, spring(dampingRatio = 0.8f, stiffness = 900f), label = "press")
     return this.graphicsLayer { scaleX = scale; scaleY = scale }
 }
 
@@ -230,7 +230,7 @@ fun V2NowCard(meta: String, title: String, modifier: Modifier = Modifier, conten
 /**
  * Buttons, all capsules at least 48dp tall:
  * CTA is the one filled accent button of a view; SOLID and OUTLINE are tonal (a whisper of ink, never a second loud
- * slab); QUIET is the same tonal capsule, kept as a name for lesser actions. One secondary look, app-wide.
+ * slab); QUIET is a plain text button for the lesser choice («اعتذار» next to «قبول»).
  */
 enum class V2ButtonKind { CTA, SOLID, OUTLINE, QUIET }
 
@@ -256,7 +256,7 @@ fun V2Button(
         V2ButtonKind.CTA -> p.cta to p.onCta
         V2ButtonKind.SOLID -> p.tonal to p.ink
         V2ButtonKind.OUTLINE -> (contentColor ?: p.ink).copy(alpha = if (p.dark) 0.10f else 0.07f) to (contentColor ?: p.ink)
-        V2ButtonKind.QUIET -> p.tonal to p.ink
+        V2ButtonKind.QUIET -> Color.Transparent to p.ink
     }
     Row(
         modifier.heightIn(min = 52.dp).v2Press(source).clip(Capsule).background(if (enabled) bg else bg.copy(alpha = bg.alpha * 0.5f))
@@ -284,8 +284,8 @@ fun V2Steps(done: Int, total: Int = 9, modifier: Modifier = Modifier) {
     ) {
         repeat(total) { i ->
             val c = when {
-                i < done -> p.leaf
-                i == done -> p.cta
+                i < done -> p.ink.copy(alpha = 0.55f)
+                i == done -> p.ink
                 else -> p.mist
             }
             Box(Modifier.weight(1f).height(5.dp).clip(Capsule).background(c))
@@ -414,7 +414,7 @@ fun v2OpensText(iso: String): String {
 fun V2Swatch(spec: com.example.domain.v2.V2ThemeSpec) {
     Row(horizontalArrangement = Arrangement.spacedBy((-6).dp)) {
         listOf(spec.paper, spec.ink, spec.cta).forEach { c ->
-            Box(Modifier.size(22.dp).clip(CircleShape).background(Color(c)).border(2.dp, LocalV2.current.sheet, CircleShape))
+            Box(Modifier.size(22.dp).clip(CircleShape).background(Color(c)).border(1.dp, LocalV2.current.muted.copy(alpha = 0.5f), CircleShape))
         }
     }
 }

@@ -100,9 +100,9 @@ fun V2CommitteeScreen(c: Committee, data: V2Data, actions: V2Actions, tools: Set
         item(key = "step") {
             when {
                 step.kind == StepKind.DONE -> V2Group { V2Row("اكتملت كل مراحل اللجنة", mark = { V2Mark(icon = Icons.Default.CheckCircle) }) }
-                step.canDo -> V2NowCard("الخطوة الجاية في اللجنة", step.title) {
+                step.canDo -> V2NowCard("الخطوة الجاية في اللجنة ${c.committeeNumber}", step.title) {
                     V2Button(
-                        if (step.oneTap) step.title else "افتح النموذج",
+                        if (step.oneTap) "تم، أكّد" else "افتح النموذج",
                         { if (step.oneTap) confirm = true else onLegacy(formTabFor(step.kind)) },
                         Modifier.fillMaxWidth(),
                         kind = V2ButtonKind.CTA
@@ -126,7 +126,7 @@ fun V2CommitteeScreen(c: Committee, data: V2Data, actions: V2Actions, tools: Set
                 )
                 Logistics.mapsUrl(place)?.let { url ->
                     Row(Modifier.padding(start = 14.dp, end = 14.dp, bottom = 12.dp)) {
-                        V2Button("افتح في الخرائط", { V2Intents.open(context, url) }, Modifier.fillMaxWidth(), kind = V2ButtonKind.QUIET, icon = Icons.Default.Place)
+                        V2Button("افتح في الخرائط", { V2Intents.open(context, url) }, Modifier.fillMaxWidth(), kind = V2ButtonKind.SOLID, icon = Icons.Default.Place)
                     }
                 }
                 V2Divider()
@@ -139,7 +139,7 @@ fun V2CommitteeScreen(c: Committee, data: V2Data, actions: V2Actions, tools: Set
                     Row(Modifier.padding(start = 14.dp, end = 14.dp, bottom = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         V2Button("اتصال", { V2Intents.call(context, head.phone) }, Modifier.weight(1f), kind = V2ButtonKind.SOLID, icon = Icons.Default.Phone)
                         WhatsApp.link(head.phone, "السلام عليكم ورحمة الله")?.let { link ->
-                            V2Button("واتساب", { V2Intents.open(context, link) }, Modifier.weight(1f), kind = V2ButtonKind.QUIET, icon = Icons.AutoMirrored.Filled.Chat)
+                            V2Button("واتساب", { V2Intents.open(context, link) }, Modifier.weight(1f), kind = V2ButtonKind.SOLID, icon = Icons.AutoMirrored.Filled.Chat)
                         }
                     }
                 }
@@ -185,7 +185,7 @@ fun V2CommitteeScreen(c: Committee, data: V2Data, actions: V2Actions, tools: Set
                 if (V2Tool.STAFF in tools && Permissions.canOn("committees.members", c.id)) {
                     V2Divider()
                     Row(Modifier.padding(10.dp)) {
-                        V2Button("إضافة / إزالة شيوخ", { actions.loadCandidates(); editingStaff = true }, Modifier.fillMaxWidth(), kind = V2ButtonKind.QUIET)
+                        V2Button("إضافة / إزالة شيوخ", { actions.loadCandidates(); editingStaff = true }, Modifier.fillMaxWidth(), kind = V2ButtonKind.SOLID)
                     }
                 }
             }
@@ -229,7 +229,7 @@ fun V2CommitteeScreen(c: Committee, data: V2Data, actions: V2Actions, tools: Set
 
         if (Permissions.canOn("committees.update", c.id)) {
             item(key = "full") {
-                V2Button("تعديل بيانات اللجنة (الواجهة الكاملة)", { onLegacy(EDIT_TAB) }, Modifier.fillMaxWidth(), kind = V2ButtonKind.QUIET, icon = Icons.Default.EditNote)
+                V2Button("تعديل بيانات اللجنة (الواجهة الكاملة)", { onLegacy(EDIT_TAB) }, Modifier.fillMaxWidth(), kind = V2ButtonKind.SOLID, icon = Icons.Default.EditNote)
             }
         }
     }
@@ -334,7 +334,7 @@ private fun V2ObserversSection(c: Committee, data: V2Data, actions: V2Actions) {
             }
             V2Divider()
             Row(Modifier.padding(10.dp)) {
-                V2Button("تكليف مراقب", { actions.loadCandidates(); adding = true }, Modifier.fillMaxWidth(), kind = V2ButtonKind.QUIET, icon = Icons.Default.Visibility)
+                V2Button("تكليف مراقب", { actions.loadCandidates(); adding = true }, Modifier.fillMaxWidth(), kind = V2ButtonKind.SOLID, icon = Icons.Default.Visibility)
             }
         }
     }
