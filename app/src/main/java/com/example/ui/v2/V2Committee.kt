@@ -249,7 +249,7 @@ fun V2CommitteeScreen(c: Committee, data: V2Data, actions: V2Actions, tools: Set
             onDismissRequest = { confirm = false },
             title = { Text(step.title, style = V2Type.heading) },
             text = { Text("لجنة ${c.committeeNumber}: تأكيد الخطوة؟", style = V2Type.body) },
-            confirmButton = { TextButton(onClick = { confirm = false; actions.oneTap(c, step); UiMessages.show("تم: ${step.title}") }) { Text("تأكيد", style = V2Type.bodyStrong) } },
+            confirmButton = { TextButton(onClick = { confirm = false; actions.oneTap(c, step); UiMessages.show("تم تسجيل: ${step.title}") }) { Text("تأكيد", style = V2Type.bodyStrong) } },
             dismissButton = { TextButton(onClick = { confirm = false }) { Text("إلغاء", style = V2Type.body) } }
         )
     }

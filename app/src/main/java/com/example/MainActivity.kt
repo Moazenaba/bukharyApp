@@ -464,7 +464,7 @@ class MainActivity : ComponentActivity() {
                                         openExam = { exam -> viewModel.openExamFile(exam) { openPdf(it) } },
                                         readNotification = { n -> viewModel.markNotificationRead(n.id) },
                                         readAll = { viewModel.markAllNotificationsRead() },
-                                        sync = { viewModel.syncNow() },
+                                        sync = { done -> viewModel.syncNow(done) },
                                         changePassword = { showChangePassword = true },
                                         logout = { viewModel.requestLogout() },
                                         leaveV2 = {

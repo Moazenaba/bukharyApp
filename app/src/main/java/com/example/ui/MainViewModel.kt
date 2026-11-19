@@ -319,10 +319,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun syncNow() {
+    /** [onDone] runs when the refresh has really finished (success or not), so a screen can stop its spinner then. */
+    fun syncNow(onDone: () -> Unit = {}) {
         viewModelScope.launch {
             val ok = refreshFromServer()
             showMessage(if (ok) "تم التحديث من الخادم" else "تعذر التحديث من الخادم؛ تعرض آخر بيانات محفوظة")
+            onDone()
         }
     }
 

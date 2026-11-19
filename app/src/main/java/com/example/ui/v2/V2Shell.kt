@@ -121,7 +121,8 @@ class V2Actions(
     val openExam: (Exam) -> Unit,
     val readNotification: (NotificationItem) -> Unit,
     val readAll: () -> Unit,
-    val sync: () -> Unit,
+    /** Syncs now; the callback runs when it is really done. */
+    val sync: (done: () -> Unit) -> Unit,
     val changePassword: () -> Unit,
     val logout: () -> Unit,
     val leaveV2: () -> Unit,
@@ -204,7 +205,7 @@ fun V2Shell(
             },
             onBell = { page = V2Page.INBOX }
         )
-        if (!data.isOnline) V2OfflineStrip(onRetry = actions.sync)
+        if (!data.isOnline) V2OfflineStrip(onRetry = { actions.sync {} })
         val context = LocalContext.current
         val reduceMotion = remember {
             android.provider.Settings.Global.getFloat(context.contentResolver, android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f
