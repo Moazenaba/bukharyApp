@@ -281,14 +281,17 @@ fun V2BoardScreen(data: V2Data, onOpen: (String) -> Unit, onShow: (V2Filter) -> 
         }
         item(key = "stats") {
             V2Group {
-                V2Row("لجان متأخرة", onClick = { onShow(V2Filter.LATE) }, actionLabel = "عرض المتأخر",
+                V2Row("لجان متأخرة", onClick = if (late.isNotEmpty()) ({ onShow(V2Filter.LATE) }) else null, actionLabel = "عرض المتأخر",
                     trailing = { Text(late.size.toString(), style = V2Type.number, color = if (late.isNotEmpty()) p.brick else p.muted) })
                 V2Divider(inset = 16.dp)
-                V2Row("امتحانات النهارده", onClick = { onShow(V2Filter.EXAM) }, actionLabel = "عرض الامتحانات",
+                V2Row("امتحانات النهارده", onClick = if (examsToday > 0) ({ onShow(V2Filter.EXAM) }) else null, actionLabel = "عرض الامتحانات",
                     trailing = { Text(examsToday.toString(), style = V2Type.number, color = p.muted) })
-                V2Divider(inset = 16.dp)
-                V2Row("طلبات انضمام", onClick = onPeople, actionLabel = "مراجعة الطلبات",
-                    trailing = { Text(pending.toString(), style = V2Type.number, color = p.muted) })
+                // While the main card above already says «طلب انضمام مستني», the same fact is not repeated as a row.
+                if (late.isNotEmpty() || pending == 0) {
+                    V2Divider(inset = 16.dp)
+                    V2Row("طلبات انضمام", onClick = if (pending > 0) onPeople else null, actionLabel = "مراجعة الطلبات",
+                        trailing = { Text(pending.toString(), style = V2Type.number, color = p.muted) })
+                }
             }
         }
         item(key = "stages-title") { V2Section("المراحل") }
@@ -620,7 +623,7 @@ private fun V2AccountRows(data: V2Data, actions: V2Actions) {
         V2Row(data.user.name, roleName(data.user.role.roleKey), mark = { V2Avatar(data.user.name) })
         V2Divider()
         val theme = com.example.domain.v2.V2Themes.ALL.firstOrNull { it.key == data.themeKey }
-        V2Row("الألوان", theme?.let { "${it.name}: ${it.story}" } ?: "تلقائي (حسب الموبايل)", mark = { V2Mark(icon = Icons.Default.DarkMode) },
+        V2Row("الألوان", theme?.name ?: "تلقائي (حسب الموبايل)", mark = { V2Mark(icon = Icons.Default.DarkMode) },
             trailing = { theme?.let { V2Swatch(it) } }, onClick = { choosingTheme = true })
         V2Divider()
         V2Row("مزامنة الآن", if (data.isOnline) "متصل" else "بدون اتصال", mark = { V2Mark(icon = Icons.Default.Sync) }, onClick = actions.sync)

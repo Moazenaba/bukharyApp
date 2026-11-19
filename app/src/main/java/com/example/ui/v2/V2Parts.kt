@@ -351,7 +351,7 @@ fun V2Steps(done: Int, total: Int = 9, modifier: Modifier = Modifier) {
             val c = when {
                 i < done -> p.leaf
                 i == done -> p.ink
-                else -> p.muted.copy(alpha = 0.3f)
+                else -> p.muted.copy(alpha = 0.42f)
             }
             // The current stage is also taller, so it doesn't rely on colour alone.
             Box(Modifier.weight(1f).height(if (i == done) 8.dp else 5.dp).clip(Capsule).background(c).align(Alignment.CenterVertically))
@@ -382,8 +382,8 @@ fun V2Avatar(name: String) {
 fun V2Empty(title: String, body: String) {
     val p = LocalV2.current
     Column(
-        Modifier.fillMaxWidth().v2Sheet(lift = false).padding(vertical = 32.dp, horizontal = 20.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp), horizontalAlignment = Alignment.CenterHorizontally
+        Modifier.fillMaxWidth().v2Sheet(lift = false).padding(vertical = 40.dp, horizontal = 20.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp), horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(title, style = V2Type.heading, color = p.ink, textAlign = TextAlign.Center)
         Text(body, style = V2Type.body, color = p.muted, textAlign = TextAlign.Center)
