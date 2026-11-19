@@ -479,7 +479,7 @@ private fun V2CeremonyDecision(c: Committee) {
             if (i > 0) V2Divider()
             V2Row(
                 g.userName,
-                "رئيس لجنة مؤقت من ${g.startsOn} حتى ${g.endsOn} · ${label[g.ceremonyDecision] ?: ""}",
+                "شيخ اللجنة من ${g.startsOn} حتى ${g.endsOn} · ${label[g.ceremonyDecision] ?: ""}",
                 mark = { V2Avatar(g.userName) }
             )
             Column(Modifier.padding(start = 14.dp, end = 14.dp, bottom = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {

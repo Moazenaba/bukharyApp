@@ -1,7 +1,7 @@
 package com.example.data.model
 
 /**
- * «رئيس لجنة مؤقت»: a sheikh made the head of some committees for a date window by an admin. Their powers follow the
+ * «شيخ اللجنة»: a sheikh made the head of some committees for a date window by an admin. Their powers follow the
  * server's evaluated permissions (headCommitteeIds). [ceremonyDecision] is "yes", "no" or "undecided".
  */
 data class HeadGrant(
