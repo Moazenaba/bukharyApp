@@ -177,7 +177,7 @@ fun V2NowScreen(data: V2Data, actions: V2Actions, onOpen: (String) -> Unit) {
             } else {
                 val committee = now.committeeId?.let { id -> data.committees.firstOrNull { it.id == id } }
                 val step = committee?.let { NextStep.of(it) { a -> canOn(a, it.id) } }
-                val whenText = listOf(DayText.relative(now.date, data.today), now.time).filter { it.isNotBlank() }.joinToString(" · ")
+                val whenText = listOf(DayText.relative(now.date, data.today)).filter { it.isNotBlank() }.joinToString(" · ")
                 // Title says what to do; the line under it says which committee and when (no «#», no repeats).
                 val title = when {
                     committee == null -> now.title
@@ -189,7 +189,7 @@ fun V2NowScreen(data: V2Data, actions: V2Actions, onOpen: (String) -> Unit) {
                     committee?.committeeName?.takeIf { it.isNotBlank() && now.kind != FeedKind.ACTION },
                     whenText.ifBlank { null }
                 ).joinToString(" · ")
-                V2NowCard(meta = meta.ifBlank { "مطلوب منك" }, title = title) {
+                V2NowCard(meta = meta.ifBlank { "مطلوب منك" }, title = title, time = now.time) {
                     if (now.place.isNotBlank()) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             Icon(Icons.Default.Place, null, tint = LocalV2.current.onHero)

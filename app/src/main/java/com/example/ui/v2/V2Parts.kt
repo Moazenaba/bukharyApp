@@ -152,7 +152,8 @@ fun <T> LazyListScope.v2Rows(rows: List<T>, key: (T) -> Any, row: @Composable (T
         val top = if (first) 24.dp else 0.dp
         val bottom = if (last) 24.dp else 0.dp
         Column(
-            Modifier.fillMaxWidth().padding(top = if (first) V2Gap else 0.dp)
+            // Rows glide to their new place when the list changes (a task done, a person approved), instead of jumping.
+            Modifier.animateItem().fillMaxWidth().padding(top = if (first) V2Gap else 0.dp)
                 .clip(RoundedCornerShape(topStart = top, topEnd = top, bottomStart = bottom, bottomEnd = bottom))
                 .background(LocalV2.current.sheet)
         ) {
@@ -269,13 +270,15 @@ fun V2Row(
  * accent; its filled accent button is the one bright spot of the screen.
  */
 @Composable
-fun V2NowCard(meta: String, title: String, modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit = {}) {
+fun V2NowCard(meta: String, title: String, modifier: Modifier = Modifier, time: String = "", content: @Composable ColumnScope.() -> Unit = {}) {
     val p = LocalV2.current
     Column(
         modifier.fillMaxWidth().v2Sheet(HeroShape, p.hero).padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            // When there is an hour, it is the first thing read: large, above what to do.
+            if (time.isNotBlank()) Text(time, style = V2Type.bigNumber, color = p.onHero.copy(alpha = 0.85f))
             Text(title, style = V2Type.hero, color = p.onHero)
             if (meta.isNotBlank()) Text(meta, style = V2Type.bodyStrong, color = p.onHero.copy(alpha = 0.7f))
         }
