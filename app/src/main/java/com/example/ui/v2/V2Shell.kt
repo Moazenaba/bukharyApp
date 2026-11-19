@@ -221,7 +221,7 @@ fun V2Shell(
             }
         }
         Box(Modifier.weight(1f).fillMaxWidth().then(if (open != null) Modifier.navigationBarsPadding() else Modifier)) {
-          CompositionLocalProvider(LocalV2Undo provides undo) {
+          CompositionLocalProvider(LocalV2Undo provides undo, LocalV2Reduce provides reduceMotion) {
             AnimatedContent(
                 targetState = Triple(open?.id, page, tab),
                 // A short rise and fade: calm, and quick enough that a cheap phone never waits on it.

@@ -1,5 +1,7 @@
 package com.example.ui.v2
 
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Settings
 import com.example.ui.components.UiMessages
 import kotlinx.coroutines.delay
@@ -169,7 +171,24 @@ fun V2NowScreen(data: V2Data, actions: V2Actions, onOpen: (String) -> Unit) {
     }
     var confirmStep by remember { mutableStateOf(false) }
     val undo = LocalV2Undo.current
+    val confirmed = rememberV2Confirm()
+    // A first-time tip, shown once and remembered on the phone: what the big card is, and where the rest is.
+    val prefs = remember { context.getSharedPreferences("bukhari_ui", android.content.Context.MODE_PRIVATE) }
+    var tipSeen by remember { mutableStateOf(runCatching { prefs.getBoolean("v2_tip_now", false) }.getOrDefault(false)) }
     V2Scroll {
+        if (!tipSeen && hero != null) item(key = "tip") {
+            V2Group {
+                V2Row(
+                    "أول مرة هنا؟", "الكارت الكبير فيه اللي مطلوب منك دلوقتي، وزرار واحد ملوّن لتنفيذه. باقي المواعيد تحته.",
+                    mark = { V2Mark(icon = Icons.Default.Info) },
+                    trailing = {
+                        TextButton(onClick = { tipSeen = true; runCatching { prefs.edit().putBoolean("v2_tip_now", true).apply() } }, modifier = Modifier.heightIn(min = 48.dp)) {
+                            Text("تمام", style = V2Type.smallStrong, color = LocalV2.current.ink)
+                        }
+                    }
+                )
+            }
+        }
         item(key = "now") {
             val now = hero
             if (now == null) {
@@ -201,6 +220,7 @@ fun V2NowScreen(data: V2Data, actions: V2Actions, onOpen: (String) -> Unit) {
                             now.kind == FeedKind.TASK && now.taskId != null ->
                                 V2Button("تمت المهمة", {
                                     actions.toggleTask(now.taskId)
+                                    confirmed()
                                     undo.offer("اتعلّمت «${now.title}» كمنجزة") { actions.toggleTask(now.taskId) }
                                 }, Modifier.weight(1f), kind = V2ButtonKind.CTA, icon = Icons.Default.CheckCircle)
                             step != null && committee != null && step.canDo && step.oneTap && now.kind == FeedKind.ACTION ->
@@ -253,7 +273,7 @@ fun V2NowScreen(data: V2Data, actions: V2Actions, onOpen: (String) -> Unit) {
             onDismissRequest = { confirmStep = false },
             title = { Text(heroStep.title, style = V2Type.heading) },
             text = { Text("لجنة ${stepCommittee.committeeNumber}. بعد التأكيد مش هتقدر ترجعها من هنا.", style = V2Type.body) },
-            confirmButton = { TextButton(onClick = { confirmStep = false; actions.oneTap(stepCommittee, heroStep); UiMessages.show("تم تسجيل: ${heroStep.title}") }) { Text("تأكيد", style = V2Type.bodyStrong) } },
+            confirmButton = { TextButton(onClick = { confirmStep = false; actions.oneTap(stepCommittee, heroStep); confirmed(); UiMessages.show("تم تسجيل: ${heroStep.title}") }) { Text("تأكيد", style = V2Type.bodyStrong) } },
             dismissButton = { TextButton(onClick = { confirmStep = false }) { Text("إلغاء", style = V2Type.body) } }
         )
     }

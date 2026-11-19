@@ -93,7 +93,8 @@ fun Modifier.v2Sheet(shape: Shape = SheetShape, color: Color? = null, lift: Bool
 @Composable
 fun Modifier.v2Press(source: MutableInteractionSource): Modifier {
     val pressed by source.collectIsPressedAsState()
-    val scale by animateFloatAsState(if (pressed) 0.97f else 1f, spring(dampingRatio = 0.8f, stiffness = 900f), label = "press")
+    val reduce = LocalV2Reduce.current
+    val scale by animateFloatAsState(if (pressed && !reduce) 0.97f else 1f, spring(dampingRatio = 0.8f, stiffness = 900f), label = "press")
     return this.graphicsLayer { scaleX = scale; scaleY = scale }
 }
 
@@ -153,7 +154,7 @@ fun <T> LazyListScope.v2Rows(rows: List<T>, key: (T) -> Any, row: @Composable (T
         val bottom = if (last) 24.dp else 0.dp
         Column(
             // Rows glide to their new place when the list changes (a task done, a person approved), instead of jumping.
-            Modifier.animateItem().fillMaxWidth().padding(top = if (first) V2Gap else 0.dp)
+            (if (LocalV2Reduce.current) Modifier else Modifier.animateItem()).fillMaxWidth().padding(top = if (first) V2Gap else 0.dp)
                 .clip(RoundedCornerShape(topStart = top, topEnd = top, bottomStart = bottom, bottomEnd = bottom))
                 .background(LocalV2.current.sheet)
         ) {
@@ -202,6 +203,16 @@ fun v2Phone(phone: String): String = if (phone.isBlank()) "" else "\u2066$phone\
 @Composable
 fun V2Retry(what: String, onRetry: () -> Unit) {
     V2Row("تعذر تحميل $what", "تأكد من الاتصال واضغط هنا للمحاولة تاني", mark = { V2Mark(icon = Icons.Default.Refresh, late = true) }, onClick = onRetry, actionLabel = "إعادة المحاولة")
+}
+
+/** The phone's «remove animations» setting: no gliding rows, no press spring. Provided by the shell. */
+val LocalV2Reduce = androidx.compose.runtime.staticCompositionLocalOf { false }
+
+/** A short tap on the phone's motor for a done thing (a step recorded, a task checked): felt, not heard. */
+@Composable
+fun rememberV2Confirm(): () -> Unit {
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
+    return { haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress) }
 }
 
 /** The space between blocks of a screen. */
