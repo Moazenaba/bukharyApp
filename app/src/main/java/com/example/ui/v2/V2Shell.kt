@@ -307,8 +307,9 @@ enum class V2Filter(val label: String) {
 @Composable
 private fun V2Header(hello: String, title: String, unread: Int, isOnline: Boolean, onBack: (() -> Unit)?, onBell: () -> Unit) {
     val p = LocalV2.current
+    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
     Row(
-        Modifier.fillMaxWidth().padding(start = 20.dp, end = 16.dp, top = 14.dp, bottom = 10.dp),
+        Modifier.widthIn(max = 640.dp).fillMaxWidth().padding(start = 20.dp, end = 16.dp, top = 14.dp, bottom = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
@@ -333,6 +334,7 @@ private fun V2Header(hello: String, title: String, unread: Int, isOnline: Boolea
             Icon(Icons.Default.Notifications, null, tint = p.ink)
             if (unread > 0) Box(Modifier.align(Alignment.TopStart).padding(11.dp).size(9.dp).clip(CircleShape).background(p.ink))
         }
+    }
     }
 }
 

@@ -1,5 +1,7 @@
 package com.example.ui.v2
 
+import androidx.compose.material.icons.filled.Settings
+import com.example.ui.components.UiMessages
 import kotlinx.coroutines.delay
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.foundation.layout.height
@@ -251,7 +253,7 @@ fun V2NowScreen(data: V2Data, actions: V2Actions, onOpen: (String) -> Unit) {
             onDismissRequest = { confirmStep = false },
             title = { Text(heroStep.title, style = V2Type.heading) },
             text = { Text("لجنة ${stepCommittee.committeeNumber}. بعد التأكيد مش هتقدر ترجعها من هنا.", style = V2Type.body) },
-            confirmButton = { TextButton(onClick = { confirmStep = false; actions.oneTap(stepCommittee, heroStep) }) { Text("تأكيد", style = V2Type.bodyStrong) } },
+            confirmButton = { TextButton(onClick = { confirmStep = false; actions.oneTap(stepCommittee, heroStep); UiMessages.show("تم: ${heroStep.title}") }) { Text("تأكيد", style = V2Type.bodyStrong) } },
             dismissButton = { TextButton(onClick = { confirmStep = false }) { Text("إلغاء", style = V2Type.body) } }
         )
     }
@@ -334,19 +336,6 @@ fun V2BoardScreen(data: V2Data, onOpen: (String) -> Unit, onShow: (V2Filter) -> 
     }
 }
 
-@Composable
-private fun V2Stat(label: String, value: Int, alert: Boolean, modifier: Modifier, onClick: () -> Unit) {
-    val p = LocalV2.current
-    V2Group(modifier) {
-        Column(
-            Modifier.fillMaxWidth().clickable(role = Role.Button, onClickLabel = label, onClick = onClick).padding(horizontal = 14.dp, vertical = 14.dp),
-            verticalArrangement = Arrangement.spacedBy(2.dp)
-        ) {
-            Text(value.toString(), style = V2Type.bigNumber, color = if (alert) p.brick else p.ink)
-            Text(label, style = V2Type.small, color = p.muted, maxLines = 2)
-        }
-    }
-}
 
 // ------------------------------------------------------------------------------------------- القوائم
 
@@ -540,7 +529,9 @@ fun V2PeopleScreen(data: V2Data, actions: V2Actions, tools: Set<V2Tool>) {
             }
         }
         item(key = "note") {
-            Text("تعديل الأدوار والصلاحيات الدقيقة بيفتح في الواجهة الكاملة من «المزيد».", style = V2Type.small, color = LocalV2.current.muted)
+            V2Group {
+                V2Row("تعديل الأدوار والصلاحيات", "بيفتح في الواجهة القديمة", mark = { V2Mark(icon = Icons.Default.Settings) }, onClick = actions.leaveV2, actionLabel = "فتح الواجهة القديمة")
+            }
         }
     }
     // After approving, the button shows a spinner until the person leaves the list (or a few seconds pass).
@@ -634,7 +625,8 @@ private fun V2AccountRows(data: V2Data, actions: V2Actions) {
     LaunchedEffect(syncing) { if (syncing) { delay(2500); syncing = false } }
     Column(verticalArrangement = Arrangement.spacedBy(V2Gap)) {
     V2Group {
-        V2Row(data.user.name, listOf(roleName(data.user.role.roleKey), v2Phone(data.user.phone)).filter { it.isNotBlank() }.joinToString(" · "), mark = { V2Avatar(data.user.name) })
+        if (data.user.name.isBlank() || data.user.name.startsWith("مستخدم ")) V2Row(roleName(data.user.role.roleKey), v2Phone(data.user.phone).ifBlank { null }, mark = { V2Mark(icon = Icons.Default.Person) })
+        else V2Row(data.user.name, listOf(roleName(data.user.role.roleKey), v2Phone(data.user.phone)).filter { it.isNotBlank() }.joinToString(" · "), mark = { V2Avatar(data.user.name) })
     }
     V2Group {
         val theme = com.example.domain.v2.V2Themes.ALL.firstOrNull { it.key == data.themeKey }
@@ -689,16 +681,23 @@ private fun V2NoticeDialog(onDismiss: () -> Unit, onSend: (String, String, (Bool
     var title by remember { mutableStateOf("") }
     var body by remember { mutableStateOf("") }
     var sent by remember { mutableStateOf(false) }
+    // A message to everyone is sent on the second tap: the first tap turns the button into a plain warning.
+    var armed by remember { mutableStateOf(false) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("إرسال تنبيه للجميع", style = V2Type.heading) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                OutlinedTextField(title, { title = it }, label = { Text("العنوان") }, singleLine = true, textStyle = V2Type.body, shape = RoundedCornerShape(16.dp), colors = v2FieldColors(), modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(body, { body = it }, label = { Text("التفاصيل") }, minLines = 3, textStyle = V2Type.body, shape = RoundedCornerShape(16.dp), colors = v2FieldColors(), modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(title, { title = it; armed = false }, label = { Text("العنوان") }, singleLine = true, textStyle = V2Type.body, shape = RoundedCornerShape(16.dp), colors = v2FieldColors(), modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(body, { body = it; armed = false }, label = { Text("التفاصيل") }, minLines = 3, textStyle = V2Type.body, shape = RoundedCornerShape(16.dp), colors = v2FieldColors(), modifier = Modifier.fillMaxWidth())
             }
         },
-        confirmButton = { TextButton(enabled = title.isNotBlank() && !sent, onClick = { sent = true; onSend(title.trim(), body.trim()) { ok -> if (!ok) sent = false } }) { Text("إرسال", style = V2Type.bodyStrong) } },
+        confirmButton = {
+            TextButton(enabled = title.isNotBlank() && !sent, onClick = {
+                if (!armed) armed = true
+                else { sent = true; onSend(title.trim(), body.trim()) { ok -> if (!ok) { sent = false; armed = false } } }
+            }) { Text(if (armed) "تأكيد الإرسال للجميع" else "إرسال", style = V2Type.bodyStrong, color = if (armed) LocalV2.current.brick else LocalV2.current.ink) }
+        },
         dismissButton = { TextButton(onClick = onDismiss) { Text("إلغاء", style = V2Type.body) } }
     )
 }
@@ -832,7 +831,8 @@ internal fun v2FeedTitle(f: com.example.domain.FeedItem, c: com.example.data.mod
     return when (f.kind) {
         FeedKind.EXAM, FeedKind.CEREMONY -> c.committeeName.ifBlank { f.title }
         FeedKind.ACTION -> f.title.replace(Regex("^لجنة #\\d+:\\s*"), "").ifBlank { f.title }
-        FeedKind.TASK -> f.title
+        // The row's mark already says which committee; a task title ending «لجنة 12» doesn't say it again.
+        FeedKind.TASK -> f.title.replace(Regex("\\s*[-–:]?\\s*لجنة\\s*#?\\d+\\s*$"), "").ifBlank { f.title }
     }
 }
 

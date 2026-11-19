@@ -93,6 +93,7 @@ fun V2CommitteeScreen(c: Committee, data: V2Data, actions: V2Actions, tools: Set
                 Text(c.committeeName, style = V2Type.heading, color = p.ink)
                 val about = listOf(c.competitionBook, c.courseName).filter { it.isNotBlank() && it != c.committeeName }.distinct().joinToString(" · ")
                 if (about.isNotBlank()) Text(about, style = V2Type.small, color = p.muted)
+                Text("المرحلة ${minOf(step.done + 1, step.total)} من ${step.total}", style = V2Type.label, color = p.muted)
                 V2Steps(step.done, step.total)
             }
         }
@@ -110,7 +111,7 @@ fun V2CommitteeScreen(c: Committee, data: V2Data, actions: V2Actions, tools: Set
                     )
                 }
                 // Nothing to do here yet: the most useful thing is getting there, so the hero offers the map.
-                else -> V2NowCard(place.ifBlank { "المكان لم يُحدد بعد" }, step.waiting.ifBlank { "اللجنة منتظرة" }) {
+                else -> V2NowCard("", step.waiting.ifBlank { "اللجنة منتظرة" }) {
                     Logistics.mapsUrl(place)?.let { url ->
                         V2Button("افتح في الخرائط", { V2Intents.open(context, url) }, Modifier.fillMaxWidth(), kind = V2ButtonKind.CTA, icon = Icons.Default.Place)
                     }
@@ -248,7 +249,7 @@ fun V2CommitteeScreen(c: Committee, data: V2Data, actions: V2Actions, tools: Set
             onDismissRequest = { confirm = false },
             title = { Text(step.title, style = V2Type.heading) },
             text = { Text("لجنة ${c.committeeNumber}: تأكيد الخطوة؟", style = V2Type.body) },
-            confirmButton = { TextButton(onClick = { confirm = false; actions.oneTap(c, step) }) { Text("تأكيد", style = V2Type.bodyStrong) } },
+            confirmButton = { TextButton(onClick = { confirm = false; actions.oneTap(c, step); UiMessages.show("تم: ${step.title}") }) { Text("تأكيد", style = V2Type.bodyStrong) } },
             dismissButton = { TextButton(onClick = { confirm = false }) { Text("إلغاء", style = V2Type.body) } }
         )
     }
