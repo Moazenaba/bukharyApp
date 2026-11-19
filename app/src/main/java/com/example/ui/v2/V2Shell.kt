@@ -1,5 +1,7 @@
 package com.example.ui.v2
 
+import androidx.compose.foundation.layout.height
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.animation.ExitTransition
@@ -224,7 +226,9 @@ fun V2Shell(
                 // A short rise and fade: calm, and quick enough that a cheap phone never waits on it.
                 transitionSpec = {
                     // «Remove animations» in the phone's settings (scale 0) is respected: the screens just swap.
-                    if (reduceMotion) EnterTransition.None togetherWith ExitTransition.None
+                    // Moving between tabs is instant (no slide on every tap); only opening or closing a screen animates.
+                    val tabOnly = initialState.first == targetState.first && initialState.second == targetState.second
+                    if (reduceMotion || tabOnly) EnterTransition.None togetherWith ExitTransition.None
                     else (fadeIn(tween(220, delayMillis = 60)) + slideInVertically(tween(260)) { it / 24 }) togetherWith fadeOut(tween(120))
                 },
                 label = "v2"
@@ -250,6 +254,8 @@ fun V2Shell(
                 }
             }
           }
+            // Scrolled content fades into the tab bar instead of ending on a hard edge.
+            Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(24.dp).background(Brush.verticalGradient(listOf(Color.Transparent, p.paper))))
             SnackbarHost(snack, Modifier.align(Alignment.BottomCenter).padding(horizontal = 16.dp, vertical = 8.dp)) { d ->
                 Snackbar(d, shape = RoundedCornerShape(20.dp), containerColor = p.ink, contentColor = p.paper, actionColor = p.paper)
             }

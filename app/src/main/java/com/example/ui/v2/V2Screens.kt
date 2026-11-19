@@ -1,5 +1,7 @@
 package com.example.ui.v2
 
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.layout.widthIn
@@ -126,18 +128,20 @@ fun V2CommitteeRow(c: Committee, late: Overdue.Item?, onOpen: () -> Unit, showSt
         title = c.committeeName,
         subtitle = sub,
         mark = { V2Mark(c.committeeNumber.toString(), late = late != null) },
-        trailing = {
-            when {
-                observer -> V2Tag("مراقب", V2Tone.WATCH)
-                late != null -> V2Tag("متأخرة", V2Tone.LATE)
-                V2Stages.current(c) == null -> V2Tag("اكتملت", V2Tone.DONE)
-                else -> V2Tag(V2Stages.label(c), V2Tone.WAIT)
-            }
-        },
+        // The state sits under the text, so a place name is never broken to make room for it.
         onClick = onOpen,
-        under = if (showSteps) {
-            { V2Steps(com.example.domain.STAGE_ORDER.count { c.stages.getStage(it).completed }) }
-        } else null
+        under = {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Spacer(Modifier.height(2.dp))
+                when {
+                    observer -> V2Tag("مراقب", V2Tone.WATCH)
+                    late != null -> V2Tag("متأخرة", V2Tone.LATE)
+                    V2Stages.current(c) == null -> V2Tag("اكتملت", V2Tone.DONE)
+                    else -> V2Tag(V2Stages.label(c), V2Tone.WAIT)
+                }
+                if (showSteps) V2Steps(com.example.domain.STAGE_ORDER.count { c.stages.getStage(it).completed })
+            }
+        }
     )
 }
 
@@ -619,20 +623,24 @@ fun V2AccountScreen(data: V2Data, actions: V2Actions) {
 private fun V2AccountRows(data: V2Data, actions: V2Actions) {
     var choosingTheme by remember { mutableStateOf(false) }
     var leaving by remember { mutableStateOf(false) }
+    Column(verticalArrangement = Arrangement.spacedBy(V2Gap)) {
     V2Group {
         V2Row(data.user.name, roleName(data.user.role.roleKey), mark = { V2Avatar(data.user.name) })
-        V2Divider()
+    }
+    V2Group {
         val theme = com.example.domain.v2.V2Themes.ALL.firstOrNull { it.key == data.themeKey }
         V2Row("الألوان", theme?.name ?: "تلقائي (حسب الموبايل)", mark = { V2Mark(icon = Icons.Default.DarkMode) },
             trailing = { theme?.let { V2Swatch(it) } }, onClick = { choosingTheme = true })
         V2Divider()
-        V2Row("مزامنة الآن", if (data.isOnline) "متصل" else "بدون اتصال", mark = { V2Mark(icon = Icons.Default.Sync) }, onClick = actions.sync)
+        V2Row("مزامنة الآن", if (data.isOnline) null else "بدون اتصال", mark = { V2Mark(icon = Icons.Default.Sync) }, onClick = actions.sync)
         V2Divider()
         V2Row("تغيير كلمة المرور", mark = { V2Mark(icon = Icons.Default.Lock) }, onClick = actions.changePassword)
         V2Divider()
         V2Row("الرجوع للواجهة القديمة", "وترجع هنا تاني من «الواجهات 2» في القائمة", mark = { V2Mark(icon = Icons.Default.SwapHoriz) }, onClick = actions.leaveV2)
-        V2Divider()
+    }
+    V2Group {
         V2Row("تسجيل الخروج", mark = { V2Mark(icon = Icons.AutoMirrored.Filled.Logout, late = true) }, onClick = { leaving = true })
+    }
     }
     if (leaving) {
         AlertDialog(

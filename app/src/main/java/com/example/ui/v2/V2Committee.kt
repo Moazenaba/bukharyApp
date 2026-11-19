@@ -100,7 +100,7 @@ fun V2CommitteeScreen(c: Committee, data: V2Data, actions: V2Actions, tools: Set
         item(key = "step") {
             when {
                 step.kind == StepKind.DONE -> V2Group { V2Row("اكتملت كل مراحل اللجنة", mark = { V2Mark(icon = Icons.Default.CheckCircle) }) }
-                step.canDo -> V2NowCard("الخطوة الجاية في اللجنة ${c.committeeNumber}", step.title) {
+                step.canDo -> V2NowCard("الخطوة الجاية", step.title) {
                     V2Button(
                         if (step.oneTap) "تم، أكّد" else "افتح النموذج",
                         { if (step.oneTap) confirm = true else onLegacy(formTabFor(step.kind)) },
@@ -285,6 +285,7 @@ private fun V2ObserverNotes(c: Committee, mine: List<Pair<String, String>>) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedTextField(
                 text, { text = it }, modifier = Modifier.fillMaxWidth(), minLines = 3, textStyle = V2Type.body,
+                shape = RoundedCornerShape(16.dp), colors = v2FieldColors(),
                 label = { Text("ملاحظة المراقبة") }
             )
             V2Button("حفظ الملاحظة", {
