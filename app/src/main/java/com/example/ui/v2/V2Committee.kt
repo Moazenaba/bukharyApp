@@ -1,5 +1,6 @@
 package com.example.ui.v2
 
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Box
@@ -92,6 +93,7 @@ fun V2CommitteeScreen(c: Committee, data: V2Data, actions: V2Actions, tools: Set
                 Text(c.committeeName, style = V2Type.heading, color = p.ink)
                 val about = listOf(c.competitionBook, c.courseName).filter { it.isNotBlank() && it != c.committeeName }.distinct().joinToString(" · ")
                 if (about.isNotBlank()) Text(about, style = V2Type.small, color = p.muted)
+                Text("المرحلة ${minOf(step.done + 1, step.total)} من ${step.total}", style = V2Type.label, color = p.muted)
                 V2Steps(step.done, step.total)
             }
         }
@@ -100,7 +102,7 @@ fun V2CommitteeScreen(c: Committee, data: V2Data, actions: V2Actions, tools: Set
         item(key = "step") {
             when {
                 step.kind == StepKind.DONE -> V2Group { V2Row("اكتملت كل مراحل اللجنة", mark = { V2Mark(icon = Icons.Default.CheckCircle) }) }
-                step.canDo -> V2NowCard("الخطوة الجاية في اللجنة ${c.committeeNumber}", step.title) {
+                step.canDo -> V2NowCard("الخطوة الجاية", step.title) {
                     V2Button(
                         if (step.oneTap) "تم، أكّد" else "افتح النموذج",
                         { if (step.oneTap) confirm = true else onLegacy(formTabFor(step.kind)) },
@@ -109,7 +111,7 @@ fun V2CommitteeScreen(c: Committee, data: V2Data, actions: V2Actions, tools: Set
                     )
                 }
                 // Nothing to do here yet: the most useful thing is getting there, so the hero offers the map.
-                else -> V2NowCard(place.ifBlank { "المكان لم يُحدد بعد" }, step.waiting.ifBlank { "اللجنة منتظرة" }) {
+                else -> V2NowCard("", step.waiting.ifBlank { "اللجنة منتظرة" }) {
                     Logistics.mapsUrl(place)?.let { url ->
                         V2Button("افتح في الخرائط", { V2Intents.open(context, url) }, Modifier.fillMaxWidth(), kind = V2ButtonKind.CTA, icon = Icons.Default.Place)
                     }
@@ -151,8 +153,8 @@ fun V2CommitteeScreen(c: Committee, data: V2Data, actions: V2Actions, tools: Set
                 }
                 if (c.sheikhName.isNotBlank()) {
                     V2Divider()
-                    V2Row(c.sheikhName, listOf("الشيخ الميداني", c.sheikhPhone).filter { it.isNotBlank() }.joinToString(" · "), mark = { V2Avatar(c.sheikhName) },
-                        onClick = if (c.sheikhPhone.isNotBlank()) ({ V2Intents.call(context, c.sheikhPhone) }) else null)
+                    V2Row(c.sheikhName, listOf("الشيخ الميداني", v2Phone(c.sheikhPhone)).filter { it.isNotBlank() }.joinToString(" · "), mark = { V2Avatar(c.sheikhName) },
+                        trailing = { if (c.sheikhPhone.isNotBlank()) V2CallButton(c.sheikhName) { V2Intents.call(context, c.sheikhPhone) } })
                 }
             }
         }
@@ -247,7 +249,7 @@ fun V2CommitteeScreen(c: Committee, data: V2Data, actions: V2Actions, tools: Set
             onDismissRequest = { confirm = false },
             title = { Text(step.title, style = V2Type.heading) },
             text = { Text("لجنة ${c.committeeNumber}: تأكيد الخطوة؟", style = V2Type.body) },
-            confirmButton = { TextButton(onClick = { confirm = false; actions.oneTap(c, step) }) { Text("تأكيد", style = V2Type.bodyStrong) } },
+            confirmButton = { TextButton(onClick = { confirm = false; actions.oneTap(c, step); UiMessages.show("تم: ${step.title}") }) { Text("تأكيد", style = V2Type.bodyStrong) } },
             dismissButton = { TextButton(onClick = { confirm = false }) { Text("إلغاء", style = V2Type.body) } }
         )
     }
@@ -285,6 +287,7 @@ private fun V2ObserverNotes(c: Committee, mine: List<Pair<String, String>>) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedTextField(
                 text, { text = it }, modifier = Modifier.fillMaxWidth(), minLines = 3, textStyle = V2Type.body,
+                shape = RoundedCornerShape(16.dp), colors = v2FieldColors(),
                 label = { Text("ملاحظة المراقبة") }
             )
             V2Button("حفظ الملاحظة", {
@@ -351,23 +354,28 @@ private fun V2ObserversSection(c: Committee, data: V2Data, actions: V2Actions) {
         AlertDialog(
             onDismissRequest = { finishing = null },
             title = { Text("تكليف ${a.userName}", style = V2Type.heading) },
-            text = { Text("${AssignmentText.task(a.task)}. الإنهاء أو الإلغاء يوقف صلاحيات المراقبة فورًا ويبقى السجل.", style = V2Type.body) },
-            confirmButton = {
-                Row {
-                    TextButton(onClick = {
-                        finishing = null
-                        scope.launch {
-                            try { OnlineApi.finishAssignment(a.id, "end"); reload++ } catch (e: CancellationException) { throw e } catch (e: Exception) { UiMessages.show(failure(e, "تعذر إنهاء التكليف")) }
-                        }
-                    }) { Text("إنهاء", style = V2Type.bodyStrong) }
-                    TextButton(onClick = {
-                        finishing = null
-                        scope.launch {
-                            try { OnlineApi.finishAssignment(a.id, "cancel"); reload++ } catch (e: CancellationException) { throw e } catch (e: Exception) { UiMessages.show(failure(e, "تعذر إلغاء التكليف")) }
-                        }
-                    }) { Text("إلغاء التكليف", style = V2Type.bodyStrong, color = p.brick) }
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text("${AssignmentText.task(a.task)}. أي اختيار يوقف صلاحيات المراقبة فورًا ويبقى السجل.", style = V2Type.body)
+                    // Two choices as rows (the dialog's own button is only «رجوع»), so the two can't be mistaken for each other.
+                    V2Group {
+                        V2Row("إنهاء التكليف", "انتهى المطلوب من المراقب", mark = { V2Mark(icon = Icons.Default.CheckCircle) }, actionLabel = "إنهاء", onClick = {
+                            finishing = null
+                            scope.launch {
+                                try { OnlineApi.finishAssignment(a.id, "end"); reload++ } catch (e: CancellationException) { throw e } catch (e: Exception) { UiMessages.show(failure(e, "تعذر إنهاء التكليف")) }
+                            }
+                        })
+                        V2Divider()
+                        V2Row("إلغاء التكليف", "التكليف اتسند بالغلط أو اتغيّر", mark = { V2Mark(icon = Icons.Default.Close, late = true) }, actionLabel = "إلغاء", onClick = {
+                            finishing = null
+                            scope.launch {
+                                try { OnlineApi.finishAssignment(a.id, "cancel"); reload++ } catch (e: CancellationException) { throw e } catch (e: Exception) { UiMessages.show(failure(e, "تعذر إلغاء التكليف")) }
+                            }
+                        })
+                    }
                 }
             },
+            confirmButton = {},
             dismissButton = { TextButton(onClick = { finishing = null }) { Text("رجوع", style = V2Type.body) } }
         )
     }

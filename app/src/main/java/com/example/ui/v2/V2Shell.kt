@@ -1,5 +1,7 @@
 package com.example.ui.v2
 
+import androidx.compose.foundation.layout.height
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.animation.ExitTransition
@@ -224,7 +226,9 @@ fun V2Shell(
                 // A short rise and fade: calm, and quick enough that a cheap phone never waits on it.
                 transitionSpec = {
                     // «Remove animations» in the phone's settings (scale 0) is respected: the screens just swap.
-                    if (reduceMotion) EnterTransition.None togetherWith ExitTransition.None
+                    // Moving between tabs is instant (no slide on every tap); only opening or closing a screen animates.
+                    val tabOnly = initialState.first == targetState.first && initialState.second == targetState.second
+                    if (reduceMotion || tabOnly) EnterTransition.None togetherWith ExitTransition.None
                     else (fadeIn(tween(220, delayMillis = 60)) + slideInVertically(tween(260)) { it / 24 }) togetherWith fadeOut(tween(120))
                 },
                 label = "v2"
@@ -250,12 +254,14 @@ fun V2Shell(
                 }
             }
           }
+            // Scrolled content fades into the tab bar instead of ending on a hard edge.
+            Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(24.dp).background(Brush.verticalGradient(listOf(Color.Transparent, p.paper))))
             SnackbarHost(snack, Modifier.align(Alignment.BottomCenter).padding(horizontal = 16.dp, vertical = 8.dp)) { d ->
                 Snackbar(d, shape = RoundedCornerShape(20.dp), containerColor = p.ink, contentColor = p.paper, actionColor = p.paper)
             }
         }
         if (open == null) {
-            V2TabBar(tabs, tab, unreadForMe = 0) { chosen ->
+            V2TabBar(tabs, tab) { chosen ->
                 page = null
                 if (chosen != tab) filter = V2Filter.ALL // a filter never follows you silently to another tab
                 tab = chosen
@@ -301,8 +307,9 @@ enum class V2Filter(val label: String) {
 @Composable
 private fun V2Header(hello: String, title: String, unread: Int, isOnline: Boolean, onBack: (() -> Unit)?, onBell: () -> Unit) {
     val p = LocalV2.current
+    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
     Row(
-        Modifier.fillMaxWidth().padding(start = 20.dp, end = 16.dp, top = 14.dp, bottom = 10.dp),
+        Modifier.widthIn(max = 640.dp).fillMaxWidth().padding(start = 20.dp, end = 16.dp, top = 14.dp, bottom = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
@@ -328,6 +335,7 @@ private fun V2Header(hello: String, title: String, unread: Int, isOnline: Boolea
             if (unread > 0) Box(Modifier.align(Alignment.TopStart).padding(11.dp).size(9.dp).clip(CircleShape).background(p.ink))
         }
     }
+    }
 }
 
 private fun iconFor(tab: V2Tab): ImageVector = when (tab) {
@@ -344,7 +352,7 @@ private fun iconFor(tab: V2Tab): ImageVector = when (tab) {
 
 /** A floating capsule over the paper: four tabs, the current one in the accent colour. */
 @Composable
-private fun V2TabBar(tabs: List<V2Tab>, current: V2Tab, unreadForMe: Int, onSelect: (V2Tab) -> Unit) {
+private fun V2TabBar(tabs: List<V2Tab>, current: V2Tab, onSelect: (V2Tab) -> Unit) {
     val p = LocalV2.current
     Box(Modifier.fillMaxWidth().background(p.paper).navigationBarsPadding().padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 10.dp), contentAlignment = Alignment.Center) {
         // At very large text the labels of the tabs you are not on are dropped (the icon + TalkBack name remain),
