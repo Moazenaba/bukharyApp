@@ -40,6 +40,14 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -71,10 +79,23 @@ import com.example.ui.components.Overdue
 fun V2Scroll(content: LazyListScope.() -> Unit) {
     LazyColumn(
         Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
-        content = content
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 0.dp, bottom = 24.dp),
+        content = { Spaced(this).content() }
     )
+}
+
+/**
+ * Each block of a screen (`item`) sits [V2Gap] below the one before; rows of a long list (`items`, see [v2Rows])
+ * touch, so together they read as one sheet.
+ */
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+private class Spaced(private val inner: LazyListScope) : LazyListScope by inner {
+    override fun item(key: Any?, contentType: Any?, content: @Composable LazyItemScope.() -> Unit) {
+        inner.item(key, contentType) {
+            val scope = this
+            Box(Modifier.padding(top = V2Gap)) { scope.content() }
+        }
+    }
 }
 
 private fun canOn(action: String, committeeId: String) = Permissions.canOn(action, committeeId)
@@ -337,21 +358,12 @@ fun V2CommitteeListScreen(data: V2Data, onOpen: (String) -> Unit, filter: V2Filt
                 }
             }
         }
-        item(key = "list") {
-            if (shown.isEmpty()) {
-                V2Empty(
-                    if (base.isEmpty()) (if (mineOnly) "لسه مفيش لجنة متسندة لك" else "مفيش لجان في الدورة دي") else "مفيش لجنة بالبحث ده",
-                    if (base.isEmpty()) "أول ما تتسند لك لجنة هيوصلك إشعار وتظهر هنا." else "جرّب رقم اللجنة أو امسح التصفية."
-                )
-            } else {
-                V2Group {
-                    shown.forEachIndexed { i, c ->
-                        if (i > 0) V2Divider()
-                        V2CommitteeRow(c, late[c.id], { onOpen(c.id) })
-                    }
-                }
-            }
-        }
+        if (shown.isEmpty()) item(key = "empty") {
+            V2Empty(
+                if (base.isEmpty()) (if (mineOnly) "لسه مفيش لجنة متسندة لك" else "مفيش لجان في الدورة دي") else "مفيش لجنة بالبحث ده",
+                if (base.isEmpty()) "أول ما تتسند لك لجنة هيوصلك إشعار وتظهر هنا." else "جرّب رقم اللجنة أو امسح التصفية."
+            )
+        } else v2Rows(shown, key = { "c-${it.id}" }) { c -> V2CommitteeRow(c, late[c.id], { onOpen(c.id) }) }
     }
 }
 
@@ -487,19 +499,20 @@ fun V2PeopleScreen(data: V2Data, actions: V2Actions, tools: Set<V2Tool>) {
             )
         }
         item(key = "users-title") { V2Section(if (data.staffLoading && data.staff.isEmpty()) "جارٍ التحميل…" else "المستخدمون (${approved.size})") }
-        item(key = "users") {
-            if (approved.isNotEmpty()) V2Group {
-                approved.forEachIndexed { i, u ->
-                    if (i > 0) V2Divider()
+        if (approved.isEmpty() && !data.staffLoading) item(key = "users-empty") {
+            V2Empty(if (query.isBlank()) "مفيش مستخدمين لسه" else "مفيش حد بالبحث ده", if (query.isBlank()) "أول ما حد يتقبل هيظهر هنا." else "جرّب جزء من الاسم أو آخر أرقام الموبايل.")
+        }
+        run {
+            v2Rows(approved, key = { "u-${it.id}" }) { u ->
                     val committees = if (u.allCommitteesAllowed) "كل اللجان" else if (u.assignedCommitteeIds.isEmpty()) "بدون لجان" else v2Count(u.assignedCommitteeIds.size, "لجنة واحدة", "لجنتين", "لجان", "لجنة")
                     V2Row(
                         title = u.name,
                         subtitle = "${roleName(u.role)} · $committees",
                         mark = { V2Avatar(u.name) },
                         trailing = { if (u.phone.isNotBlank()) Icon(Icons.Default.Phone, "اتصال بـ ${u.name}", tint = LocalV2.current.muted) },
-                        onClick = if (u.phone.isNotBlank()) ({ V2Intents.call(context, u.phone) }) else null
+                        onClick = if (u.phone.isNotBlank()) ({ V2Intents.call(context, u.phone) }) else null,
+                        actionLabel = "اتصال"
                     )
-                }
             }
         }
         item(key = "note") {
@@ -652,11 +665,8 @@ fun V2InboxScreen(data: V2Data, actions: V2Actions, onOpen: (String) -> Unit) {
         if (data.notifications.any { !it.read }) item(key = "all") {
             V2Button("تعليم الكل كمقروء", actions.readAll, Modifier.fillMaxWidth(), kind = V2ButtonKind.QUIET)
         }
-        item(key = "list") {
-            if (data.notifications.isEmpty()) V2Empty("مفيش إشعارات", "أي إسناد أو دعوة أو تغيير في موعد هيوصلك هنا.")
-            else V2Group {
-                data.notifications.forEachIndexed { i, n ->
-                    if (i > 0) V2Divider()
+        if (data.notifications.isEmpty()) item(key = "empty") { V2Empty("مفيش إشعارات", "أي إسناد أو دعوة أو تغيير في موعد هيوصلك هنا.") }
+        else v2Rows(data.notifications, key = { "n-${it.id}" }) { n ->
                     V2Row(
                         title = n.title,
                         subtitle = n.description,
@@ -667,8 +677,6 @@ fun V2InboxScreen(data: V2Data, actions: V2Actions, onOpen: (String) -> Unit) {
                             n.committeeId?.let { id -> if (data.committees.any { it.id == id }) onOpen(id) }
                         }
                     )
-                }
-            }
         }
     }
 }
@@ -707,42 +715,39 @@ fun V2CalendarScreen(data: V2Data, actions: V2Actions, onOpen: (String) -> Unit)
     V2Scroll {
         if (late.isNotEmpty()) {
             item(key = "late-t") { V2Section("متأخرة") }
-            item(key = "late") { V2TaskGroup(late, data, actions, onOpen) }
+            v2Rows(late, key = { "late-${it.id}" }) { t -> V2TaskRow(t, data, actions, onOpen) }
         }
         item(key = "up-t") { V2Section("القادم") }
-        item(key = "up") {
-            if (upcoming.isEmpty()) V2Empty("مفيش مواعيد قادمة", "المهام اللي تتسجل في التقويم بتظهر هنا يوم بيوم.")
-            else V2TaskGroup(upcoming.take(40), data, actions, onOpen)
-        }
+        if (upcoming.isEmpty()) item(key = "up-empty") { V2Empty("مفيش مواعيد قادمة", "المهام اللي تتسجل في التقويم بتظهر هنا يوم بيوم.") }
+        else v2Rows(upcoming.take(60), key = { "up-${it.id}" }) { t -> V2TaskRow(t, data, actions, onOpen) }
     }
 }
 
+/**
+ * One calendar task. Tapping the row opens its committee; marking it done is its own 48dp check on the start side
+ * (never the whole row), and the message that follows offers «تراجع».
+ */
 @Composable
-private fun V2TaskGroup(list: List<com.example.data.model.ScheduleTask>, data: V2Data, actions: V2Actions, onOpen: (String) -> Unit) {
+private fun V2TaskRow(t: com.example.data.model.ScheduleTask, data: V2Data, actions: V2Actions, onOpen: (String) -> Unit) {
     val p = LocalV2.current
-    V2Group {
-        list.forEachIndexed { i, t ->
-            if (i > 0) V2Divider()
-            V2Row(
-                title = t.title,
-                subtitle = listOfNotNull(DayText.relative(t.date.take(10), data.today), t.time.ifBlank { null }, t.committeeNumber?.let { "لجنة $it" }).joinToString(" · "),
-                mark = {
-                    androidx.compose.foundation.layout.Box(
-                        Modifier.padding(2.dp)
-                    ) {
-                        Icon(
-                            if (t.completed) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
-                            contentDescription = "تحديد «${t.title}» كمنجزة",
-                            tint = if (t.completed) p.leaf else p.muted,
-                            modifier = Modifier.padding(8.dp)
-                        )
-                    }
-                },
-                trailing = { if (t.priority == "urgent") V2Tag("عاجل", V2Tone.LATE) },
-                onClick = { actions.toggleTask(t.id) }
-            )
-        }
-    }
+    val committee = t.committeeId?.takeIf { id -> data.committees.any { it.id == id } }
+    V2Row(
+        title = t.title,
+        subtitle = listOfNotNull(DayText.relative(t.date.take(10), data.today), t.time.ifBlank { null }, t.committeeNumber?.let { "لجنة $it" }).joinToString(" · "),
+        mark = {
+            Box(
+                Modifier.size(48.dp).clip(CircleShape)
+                    .toggleable(value = t.completed, role = Role.Checkbox, onValueChange = { actions.toggleTask(t.id) })
+                    .semantics { contentDescription = "«${t.title}» منجزة" },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(if (t.completed) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked, null, tint = if (t.completed) p.leaf else p.muted)
+            }
+        },
+        trailing = { if (t.priority == "urgent") V2Tag("عاجل", V2Tone.LATE) },
+        onClick = committee?.let { { onOpen(it) } },
+        actionLabel = "فتح اللجنة"
+    )
 }
 
 /**

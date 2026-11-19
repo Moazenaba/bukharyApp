@@ -20,6 +20,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.foundation.background
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -62,12 +63,15 @@ private val SheetShape = RoundedCornerShape(24.dp)
 private val HeroShape = RoundedCornerShape(28.dp)
 private val Capsule = RoundedCornerShape(50)
 
-/** A sheet floating on the paper: a soft low shadow in light themes, a lifted surface in dark ones. */
+/**
+ * A sheet on the paper. Lists are flat white sheets (like a phone's settings); the few things that float — the hero,
+ * the tab bar, round header buttons — get a soft low shadow in light themes ([lift]).
+ */
 @Composable
-fun Modifier.v2Sheet(shape: Shape = SheetShape, color: Color? = null): Modifier {
+fun Modifier.v2Sheet(shape: Shape = SheetShape, color: Color? = null, lift: Boolean = true): Modifier {
     val p = LocalV2.current
-    val lift = if (p.dark) Modifier else Modifier.shadow(14.dp, shape, ambientColor = p.ink.copy(alpha = 0.04f), spotColor = p.ink.copy(alpha = 0.10f))
-    return this.then(lift).clip(shape).background(color ?: p.sheet)
+    val shadow = if (p.dark || !lift) Modifier else Modifier.shadow(14.dp, shape, ambientColor = p.ink.copy(alpha = 0.04f), spotColor = p.ink.copy(alpha = 0.10f))
+    return this.then(shadow).clip(shape).background(color ?: p.sheet)
 }
 
 /** Pressed things sink a little and spring back. */
@@ -108,8 +112,33 @@ fun V2Section(text: String, modifier: Modifier = Modifier) {
 /** Rows that belong together sit in one soft sheet with inset hairlines between them (not a card per row). */
 @Composable
 fun V2Group(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
-    Column(modifier.fillMaxWidth().v2Sheet(), content = content)
+    Column(modifier.fillMaxWidth().v2Sheet(lift = false), content = content)
 }
+
+/**
+ * A long list drawn as one grouped sheet, but built one row at a time (a lazy item per row), so a few hundred
+ * committees scroll smoothly on a cheap phone. [key] must be unique in the whole list screen.
+ */
+fun <T> LazyListScope.v2Rows(rows: List<T>, key: (T) -> Any, row: @Composable (T) -> Unit) {
+    val list = rows.distinctBy(key) // a repeated key would crash the list
+    items(list.size, key = { key(list[it]) }) { i ->
+        val first = i == 0
+        val last = i == list.lastIndex
+        val top = if (first) 24.dp else 0.dp
+        val bottom = if (last) 24.dp else 0.dp
+        Column(
+            Modifier.fillMaxWidth().padding(top = if (first) V2Gap else 0.dp)
+                .clip(RoundedCornerShape(topStart = top, topEnd = top, bottomStart = bottom, bottomEnd = bottom))
+                .background(LocalV2.current.sheet)
+        ) {
+            if (!first) V2Divider()
+            row(list[i])
+        }
+    }
+}
+
+/** The space between blocks of a screen. */
+val V2Gap = 14.dp
 
 /** A hairline between rows, inset from the start so it lines up with the text, not the mark. */
 @Composable
@@ -260,7 +289,7 @@ fun V2Avatar(name: String) {
 fun V2Empty(title: String, body: String) {
     val p = LocalV2.current
     Column(
-        Modifier.fillMaxWidth().v2Sheet().padding(vertical = 32.dp, horizontal = 20.dp),
+        Modifier.fillMaxWidth().v2Sheet(lift = false).padding(vertical = 32.dp, horizontal = 20.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp), horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(title, style = V2Type.heading, color = p.ink, textAlign = TextAlign.Center)
