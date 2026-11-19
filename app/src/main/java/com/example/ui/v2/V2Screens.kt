@@ -1,5 +1,7 @@
 package com.example.ui.v2
 
+import kotlinx.coroutines.delay
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.ui.text.style.TextAlign
@@ -283,25 +285,26 @@ fun V2BoardScreen(data: V2Data, onOpen: (String) -> Unit, onShow: (V2Filter) -> 
                 V2NowCard("كل اللجان ماشية في مواعيدها", "مفيش حاجة مستنياك")
             }
         }
-        item(key = "stats") {
+        // Only what has something in it: a «0» row says nothing and opens nothing. The join request is not repeated
+        // while the main card above already says «طلب انضمام مستني».
+        val rows = buildList<Triple<String, Int, () -> Unit>> {
+            if (late.isNotEmpty()) add(Triple("لجان متأخرة", late.size, { onShow(V2Filter.LATE) }))
+            if (examsToday > 0) add(Triple("امتحانات النهارده", examsToday, { onShow(V2Filter.EXAM) }))
+            if (pending > 0 && late.isNotEmpty()) add(Triple("طلبات انضمام", pending, { onPeople() }))
+        }
+        if (rows.isNotEmpty()) item(key = "stats") {
             V2Group {
-                V2Row("لجان متأخرة", onClick = if (late.isNotEmpty()) ({ onShow(V2Filter.LATE) }) else null, actionLabel = "عرض المتأخر",
-                    trailing = { Text(late.size.toString(), style = V2Type.number, color = if (late.isNotEmpty()) p.brick else p.muted) })
-                V2Divider(inset = 16.dp)
-                V2Row("امتحانات النهارده", onClick = if (examsToday > 0) ({ onShow(V2Filter.EXAM) }) else null, actionLabel = "عرض الامتحانات",
-                    trailing = { Text(examsToday.toString(), style = V2Type.number, color = p.muted) })
-                // While the main card above already says «طلب انضمام مستني», the same fact is not repeated as a row.
-                if (late.isNotEmpty() || pending == 0) {
-                    V2Divider(inset = 16.dp)
-                    V2Row("طلبات انضمام", onClick = if (pending > 0) onPeople else null, actionLabel = "مراجعة الطلبات",
-                        trailing = { Text(pending.toString(), style = V2Type.number, color = p.muted) })
+                rows.forEachIndexed { i, (label, n, open) ->
+                    if (i > 0) V2Divider(inset = 16.dp)
+                    V2Row(label, onClick = open, actionLabel = "عرض",
+                        trailing = { Text(n.toString(), style = V2Type.number, color = if (label == "لجان متأخرة") p.brick else p.muted) })
                 }
             }
         }
         item(key = "stages-title") { V2Section("المراحل") }
         item(key = "stages") {
             V2Group {
-                V2Stages.Group.values().forEachIndexed { i, g ->
+                V2Stages.Group.values().filter { (counts[it] ?: 0) > 0 }.forEachIndexed { i, g ->
                     if (i > 0) V2Divider(inset = 16.dp)
                     val f = V2Filter.values().first { it.group() == g }
                     V2Row(
@@ -353,7 +356,7 @@ fun V2CommitteeListScreen(data: V2Data, onOpen: (String) -> Unit, filter: V2Filt
     var query by rememberSaveable { mutableStateOf("") }
     val late = remember(data.committees, data.tasks, data.today) { lateIds(data) }
     val base = data.committees
-    val shown = base.filter { c ->
+    val shown = remember(base, query, filter, late, mineOnly, data.today) { base.filter { c ->
         V2Stages.matches(c, query) && when (filter) {
             V2Filter.ALL -> true
             V2Filter.LATE -> c.id in late
@@ -363,7 +366,7 @@ fun V2CommitteeListScreen(data: V2Data, onOpen: (String) -> Unit, filter: V2Filt
         // A sheikh's own list: the nearest exam first. The full list: late first, then by number.
         if (mineOnly) compareBy<Committee> { it.examDate?.take(10)?.takeIf { d -> d.isNotBlank() && d >= data.today } ?: "9999" }.thenBy { it.committeeNumber }
         else compareByDescending<Committee> { it.id in late }.thenBy { it.committeeNumber }
-    )
+    ) }
     V2Scroll {
         // Search and filters show for a long list — and always while a filter is on, so it can be seen and cleared.
         if (base.size > 6 || filter != V2Filter.ALL) {
@@ -495,6 +498,7 @@ fun V2PeopleScreen(data: V2Data, actions: V2Actions, tools: Set<V2Tool>) {
     var query by rememberSaveable { mutableStateOf("") }
     var rejecting by remember { mutableStateOf<StaffUserDto?>(null) }
     var approving by remember { mutableStateOf<StaffUserDto?>(null) }
+    var approvingId by remember { mutableStateOf<String?>(null) }
     val requests = data.staff.filter { it.status == "pending" && it.role != "super_admin" }
     val approved = data.staff.filter { it.status == "approved" }
         .filter { query.isBlank() || it.name.contains(query.trim()) || it.phone.contains(query.trim()) }
@@ -509,7 +513,7 @@ fun V2PeopleScreen(data: V2Data, actions: V2Actions, tools: Set<V2Tool>) {
                         V2Row(title = u.name, subtitle = listOf(roleName(u.role), v2Phone(u.phone)).filter { it.isNotBlank() }.joinToString(" · "), mark = { V2Avatar(u.name) })
                         if (V2Tool.JOIN_REQUESTS in tools) {
                             Row(Modifier.padding(start = 14.dp, end = 14.dp, bottom = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                V2Button("قبول", { approving = u }, Modifier.weight(1f), kind = V2ButtonKind.CTA, icon = Icons.Default.CheckCircle)
+                                V2Button("قبول", { approving = u }, Modifier.weight(1f), kind = V2ButtonKind.CTA, icon = Icons.Default.CheckCircle, busy = approvingId == u.id)
                                 V2Button("اعتذار", { rejecting = u }, Modifier.weight(1f), kind = V2ButtonKind.QUIET)
                             }
                         }
@@ -539,7 +543,9 @@ fun V2PeopleScreen(data: V2Data, actions: V2Actions, tools: Set<V2Tool>) {
             Text("تعديل الأدوار والصلاحيات الدقيقة بيفتح في الواجهة الكاملة من «المزيد».", style = V2Type.small, color = LocalV2.current.muted)
         }
     }
-    approving?.let { u -> V2ApproveDialog(u, data, onDismiss = { approving = null }) { role, ids -> actions.approve(u, role, ids); approving = null } }
+    // After approving, the button shows a spinner until the person leaves the list (or a few seconds pass).
+    LaunchedEffect(approvingId) { if (approvingId != null) { delay(8000); approvingId = null } }
+    approving?.let { u -> V2ApproveDialog(u, data, onDismiss = { approving = null }) { role, ids -> actions.approve(u, role, ids); approvingId = u.id; approving = null } }
     rejecting?.let { u ->
         AlertDialog(
             onDismissRequest = { rejecting = null },
@@ -623,16 +629,21 @@ fun V2AccountScreen(data: V2Data, actions: V2Actions) {
 private fun V2AccountRows(data: V2Data, actions: V2Actions) {
     var choosingTheme by remember { mutableStateOf(false) }
     var leaving by remember { mutableStateOf(false) }
+    // A tap on sync shows a spinner for a moment, so it never looks like nothing happened.
+    var syncing by remember { mutableStateOf(false) }
+    LaunchedEffect(syncing) { if (syncing) { delay(2500); syncing = false } }
     Column(verticalArrangement = Arrangement.spacedBy(V2Gap)) {
     V2Group {
-        V2Row(data.user.name, roleName(data.user.role.roleKey), mark = { V2Avatar(data.user.name) })
+        V2Row(data.user.name, listOf(roleName(data.user.role.roleKey), v2Phone(data.user.phone)).filter { it.isNotBlank() }.joinToString(" · "), mark = { V2Avatar(data.user.name) })
     }
     V2Group {
         val theme = com.example.domain.v2.V2Themes.ALL.firstOrNull { it.key == data.themeKey }
         V2Row("الألوان", theme?.name ?: "تلقائي (حسب الموبايل)", mark = { V2Mark(icon = Icons.Default.DarkMode) },
             trailing = { theme?.let { V2Swatch(it) } }, onClick = { choosingTheme = true })
         V2Divider()
-        V2Row("مزامنة الآن", if (data.isOnline) null else "بدون اتصال", mark = { V2Mark(icon = Icons.Default.Sync) }, onClick = actions.sync)
+        V2Row("مزامنة الآن", if (data.isOnline) null else "بدون اتصال", mark = { V2Mark(icon = Icons.Default.Sync) },
+            trailing = { if (syncing) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp, color = LocalV2.current.muted) },
+            onClick = { if (!syncing) { syncing = true; actions.sync() } })
         V2Divider()
         V2Row("تغيير كلمة المرور", mark = { V2Mark(icon = Icons.Default.Lock) }, onClick = actions.changePassword)
         V2Divider()

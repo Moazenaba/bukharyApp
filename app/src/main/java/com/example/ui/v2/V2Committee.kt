@@ -1,5 +1,6 @@
 package com.example.ui.v2
 
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Box
@@ -151,8 +152,8 @@ fun V2CommitteeScreen(c: Committee, data: V2Data, actions: V2Actions, tools: Set
                 }
                 if (c.sheikhName.isNotBlank()) {
                     V2Divider()
-                    V2Row(c.sheikhName, listOf("الشيخ الميداني", c.sheikhPhone).filter { it.isNotBlank() }.joinToString(" · "), mark = { V2Avatar(c.sheikhName) },
-                        onClick = if (c.sheikhPhone.isNotBlank()) ({ V2Intents.call(context, c.sheikhPhone) }) else null)
+                    V2Row(c.sheikhName, listOf("الشيخ الميداني", v2Phone(c.sheikhPhone)).filter { it.isNotBlank() }.joinToString(" · "), mark = { V2Avatar(c.sheikhName) },
+                        trailing = { if (c.sheikhPhone.isNotBlank()) V2CallButton(c.sheikhName) { V2Intents.call(context, c.sheikhPhone) } })
                 }
             }
         }
@@ -352,23 +353,28 @@ private fun V2ObserversSection(c: Committee, data: V2Data, actions: V2Actions) {
         AlertDialog(
             onDismissRequest = { finishing = null },
             title = { Text("تكليف ${a.userName}", style = V2Type.heading) },
-            text = { Text("${AssignmentText.task(a.task)}. الإنهاء أو الإلغاء يوقف صلاحيات المراقبة فورًا ويبقى السجل.", style = V2Type.body) },
-            confirmButton = {
-                Row {
-                    TextButton(onClick = {
-                        finishing = null
-                        scope.launch {
-                            try { OnlineApi.finishAssignment(a.id, "end"); reload++ } catch (e: CancellationException) { throw e } catch (e: Exception) { UiMessages.show(failure(e, "تعذر إنهاء التكليف")) }
-                        }
-                    }) { Text("إنهاء", style = V2Type.bodyStrong) }
-                    TextButton(onClick = {
-                        finishing = null
-                        scope.launch {
-                            try { OnlineApi.finishAssignment(a.id, "cancel"); reload++ } catch (e: CancellationException) { throw e } catch (e: Exception) { UiMessages.show(failure(e, "تعذر إلغاء التكليف")) }
-                        }
-                    }) { Text("إلغاء التكليف", style = V2Type.bodyStrong, color = p.brick) }
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text("${AssignmentText.task(a.task)}. أي اختيار يوقف صلاحيات المراقبة فورًا ويبقى السجل.", style = V2Type.body)
+                    // Two choices as rows (the dialog's own button is only «رجوع»), so the two can't be mistaken for each other.
+                    V2Group {
+                        V2Row("إنهاء التكليف", "انتهى المطلوب من المراقب", mark = { V2Mark(icon = Icons.Default.CheckCircle) }, actionLabel = "إنهاء", onClick = {
+                            finishing = null
+                            scope.launch {
+                                try { OnlineApi.finishAssignment(a.id, "end"); reload++ } catch (e: CancellationException) { throw e } catch (e: Exception) { UiMessages.show(failure(e, "تعذر إنهاء التكليف")) }
+                            }
+                        })
+                        V2Divider()
+                        V2Row("إلغاء التكليف", "التكليف اتسند بالغلط أو اتغيّر", mark = { V2Mark(icon = Icons.Default.Close, late = true) }, actionLabel = "إلغاء", onClick = {
+                            finishing = null
+                            scope.launch {
+                                try { OnlineApi.finishAssignment(a.id, "cancel"); reload++ } catch (e: CancellationException) { throw e } catch (e: Exception) { UiMessages.show(failure(e, "تعذر إلغاء التكليف")) }
+                            }
+                        })
+                    }
                 }
             },
+            confirmButton = {},
             dismissButton = { TextButton(onClick = { finishing = null }) { Text("رجوع", style = V2Type.body) } }
         )
     }

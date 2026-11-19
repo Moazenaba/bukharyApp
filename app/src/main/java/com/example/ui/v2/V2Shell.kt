@@ -261,7 +261,7 @@ fun V2Shell(
             }
         }
         if (open == null) {
-            V2TabBar(tabs, tab, unreadForMe = 0) { chosen ->
+            V2TabBar(tabs, tab) { chosen ->
                 page = null
                 if (chosen != tab) filter = V2Filter.ALL // a filter never follows you silently to another tab
                 tab = chosen
@@ -350,7 +350,7 @@ private fun iconFor(tab: V2Tab): ImageVector = when (tab) {
 
 /** A floating capsule over the paper: four tabs, the current one in the accent colour. */
 @Composable
-private fun V2TabBar(tabs: List<V2Tab>, current: V2Tab, unreadForMe: Int, onSelect: (V2Tab) -> Unit) {
+private fun V2TabBar(tabs: List<V2Tab>, current: V2Tab, onSelect: (V2Tab) -> Unit) {
     val p = LocalV2.current
     Box(Modifier.fillMaxWidth().background(p.paper).navigationBarsPadding().padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 10.dp), contentAlignment = Alignment.Center) {
         // At very large text the labels of the tabs you are not on are dropped (the icon + TalkBack name remain),
