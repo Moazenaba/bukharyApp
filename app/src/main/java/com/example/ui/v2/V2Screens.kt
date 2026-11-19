@@ -253,7 +253,7 @@ fun V2NowScreen(data: V2Data, actions: V2Actions, onOpen: (String) -> Unit) {
             onDismissRequest = { confirmStep = false },
             title = { Text(heroStep.title, style = V2Type.heading) },
             text = { Text("لجنة ${stepCommittee.committeeNumber}. بعد التأكيد مش هتقدر ترجعها من هنا.", style = V2Type.body) },
-            confirmButton = { TextButton(onClick = { confirmStep = false; actions.oneTap(stepCommittee, heroStep); UiMessages.show("تم: ${heroStep.title}") }) { Text("تأكيد", style = V2Type.bodyStrong) } },
+            confirmButton = { TextButton(onClick = { confirmStep = false; actions.oneTap(stepCommittee, heroStep); UiMessages.show("تم تسجيل: ${heroStep.title}") }) { Text("تأكيد", style = V2Type.bodyStrong) } },
             dismissButton = { TextButton(onClick = { confirmStep = false }) { Text("إلغاء", style = V2Type.body) } }
         )
     }
