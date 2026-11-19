@@ -1,5 +1,6 @@
 package com.example.ui.v2
 
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -218,6 +219,9 @@ fun V2NowScreen(data: V2Data, actions: V2Actions, onOpen: (String) -> Unit) {
         if (later.isNotEmpty()) {
             item(key = "later-title") { V2Section("قادم") }
             v2Rows(later, key = { "later-${it.key}" }) { f -> V2FeedRow(f, data, onOpen) }
+        }
+        if (hero != null && rest.size < 4) item(key = "all-done") {
+            Text("ده كل اللي عليك دلوقتي.", style = V2Type.small, color = LocalV2.current.muted, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp))
         }
         val shownAbove = (listOfNotNull(hero) + rest).mapNotNull { it.committeeId }.toSet()
         val mine = data.committees.filter { (Permissions.inScope(it.id) || Permissions.observingOn(it.id).isNotEmpty()) && it.id !in shownAbove }
@@ -504,7 +508,7 @@ fun V2PeopleScreen(data: V2Data, actions: V2Actions, tools: Set<V2Tool>) {
         item(key = "search") {
             V2SearchField(query, { query = it }, "الاسم أو رقم الموبايل")
         }
-        item(key = "users-title") { V2Section(if (data.staffLoading && data.staff.isEmpty()) "جارٍ التحميل…" else "المستخدمون (${approved.size})") }
+        item(key = "users-title") { V2Section(if (data.staffLoading && data.staff.isEmpty()) "جارٍ التحميل…" else if (approved.isEmpty()) "المستخدمون" else "المستخدمون (${approved.size})") }
         if (approved.isEmpty() && !data.staffLoading) item(key = "users-empty") {
             V2Empty(if (query.isBlank()) "مفيش مستخدمين لسه" else "مفيش حد بالبحث ده", if (query.isBlank()) "أول ما حد يتقبل هيظهر هنا." else "جرّب جزء من الاسم أو آخر أرقام الموبايل.")
         }

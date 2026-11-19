@@ -253,7 +253,8 @@ fun V2Row(
         mark?.invoke()
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(title, style = V2Type.bodyStrong, color = p.ink, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            if (!subtitle.isNullOrBlank()) Text(subtitle, style = V2Type.small, color = p.muted, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            // Three lines: a place and a student count are real data, not something to cut with «…».
+            if (!subtitle.isNullOrBlank()) Text(subtitle, style = V2Type.small, color = p.muted, maxLines = 3, overflow = TextOverflow.Ellipsis)
             under?.invoke()
         }
         trailing?.invoke(this)

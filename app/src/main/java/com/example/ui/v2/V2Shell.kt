@@ -1,5 +1,9 @@
 package com.example.ui.v2
 
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.EnterTransition
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.layout.width
@@ -199,6 +203,10 @@ fun V2Shell(
             onBell = { page = V2Page.INBOX }
         )
         if (!data.isOnline) V2OfflineStrip(onRetry = actions.sync)
+        val context = LocalContext.current
+        val reduceMotion = remember {
+            android.provider.Settings.Global.getFloat(context.contentResolver, android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f
+        }
         val snack = remember { SnackbarHostState() }
         val scope = rememberCoroutineScope()
         val undo = remember(snack, scope) {
@@ -215,7 +223,9 @@ fun V2Shell(
                 targetState = Triple(open?.id, page, tab),
                 // A short rise and fade: calm, and quick enough that a cheap phone never waits on it.
                 transitionSpec = {
-                    (fadeIn(tween(220, delayMillis = 60)) + slideInVertically(tween(260)) { it / 24 }) togetherWith fadeOut(tween(120))
+                    // «Remove animations» in the phone's settings (scale 0) is respected: the screens just swap.
+                    if (reduceMotion) EnterTransition.None togetherWith ExitTransition.None
+                    else (fadeIn(tween(220, delayMillis = 60)) + slideInVertically(tween(260)) { it / 24 }) togetherWith fadeOut(tween(120))
                 },
                 label = "v2"
             ) { (openId, pg, t) ->
@@ -336,23 +346,24 @@ private fun iconFor(tab: V2Tab): ImageVector = when (tab) {
 @Composable
 private fun V2TabBar(tabs: List<V2Tab>, current: V2Tab, unreadForMe: Int, onSelect: (V2Tab) -> Unit) {
     val p = LocalV2.current
-    Box(Modifier.fillMaxWidth().background(p.paper).navigationBarsPadding().padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 10.dp)) {
+    Box(Modifier.fillMaxWidth().background(p.paper).navigationBarsPadding().padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 10.dp), contentAlignment = Alignment.Center) {
         // At very large text the labels of the tabs you are not on are dropped (the icon + TalkBack name remain),
         // so four tabs still fit a phone's width.
         val big = LocalDensity.current.fontScale >= 1.3f
-        Row(Modifier.fillMaxWidth().v2Sheet(RoundedCornerShape(50)).selectableGroup().padding(horizontal = 6.dp, vertical = 6.dp)) {
+        Row(Modifier.widthIn(max = 640.dp).fillMaxWidth().v2Sheet(RoundedCornerShape(50)).selectableGroup().padding(horizontal = 6.dp, vertical = 6.dp)) {
             tabs.forEach { t ->
                 val on = t == current
                 val tint by animateColorAsState(if (on) p.cta else p.muted, label = "tab")
+                val pill by animateColorAsState(if (on) p.cta.copy(alpha = 0.10f) else Color.Transparent, label = "tab-pill")
                 Column(
-                    Modifier.weight(1f).heightIn(min = 56.dp).clip(RoundedCornerShape(50))
-                        .background(if (on) p.cta.copy(alpha = 0.10f) else Color.Transparent)
+                    Modifier.weight(1f).heightIn(min = 60.dp).clip(RoundedCornerShape(50))
+                        .background(pill)
                         .selectable(selected = on, role = Role.Tab, onClick = { onSelect(t) }),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically)
                 ) {
                     Icon(iconFor(t), if (big && !on) t.label else null, tint = tint, modifier = Modifier.size(24.dp))
-                    if (on || !big) Text(t.label, style = V2Type.label, color = if (on) p.cta else p.muted, maxLines = 1)
+                    if (on || !big) Text(t.label, style = V2Type.smallStrong, color = if (on) p.cta else p.muted, maxLines = 1)
                 }
             }
         }
