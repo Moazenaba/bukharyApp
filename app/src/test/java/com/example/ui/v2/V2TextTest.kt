@@ -20,4 +20,10 @@ class V2TextTest {
         assertEquals("ح", v2Initial("الحسن"))
         assertEquals("؟", v2Initial(" "))
     }
+
+    @Test fun `end dates are picked by adding days`() {
+        assertEquals("2026-11-26", v2PlusDays("2026-11-19", 7))
+        assertEquals("2026-12-19", v2PlusDays("2026-11-19", 30))
+        assertEquals("", v2PlusDays("not a date", 7))
+    }
 }

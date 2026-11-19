@@ -51,10 +51,10 @@ class V2ThemesTest {
     }
 
     @Test fun `auto follows the phone, a saved key wins, an unknown key falls back`() {
-        assertEquals(V2Themes.SAND, V2Themes.of(null, phoneIsDark = false))
+        assertEquals(V2Themes.INK, V2Themes.of(null, phoneIsDark = false))
         assertEquals(V2Themes.NIGHT, V2Themes.of("auto", phoneIsDark = true))
         assertEquals(V2Themes.OLIVE, V2Themes.of("olive", phoneIsDark = true))
-        assertEquals(V2Themes.SAND, V2Themes.of("gone", phoneIsDark = false))
+        assertEquals(V2Themes.INK, V2Themes.of("gone", phoneIsDark = false))
         assertEquals(V2Themes.ALL.size, V2Themes.ALL.map { it.key }.toSet().size)
     }
 }

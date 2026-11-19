@@ -1,5 +1,14 @@
 package com.example.ui.v2
 
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.OutlinedTextField
+import kotlinx.coroutines.delay
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.foundation.layout.defaultMinSize
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
@@ -10,16 +19,21 @@ import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.foundation.background
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -62,30 +76,43 @@ private val SheetShape = RoundedCornerShape(24.dp)
 private val HeroShape = RoundedCornerShape(28.dp)
 private val Capsule = RoundedCornerShape(50)
 
-/** A sheet floating on the paper: a soft low shadow in light themes, a lifted surface in dark ones. */
+/**
+ * A sheet on the paper. Lists are flat white sheets (like a phone's settings); the few things that float — the hero,
+ * the tab bar, round header buttons — get a soft low shadow in light themes ([lift]).
+ */
 @Composable
-fun Modifier.v2Sheet(shape: Shape = SheetShape, color: Color? = null): Modifier {
+fun Modifier.v2Sheet(shape: Shape = SheetShape, color: Color? = null, lift: Boolean = true): Modifier {
     val p = LocalV2.current
-    val lift = if (p.dark) Modifier else Modifier.shadow(14.dp, shape, ambientColor = p.ink.copy(alpha = 0.04f), spotColor = p.ink.copy(alpha = 0.10f))
-    return this.then(lift).clip(shape).background(color ?: p.sheet)
+    val shadow = if (p.dark || !lift) Modifier else Modifier.shadow(14.dp, shape, ambientColor = p.ink.copy(alpha = 0.04f), spotColor = p.ink.copy(alpha = 0.10f))
+    return this.then(shadow).clip(shape).background(color ?: p.sheet)
 }
 
 /** Pressed things sink a little and spring back. */
 @Composable
 fun Modifier.v2Press(source: MutableInteractionSource): Modifier {
     val pressed by source.collectIsPressedAsState()
-    val scale by animateFloatAsState(if (pressed) 0.97f else 1f, spring(dampingRatio = 0.55f, stiffness = 700f), label = "press")
+    val scale by animateFloatAsState(if (pressed) 0.97f else 1f, spring(dampingRatio = 0.8f, stiffness = 900f), label = "press")
     return this.graphicsLayer { scaleX = scale; scaleY = scale }
 }
 
 /** What a small label says about the thing it sits on; it always has words, colour is never the only signal. */
-enum class V2Tone { GO, WAIT, LATE, WATCH, DONE }
+enum class V2Tone {
+    /** Something for me to do («مطلوب منك»): the accent, softly. */
+    ACT,
+    /** Plain information («امتحان», «حفل», «فتح»). */
+    GO,
+    WAIT, LATE, WATCH,
+    /** Finished — the only green. */
+    DONE
+}
 
 @Composable
 fun V2Tag(text: String, tone: V2Tone) {
     val p = LocalV2.current
     val (fill, ink) = when (tone) {
-        V2Tone.GO, V2Tone.DONE -> p.leaf.copy(alpha = 0.12f) to p.leaf
+        V2Tone.ACT -> p.cta.copy(alpha = 0.12f) to p.cta
+        V2Tone.GO -> p.tonal to p.ink
+        V2Tone.DONE -> p.leaf.copy(alpha = 0.12f) to p.leaf
         V2Tone.WAIT -> p.tonal to p.muted
         V2Tone.LATE -> p.brick.copy(alpha = 0.12f) to p.brick
         V2Tone.WATCH -> p.tonal to p.ink
@@ -108,8 +135,74 @@ fun V2Section(text: String, modifier: Modifier = Modifier) {
 /** Rows that belong together sit in one soft sheet with inset hairlines between them (not a card per row). */
 @Composable
 fun V2Group(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
-    Column(modifier.fillMaxWidth().v2Sheet(), content = content)
+    Column(modifier.fillMaxWidth().v2Sheet(lift = false), content = content)
 }
+
+/**
+ * A long list drawn as one grouped sheet, but built one row at a time (a lazy item per row), so a few hundred
+ * committees scroll smoothly on a cheap phone. [key] must be unique in the whole list screen.
+ */
+fun <T> LazyListScope.v2Rows(rows: List<T>, key: (T) -> Any, row: @Composable (T) -> Unit) {
+    val list = rows.distinctBy(key) // a repeated key would crash the list
+    items(list.size, key = { key(list[it]) }) { i ->
+        val first = i == 0
+        val last = i == list.lastIndex
+        val top = if (first) 24.dp else 0.dp
+        val bottom = if (last) 24.dp else 0.dp
+        Column(
+            Modifier.fillMaxWidth().padding(top = if (first) V2Gap else 0.dp)
+                .clip(RoundedCornerShape(topStart = top, topEnd = top, bottomStart = bottom, bottomEnd = bottom))
+                .background(LocalV2.current.sheet)
+        ) {
+            if (!first) V2Divider()
+            row(list[i])
+        }
+    }
+}
+
+/**
+ * Names being loaded for a picker: «جارٍ التحميل…», and if they have not come after a few seconds, a plain
+ * «تعذر التحميل» with a retry (a list that never arrives must not spin forever).
+ */
+@Composable
+fun V2LoadingNames(onRetry: () -> Unit) {
+    var slow by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { delay(8000); slow = true }
+    if (slow) V2Retry("الأسماء", onRetry)
+    else Text("جارٍ تحميل الأسماء…", style = V2Type.body, color = LocalV2.current.muted, modifier = Modifier.padding(8.dp))
+}
+
+/** A search field: a soft capsule, a «search» key on the keyboard, a clear button, and a label for TalkBack. */
+@Composable
+fun V2SearchField(value: String, onChange: (String) -> Unit, placeholder: String, modifier: Modifier = Modifier) {
+    OutlinedTextField(
+        value = value, onValueChange = onChange, singleLine = true,
+        leadingIcon = { Icon(Icons.Default.Search, null) },
+        trailingIcon = {
+            if (value.isNotEmpty()) {
+                Box(Modifier.size(48.dp).clip(CircleShape).clickable(role = Role.Button, onClickLabel = "مسح البحث") { onChange("") }, contentAlignment = Alignment.Center) {
+                    Icon(Icons.Default.Close, "مسح", tint = LocalV2.current.muted)
+                }
+            }
+        },
+        placeholder = { Text(placeholder, style = V2Type.body) },
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+        shape = Capsule, textStyle = V2Type.body, colors = v2FieldColors(),
+        modifier = modifier.fillMaxWidth().semantics { contentDescription = placeholder }
+    )
+}
+
+/** A phone number inside Arabic text keeps its digits in order (never reversed by the right-to-left run). */
+fun v2Phone(phone: String): String = if (phone.isBlank()) "" else "\u2066$phone\u2069"
+
+/** A row that says a load failed and offers to try again (never an empty list that only looks like «nothing»). */
+@Composable
+fun V2Retry(what: String, onRetry: () -> Unit) {
+    V2Row("تعذر تحميل $what", "تأكد من الاتصال واضغط هنا للمحاولة تاني", mark = { V2Mark(icon = Icons.Default.Refresh, late = true) }, onClick = onRetry, actionLabel = "إعادة المحاولة")
+}
+
+/** The space between blocks of a screen. */
+val V2Gap = 14.dp
 
 /** A hairline between rows, inset from the start so it lines up with the text, not the mark. */
 @Composable
@@ -122,7 +215,8 @@ fun V2Divider(inset: Dp = 72.dp) {
 fun V2Mark(text: String? = null, icon: ImageVector? = null, late: Boolean = false, size: Dp = 44.dp) {
     val p = LocalV2.current
     Box(
-        Modifier.size(size).clip(CircleShape).background(if (late) p.brick.copy(alpha = 0.12f) else p.tonal),
+        // A circle at normal text size that grows into a capsule when the phone's text is very large.
+        Modifier.defaultMinSize(minWidth = size, minHeight = size).clip(Capsule).background(if (late) p.brick.copy(alpha = 0.12f) else p.tonal).padding(horizontal = 6.dp),
         contentAlignment = Alignment.Center
     ) {
         if (icon != null) Icon(icon, null, tint = if (late) p.brick else p.ink, modifier = Modifier.size(22.dp))
@@ -142,11 +236,19 @@ fun V2Row(
     trailing: @Composable (RowScope.() -> Unit)? = null,
     onClick: (() -> Unit)? = null,
     under: @Composable (() -> Unit)? = null,
-    actionLabel: String = "فتح"
+    actionLabel: String = "فتح",
+    /** For a choice in a list: TalkBack hears «محدد/غير محدد», and the row shows no chevron. */
+    selected: Boolean? = null,
+    /** With [selected]: several may be picked (a checkbox) rather than one (a radio button). */
+    multiple: Boolean = false
 ) {
     val p = LocalV2.current
     var m = Modifier.fillMaxWidth().heightIn(min = 64.dp)
-    if (onClick != null) m = m.clickable(role = Role.Button, onClickLabel = actionLabel, onClick = onClick)
+    if (onClick != null) m = when {
+        selected != null && multiple -> m.toggleable(value = selected, role = Role.Checkbox, onValueChange = { onClick() })
+        selected != null -> m.selectable(selected = selected, role = Role.RadioButton, onClick = onClick)
+        else -> m.clickable(role = Role.Button, onClickLabel = actionLabel, onClick = onClick)
+    }
     Row(m.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         mark?.invoke()
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -155,7 +257,7 @@ fun V2Row(
             under?.invoke()
         }
         trailing?.invoke(this)
-        if (onClick != null) Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = p.muted.copy(alpha = 0.7f), modifier = Modifier.size(20.dp))
+        if (onClick != null && selected == null) Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = p.muted.copy(alpha = 0.7f), modifier = Modifier.size(20.dp))
     }
 }
 
@@ -181,7 +283,7 @@ fun V2NowCard(meta: String, title: String, modifier: Modifier = Modifier, conten
 /**
  * Buttons, all capsules at least 48dp tall:
  * CTA is the one filled accent button of a view; SOLID and OUTLINE are tonal (a whisper of ink, never a second loud
- * slab); QUIET is the same tonal capsule, kept as a name for lesser actions. One secondary look, app-wide.
+ * slab); QUIET is a plain text button for the lesser choice («اعتذار» next to «قبول»).
  */
 enum class V2ButtonKind { CTA, SOLID, OUTLINE, QUIET }
 
@@ -197,15 +299,21 @@ fun V2Button(
 ) {
     val p = LocalV2.current
     val source = remember { MutableInteractionSource() }
+    // A second tap within a moment is the same tap (slow phones, shaky fingers): it never runs twice.
+    var lastTap by remember { mutableLongStateOf(0L) }
+    val tap = {
+        val now = android.os.SystemClock.elapsedRealtime()
+        if (now - lastTap > 900) { lastTap = now; onClick() }
+    }
     val (bg, fg) = when (kind) {
         V2ButtonKind.CTA -> p.cta to p.onCta
         V2ButtonKind.SOLID -> p.tonal to p.ink
         V2ButtonKind.OUTLINE -> (contentColor ?: p.ink).copy(alpha = if (p.dark) 0.10f else 0.07f) to (contentColor ?: p.ink)
-        V2ButtonKind.QUIET -> p.tonal to p.ink
+        V2ButtonKind.QUIET -> Color.Transparent to p.ink
     }
     Row(
         modifier.heightIn(min = 52.dp).v2Press(source).clip(Capsule).background(if (enabled) bg else bg.copy(alpha = bg.alpha * 0.5f))
-            .clickable(interactionSource = source, indication = LocalIndication.current, enabled = enabled, role = Role.Button, onClick = onClick)
+            .clickable(interactionSource = source, indication = LocalIndication.current, enabled = enabled, role = Role.Button, onClick = tap)
             .padding(horizontal = 18.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center
@@ -214,7 +322,8 @@ fun V2Button(
             Icon(icon, null, tint = if (enabled) fg else fg.copy(alpha = 0.5f), modifier = Modifier.size(20.dp))
             Spacer(Modifier.width(8.dp))
         }
-        Text(text, style = V2Type.bodyStrong, color = if (enabled) fg else fg.copy(alpha = 0.5f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+        // Two lines when the phone's text is set very large, rather than cutting the label off.
+        Text(text, style = V2Type.bodyStrong, color = if (enabled) fg else fg.copy(alpha = 0.5f), maxLines = 2, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
     }
 }
 
@@ -229,10 +338,11 @@ fun V2Steps(done: Int, total: Int = 9, modifier: Modifier = Modifier) {
         repeat(total) { i ->
             val c = when {
                 i < done -> p.leaf
-                i == done -> p.cta
-                else -> p.mist
+                i == done -> p.ink
+                else -> p.muted.copy(alpha = 0.3f)
             }
-            Box(Modifier.weight(1f).height(5.dp).clip(Capsule).background(c))
+            // The current stage is also taller, so it doesn't rely on colour alone.
+            Box(Modifier.weight(1f).height(if (i == done) 8.dp else 5.dp).clip(Capsule).background(c).align(Alignment.CenterVertically))
         }
     }
 }
@@ -260,7 +370,7 @@ fun V2Avatar(name: String) {
 fun V2Empty(title: String, body: String) {
     val p = LocalV2.current
     Column(
-        Modifier.fillMaxWidth().v2Sheet().padding(vertical = 32.dp, horizontal = 20.dp),
+        Modifier.fillMaxWidth().v2Sheet(lift = false).padding(vertical = 32.dp, horizontal = 20.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp), horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(title, style = V2Type.heading, color = p.ink, textAlign = TextAlign.Center)
@@ -290,9 +400,26 @@ fun V2Chip(text: String, selected: Boolean, onClick: () -> Unit) {
 fun v2FieldColors() = LocalV2.current.let { p ->
     OutlinedTextFieldDefaults.colors(
         focusedContainerColor = p.sheet, unfocusedContainerColor = p.sheet,
-        focusedBorderColor = p.cta, unfocusedBorderColor = p.mist,
+        focusedBorderColor = p.cta, unfocusedBorderColor = p.muted.copy(alpha = 0.6f),
         focusedLeadingIconColor = p.ink, unfocusedLeadingIconColor = p.muted, cursorColor = p.cta
     )
+}
+
+/** Arabic words with the same 0-9 digits the rest of the app uses (not ١٢٣). */
+val V2ArabicLatnDigits: java.util.Locale = java.util.Locale.forLanguageTag("ar-EG-u-nu-latn")
+
+/** «الخميس 19 نوفمبر» for the header: the day the person is working in, instead of repeating their name. */
+fun v2TodayText(today: String): String {
+    val d = runCatching { java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).parse(today.take(10)) }.getOrNull() ?: return ""
+    return java.text.SimpleDateFormat("EEEE d MMMM", V2ArabicLatnDigits).format(d)
+}
+
+/** [today] («yyyy-MM-dd») plus [days], in the same form. */
+fun v2PlusDays(today: String, days: Int): String {
+    val f = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).apply { isLenient = false }
+    val d = runCatching { f.parse(today.take(10)) }.getOrNull() ?: return ""
+    val cal = java.util.Calendar.getInstance().apply { time = d; add(java.util.Calendar.DAY_OF_MONTH, days) }
+    return f.format(cal.time)
 }
 
 /**
@@ -331,7 +458,7 @@ fun v2OpensText(iso: String): String {
     val date = listOf("yyyy-MM-dd'T'HH:mm:ss.SSSSSSX", "yyyy-MM-dd'T'HH:mm:ss.SSSX", "yyyy-MM-dd'T'HH:mm:ssX").firstNotNullOfOrNull { f ->
         runCatching { java.text.SimpleDateFormat(f, java.util.Locale.US).apply { isLenient = false }.parse(iso) }.getOrNull()
     } ?: return iso.take(16).replace('T', ' ')
-    val text = java.text.SimpleDateFormat("EEEE d MMMM، h:mm a", java.util.Locale("ar"))
+    val text = java.text.SimpleDateFormat("EEEE d MMMM، h:mm a", V2ArabicLatnDigits)
         .apply { timeZone = java.util.TimeZone.getTimeZone("Africa/Cairo") }.format(date)
     return "$text (بتوقيت القاهرة)"
 }
@@ -341,7 +468,7 @@ fun v2OpensText(iso: String): String {
 fun V2Swatch(spec: com.example.domain.v2.V2ThemeSpec) {
     Row(horizontalArrangement = Arrangement.spacedBy((-6).dp)) {
         listOf(spec.paper, spec.ink, spec.cta).forEach { c ->
-            Box(Modifier.size(22.dp).clip(CircleShape).background(Color(c)).border(2.dp, LocalV2.current.sheet, CircleShape))
+            Box(Modifier.size(22.dp).clip(CircleShape).background(Color(c)).border(1.dp, LocalV2.current.muted.copy(alpha = 0.5f), CircleShape))
         }
     }
 }

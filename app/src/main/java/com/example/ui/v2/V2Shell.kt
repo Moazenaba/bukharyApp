@@ -1,5 +1,26 @@
 package com.example.ui.v2
 
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.material.icons.filled.CloudOff
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material.icons.automirrored.filled.ViewList
+import androidx.compose.material.icons.filled.AssignmentInd
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.core.tween
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
@@ -36,12 +57,12 @@ import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PersonSearch
 import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.filled.ViewList
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -103,7 +124,8 @@ class V2Actions(
     val saveStaff: (Committee, List<String>) -> Unit,
     val loadCandidates: () -> Unit,
     val loadStaff: () -> Unit,
-    val approve: (StaffUserDto) -> Unit,
+    /** Approves a join request with the role and committees picked by the admin («all» when [committeeIds] is null). */
+    val approve: (StaffUserDto, role: String, committeeIds: List<String>?) -> Unit,
     val reject: (StaffUserDto) -> Unit,
     val sendNotice: (title: String, body: String, done: (Boolean) -> Unit) -> Unit,
     val selectCourse: (String?) -> Unit,
@@ -164,7 +186,8 @@ fun V2Shell(
             else -> tab.label
         }
         V2Header(
-            hello = "${data.user.name.trim().split(" ").take(2).joinToString(" ")} · ${data.user.role.titleAr}",
+            // The role is said only where it differs from what the screens already show (admins), not on every screen.
+            hello = if (data.user.role.roleKey in setOf("admin", "super_admin")) "${v2TodayText(data.today)} · ${data.user.role.titleAr}" else v2TodayText(data.today),
             title = title,
             unread = unread,
             isOnline = data.isOnline,
@@ -175,10 +198,25 @@ fun V2Shell(
             },
             onBell = { page = V2Page.INBOX }
         )
+        if (!data.isOnline) V2OfflineStrip(onRetry = actions.sync)
+        val snack = remember { SnackbarHostState() }
+        val scope = rememberCoroutineScope()
+        val undo = remember(snack, scope) {
+            V2Undo { message, onUndo ->
+                scope.launch {
+                    snack.currentSnackbarData?.dismiss()
+                    if (snack.showSnackbar(message, actionLabel = "تراجع", duration = SnackbarDuration.Long) == SnackbarResult.ActionPerformed) onUndo()
+                }
+            }
+        }
         Box(Modifier.weight(1f).fillMaxWidth().then(if (open != null) Modifier.navigationBarsPadding() else Modifier)) {
+          CompositionLocalProvider(LocalV2Undo provides undo) {
             AnimatedContent(
                 targetState = Triple(open?.id, page, tab),
-                transitionSpec = { fadeIn() togetherWith fadeOut() },
+                // A short rise and fade: calm, and quick enough that a cheap phone never waits on it.
+                transitionSpec = {
+                    (fadeIn(tween(220, delayMillis = 60)) + slideInVertically(tween(260)) { it / 24 }) togetherWith fadeOut(tween(120))
+                },
                 label = "v2"
             ) { (openId, pg, t) ->
                 val c = openId?.let { id -> data.committees.firstOrNull { it.id == id } }
@@ -201,13 +239,39 @@ fun V2Shell(
                     }
                 }
             }
+          }
+            SnackbarHost(snack, Modifier.align(Alignment.BottomCenter).padding(horizontal = 16.dp, vertical = 8.dp)) { d ->
+                Snackbar(d, shape = RoundedCornerShape(20.dp), containerColor = p.ink, contentColor = p.paper, actionColor = p.paper)
+            }
         }
         if (open == null) {
             V2TabBar(tabs, tab, unreadForMe = 0) { chosen ->
                 page = null
+                if (chosen != tab) filter = V2Filter.ALL // a filter never follows you silently to another tab
                 tab = chosen
             }
         }
+    }
+}
+
+/** «Undo» for an action just done: a message with «تراجع» above the tab bar. */
+fun interface V2Undo { fun offer(message: String, onUndo: () -> Unit) }
+
+val LocalV2Undo = staticCompositionLocalOf { V2Undo { _, _ -> } }
+
+/** Offline, said plainly under the header (and to TalkBack), with a way to try again. */
+@Composable
+private fun V2OfflineStrip(onRetry: () -> Unit) {
+    val p = LocalV2.current
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp).clip(RoundedCornerShape(16.dp)).background(p.brick.copy(alpha = 0.12f))
+            .semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite }.padding(start = 14.dp, end = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(Icons.Default.CloudOff, null, tint = p.brick, modifier = Modifier.size(20.dp))
+        Spacer(Modifier.width(8.dp))
+        Text("مفيش اتصال. اللي بتعمله هيتبعت لما النت يرجع.", style = V2Type.small, color = p.ink, modifier = Modifier.weight(1f))
+        TextButton(onClick = onRetry, modifier = Modifier.heightIn(min = 48.dp)) { Text("إعادة", style = V2Type.smallStrong, color = p.brick) }
     }
 }
 
@@ -240,10 +304,9 @@ private fun V2Header(hello: String, title: String, unread: Int, isOnline: Boolea
         }
         Column(Modifier.weight(1f)) {
             Text(
-                if (isOnline) hello else "$hello · بدون اتصال", style = V2Type.small,
-                color = if (isOnline) p.muted else p.brick, maxLines = 1, overflow = TextOverflow.Ellipsis
+                hello, style = V2Type.small, color = p.muted, maxLines = 1, overflow = TextOverflow.Ellipsis
             )
-            Text(title, style = V2Type.title, color = p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.semantics { heading() })
+            Text(title, style = V2Type.title, color = p.ink, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.semantics { heading() })
         }
         Box(
             Modifier.size(48.dp).v2Sheet(CircleShape)
@@ -252,14 +315,15 @@ private fun V2Header(hello: String, title: String, unread: Int, isOnline: Boolea
             contentAlignment = Alignment.Center
         ) {
             Icon(Icons.Default.Notifications, null, tint = p.ink)
-            if (unread > 0) Box(Modifier.align(Alignment.TopStart).padding(11.dp).size(9.dp).clip(CircleShape).background(p.cta))
+            if (unread > 0) Box(Modifier.align(Alignment.TopStart).padding(11.dp).size(9.dp).clip(CircleShape).background(p.ink))
         }
     }
 }
 
 private fun iconFor(tab: V2Tab): ImageVector = when (tab) {
     V2Tab.NOW -> Icons.Default.Schedule
-    V2Tab.MINE, V2Tab.COMMITTEES -> Icons.Default.ViewList
+    V2Tab.MINE -> Icons.Default.AssignmentInd
+    V2Tab.COMMITTEES -> Icons.AutoMirrored.Filled.ViewList
     V2Tab.CEREMONIES -> Icons.Default.Celebration
     V2Tab.TEAM -> Icons.Default.Groups
     V2Tab.ME -> Icons.Default.Person
@@ -273,7 +337,10 @@ private fun iconFor(tab: V2Tab): ImageVector = when (tab) {
 private fun V2TabBar(tabs: List<V2Tab>, current: V2Tab, unreadForMe: Int, onSelect: (V2Tab) -> Unit) {
     val p = LocalV2.current
     Box(Modifier.fillMaxWidth().background(p.paper).navigationBarsPadding().padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 10.dp)) {
-        Row(Modifier.fillMaxWidth().v2Sheet(RoundedCornerShape(50)).padding(horizontal = 6.dp, vertical = 6.dp)) {
+        // At very large text the labels of the tabs you are not on are dropped (the icon + TalkBack name remain),
+        // so four tabs still fit a phone's width.
+        val big = LocalDensity.current.fontScale >= 1.3f
+        Row(Modifier.fillMaxWidth().v2Sheet(RoundedCornerShape(50)).selectableGroup().padding(horizontal = 6.dp, vertical = 6.dp)) {
             tabs.forEach { t ->
                 val on = t == current
                 val tint by animateColorAsState(if (on) p.cta else p.muted, label = "tab")
@@ -284,8 +351,8 @@ private fun V2TabBar(tabs: List<V2Tab>, current: V2Tab, unreadForMe: Int, onSele
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically)
                 ) {
-                    Icon(iconFor(t), null, tint = tint, modifier = Modifier.size(24.dp))
-                    Text(t.label, style = V2Type.label, color = if (on) p.cta else p.muted, maxLines = 1)
+                    Icon(iconFor(t), if (big && !on) t.label else null, tint = tint, modifier = Modifier.size(24.dp))
+                    if (on || !big) Text(t.label, style = V2Type.label, color = if (on) p.cta else p.muted, maxLines = 1)
                 }
             }
         }

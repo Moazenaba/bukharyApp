@@ -1,5 +1,11 @@
 package com.example.ui.v2
 
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.background
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.Groups
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -40,6 +46,14 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -69,12 +83,28 @@ import com.example.ui.components.Overdue
 /** Every V2 page scrolls the same way: one column, 16dp sides, 14dp between blocks. */
 @Composable
 fun V2Scroll(content: LazyListScope.() -> Unit) {
-    LazyColumn(
-        Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
-        content = content
-    )
+    // On a tablet the column stays phone-wide and centred, instead of stretching rows across the screen.
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+        LazyColumn(
+            Modifier.fillMaxHeight().widthIn(max = 640.dp).fillMaxWidth(),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 0.dp, bottom = 24.dp),
+            content = { Spaced(this).content() }
+        )
+    }
+}
+
+/**
+ * Each block of a screen (`item`) sits [V2Gap] below the one before; rows of a long list (`items`, see [v2Rows])
+ * touch, so together they read as one sheet.
+ */
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+private class Spaced(private val inner: LazyListScope) : LazyListScope by inner {
+    override fun item(key: Any?, contentType: Any?, content: @Composable LazyItemScope.() -> Unit) {
+        inner.item(key, contentType) {
+            val scope = this
+            Box(Modifier.padding(top = V2Gap)) { scope.content() }
+        }
+    }
 }
 
 private fun canOn(action: String, committeeId: String) = Permissions.canOn(action, committeeId)
@@ -86,10 +116,11 @@ private fun lateIds(data: V2Data): Map<String, Overdue.Item> =
 
 /** The row of a committee in any list: number, name, place and its stage. */
 @Composable
-fun V2CommitteeRow(c: Committee, late: Overdue.Item?, onOpen: () -> Unit, showSteps: Boolean = false) {
+fun V2CommitteeRow(c: Committee, late: Overdue.Item?, onOpen: () -> Unit, showSteps: Boolean = false, today: String = "") {
     val observer = Permissions.observingOn(c.id).isNotEmpty() && !Permissions.inScope(c.id)
     val place = Logistics.placeOf(c)
-    val sub = listOfNotNull(place.ifBlank { null }, Logistics.studentsText(c.studentsCount)).joinToString(" · ")
+    val exam = c.examDate?.take(10)?.takeIf { it.isNotBlank() && !c.stages.getStage("exam").completed }
+    val sub = listOfNotNull(exam?.let { "الامتحان ${DayText.relative(it, today)}" }, place.ifBlank { null }, Logistics.studentsText(c.studentsCount)).joinToString(" · ")
     V2Row(
         title = c.committeeName,
         subtitle = sub,
@@ -128,6 +159,7 @@ fun V2NowScreen(data: V2Data, actions: V2Actions, onOpen: (String) -> Unit) {
         pick to all.filter { it !== pick }
     }
     var confirmStep by remember { mutableStateOf(false) }
+    val undo = LocalV2Undo.current
     V2Scroll {
         item(key = "now") {
             val now = hero
@@ -137,7 +169,18 @@ fun V2NowScreen(data: V2Data, actions: V2Actions, onOpen: (String) -> Unit) {
                 val committee = now.committeeId?.let { id -> data.committees.firstOrNull { it.id == id } }
                 val step = committee?.let { NextStep.of(it) { a -> canOn(a, it.id) } }
                 val whenText = listOf(DayText.relative(now.date, data.today), now.time).filter { it.isNotBlank() }.joinToString(" · ")
-                V2NowCard(meta = whenText.ifBlank { "مطلوب منك" }, title = now.title) {
+                // Title says what to do; the line under it says which committee and when (no «#», no repeats).
+                val title = when {
+                    committee == null -> now.title
+                    now.kind == FeedKind.ACTION -> now.title.replace(Regex("^لجنة #\\d+:\\s*"), "")
+                    else -> now.title.replace("لجنة #", "لجنة ")
+                }
+                val meta = listOfNotNull(
+                    committee?.takeIf { now.kind == FeedKind.ACTION }?.let { "لجنة ${it.committeeNumber}" },
+                    committee?.committeeName?.takeIf { it.isNotBlank() && now.kind != FeedKind.ACTION },
+                    whenText.ifBlank { null }
+                ).joinToString(" · ")
+                V2NowCard(meta = meta.ifBlank { "مطلوب منك" }, title = title) {
                     if (now.place.isNotBlank()) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             Icon(Icons.Default.Place, null, tint = LocalV2.current.onHero)
@@ -147,57 +190,44 @@ fun V2NowScreen(data: V2Data, actions: V2Actions, onOpen: (String) -> Unit) {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         when {
                             now.kind == FeedKind.TASK && now.taskId != null ->
-                                V2Button("تمت المهمة", { actions.toggleTask(now.taskId) }, Modifier.weight(1f), kind = V2ButtonKind.CTA, icon = Icons.Default.CheckCircle)
+                                V2Button("تمت المهمة", {
+                                    actions.toggleTask(now.taskId)
+                                    undo.offer("اتعلّمت «${now.title}» كمنجزة") { actions.toggleTask(now.taskId) }
+                                }, Modifier.weight(1f), kind = V2ButtonKind.CTA, icon = Icons.Default.CheckCircle)
                             step != null && committee != null && step.canDo && step.oneTap && now.kind == FeedKind.ACTION ->
-                                V2Button(step.title, { confirmStep = true }, Modifier.weight(1f), kind = V2ButtonKind.CTA)
+                                V2Button("تم، أكّد", { confirmStep = true }, Modifier.weight(1f), kind = V2ButtonKind.CTA, icon = Icons.Default.CheckCircle)
                             committee != null -> V2Button("افتح اللجنة", { onOpen(committee.id) }, Modifier.weight(1f), kind = V2ButtonKind.CTA)
                         }
                         Logistics.mapsUrl(now.place)?.let { url ->
                             V2Button("الخرائط", { V2Intents.open(context, url) }, Modifier.weight(1f), kind = V2ButtonKind.OUTLINE, icon = Icons.Default.Place, contentColor = LocalV2.current.onHero)
                         }
                     }
-                    if (now.headPhone.isNotBlank()) {
+                    // Never offer to call yourself: the head sees this card too.
+                    if (now.headPhone.isNotBlank() && committee?.let { Logistics.headOf(it)?.id } != data.user.id) {
                         V2Button("اتصال برئيس اللجنة ${now.headName}".trim(), { V2Intents.call(context, now.headPhone) }, Modifier.fillMaxWidth(), kind = V2ButtonKind.OUTLINE, icon = Icons.Default.Phone, contentColor = LocalV2.current.onHero)
                     }
                 }
             }
         }
-        if (rest.isNotEmpty()) {
-            item(key = "later-title") { V2Section("قادم") }
-            item(key = "later") {
-                V2Group {
-                    rest.forEachIndexed { i, f ->
-                        if (i > 0) V2Divider()
-                        val c = f.committeeId?.let { id -> data.committees.firstOrNull { it.id == id } }
-                        V2Row(
-                            title = v2FeedTitle(f, c),
-                            subtitle = listOf(DayText.relative(f.date, data.today), f.place).filter { it.isNotBlank() }.joinToString(" · "),
-                            mark = {
-                                if (c != null) V2Mark(c.committeeNumber.toString(), late = f.overdue)
-                                else V2Mark(icon = Icons.Default.CalendarMonth, late = f.overdue)
-                            },
-                            trailing = {
-                                when (f.kind) {
-                                    FeedKind.CEREMONY -> V2Tag("حفل", V2Tone.WATCH)
-                                    FeedKind.EXAM -> V2Tag("امتحان", V2Tone.GO)
-                                    FeedKind.ACTION -> V2Tag("مطلوب منك", V2Tone.GO)
-                                    FeedKind.TASK -> if (f.overdue) V2Tag("متأخرة", V2Tone.LATE) else Unit
-                                }
-                            },
-                            onClick = c?.let { { onOpen(it.id) } }
-                        )
-                    }
-                }
-            }
+        // Due today (or already late) is said apart from what is coming, so «later» never hides «now».
+        val (dueNow, later) = rest.partition { it.overdue || it.today || it.date.isBlank() }
+        if (dueNow.isNotEmpty()) {
+            item(key = "due-title") { V2Section("مطلوب النهارده") }
+            v2Rows(dueNow, key = { "due-${it.key}" }) { f -> V2FeedRow(f, data, onOpen) }
         }
-        val mine = data.committees.filter { Permissions.inScope(it.id) || Permissions.observingOn(it.id).isNotEmpty() }
+        if (later.isNotEmpty()) {
+            item(key = "later-title") { V2Section("قادم") }
+            v2Rows(later, key = { "later-${it.key}" }) { f -> V2FeedRow(f, data, onOpen) }
+        }
+        val shownAbove = (listOfNotNull(hero) + rest).mapNotNull { it.committeeId }.toSet()
+        val mine = data.committees.filter { (Permissions.inScope(it.id) || Permissions.observingOn(it.id).isNotEmpty()) && it.id !in shownAbove }
         if (mine.isNotEmpty() && data.user.role.roleKey == "committee_head") {
             item(key = "mine-title") { V2Section("لجانك") }
             item(key = "mine") {
                 V2Group {
                     mine.sortedBy { it.committeeNumber }.forEachIndexed { i, c ->
                         if (i > 0) V2Divider()
-                        V2CommitteeRow(c, late[c.id], { onOpen(c.id) }, showSteps = true)
+                        V2CommitteeRow(c, late[c.id], { onOpen(c.id) }, showSteps = true, today = data.today)
                     }
                 }
             }
@@ -210,7 +240,7 @@ fun V2NowScreen(data: V2Data, actions: V2Actions, onOpen: (String) -> Unit) {
         AlertDialog(
             onDismissRequest = { confirmStep = false },
             title = { Text(heroStep.title, style = V2Type.heading) },
-            text = { Text("لجنة ${stepCommittee.committeeNumber}: تأكيد الخطوة؟", style = V2Type.body) },
+            text = { Text("لجنة ${stepCommittee.committeeNumber}. بعد التأكيد مش هتقدر ترجعها من هنا.", style = V2Type.body) },
             confirmButton = { TextButton(onClick = { confirmStep = false; actions.oneTap(stepCommittee, heroStep) }) { Text("تأكيد", style = V2Type.bodyStrong) } },
             dismissButton = { TextButton(onClick = { confirmStep = false }) { Text("إلغاء", style = V2Type.body) } }
         )
@@ -234,7 +264,7 @@ fun V2BoardScreen(data: V2Data, onOpen: (String) -> Unit, onShow: (V2Filter) -> 
                 }
             } else if (pending > 0) {
                 // Nothing is late: the next thing that waits on the admin is people asking to join.
-                V2NowCard("مفيش لجان متأخرة", v2Count(pending, "طلب انضمام مستني", "طلبين انضمام مستنيين", "طلبات انضمام مستنية", "طلب انضمام مستني")) {
+                V2NowCard("راجعهم واقبل أو اعتذر", v2Count(pending, "طلب انضمام مستني", "طلبين انضمام مستنيين", "طلبات انضمام مستنية", "طلب انضمام مستني")) {
                     V2Button("راجع الطلبات", onPeople, Modifier.fillMaxWidth(), kind = V2ButtonKind.CTA)
                 }
             } else if (examsToday > 0) {
@@ -249,7 +279,7 @@ fun V2BoardScreen(data: V2Data, onOpen: (String) -> Unit, onShow: (V2Filter) -> 
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 V2Stat("متأخرة", late.size, late.isNotEmpty(), Modifier.weight(1f)) { onShow(V2Filter.LATE) }
                 V2Stat("امتحان النهارده", examsToday, false, Modifier.weight(1f)) { onShow(V2Filter.EXAM) }
-                V2Stat("طلب انضمام", pending, pending > 0, Modifier.weight(1f), onPeople)
+                V2Stat("طلب انضمام", pending, false, Modifier.weight(1f), onPeople)
             }
         }
         item(key = "stages-title") { V2Section("المراحل") }
@@ -313,19 +343,19 @@ fun V2CommitteeListScreen(data: V2Data, onOpen: (String) -> Unit, filter: V2Filt
             V2Filter.LATE -> c.id in late
             else -> V2Stages.groupOf(c) == filter.group()
         }
-    }.sortedWith(compareByDescending<Committee> { it.id in late }.thenBy { it.committeeNumber })
+    }.sortedWith(
+        // A sheikh's own list: the nearest exam first. The full list: late first, then by number.
+        if (mineOnly) compareBy<Committee> { it.examDate?.take(10)?.takeIf { d -> d.isNotBlank() && d >= data.today } ?: "9999" }.thenBy { it.committeeNumber }
+        else compareByDescending<Committee> { it.id in late }.thenBy { it.committeeNumber }
+    )
     V2Scroll {
-        if (base.size > 6) {
+        // Search and filters show for a long list — and always while a filter is on, so it can be seen and cleared.
+        if (base.size > 6 || filter != V2Filter.ALL) {
             item(key = "search") {
-                OutlinedTextField(
-                    value = query, onValueChange = { query = it }, singleLine = true,
-                    leadingIcon = { Icon(Icons.Default.Search, null) },
-                    placeholder = { Text("رقم اللجنة أو اسمها أو الشيخ", style = V2Type.body) },
-                    shape = RoundedCornerShape(50), textStyle = V2Type.body, colors = v2FieldColors(), modifier = Modifier.fillMaxWidth()
-                )
+                V2SearchField(query, { query = it }, "رقم اللجنة أو اسمها أو الشيخ")
             }
             item(key = "chips") {
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                FlowRow(Modifier.selectableGroup(), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     V2Filter.values().forEach { f ->
                         val n = when (f) {
                             V2Filter.ALL -> base.size
@@ -337,21 +367,12 @@ fun V2CommitteeListScreen(data: V2Data, onOpen: (String) -> Unit, filter: V2Filt
                 }
             }
         }
-        item(key = "list") {
-            if (shown.isEmpty()) {
-                V2Empty(
-                    if (base.isEmpty()) (if (mineOnly) "لسه مفيش لجنة متسندة لك" else "مفيش لجان في الدورة دي") else "مفيش لجنة بالبحث ده",
-                    if (base.isEmpty()) "أول ما تتسند لك لجنة هيوصلك إشعار وتظهر هنا." else "جرّب رقم اللجنة أو امسح التصفية."
-                )
-            } else {
-                V2Group {
-                    shown.forEachIndexed { i, c ->
-                        if (i > 0) V2Divider()
-                        V2CommitteeRow(c, late[c.id], { onOpen(c.id) })
-                    }
-                }
-            }
-        }
+        if (shown.isEmpty()) item(key = "empty") {
+            V2Empty(
+                if (base.isEmpty()) (if (mineOnly) "لسه مفيش لجنة متسندة لك" else "مفيش لجان في الدورة دي") else "مفيش لجنة بالبحث ده",
+                if (base.isEmpty()) "أول ما تتسند لك لجنة هيوصلك إشعار وتظهر هنا." else "جرّب رقم اللجنة أو امسح التصفية."
+            )
+        } else v2Rows(shown, key = { "c-${it.id}" }) { c -> V2CommitteeRow(c, late[c.id], { onOpen(c.id) }, today = data.today) }
     }
 }
 
@@ -398,25 +419,25 @@ fun V2TeamScreen(data: V2Data, actions: V2Actions, onOpen: (String) -> Unit) {
             item(key = "t-${c.id}") { V2Section("لجنة ${c.committeeNumber} · ${c.committeeName}") }
             item(key = "g-${c.id}") {
                 V2Group {
-                    if (c.staff.isEmpty()) V2Row(title = "لسه مفيش شيوخ في اللجنة")
-                    c.staff.forEachIndexed { i, s ->
+                    if (c.staff.none { it.id != data.user.id }) V2Row(title = "لسه مفيش شيوخ في اللجنة")
+                    // The head is the reader: list the sheikhs only, then two plain rows for what can be done.
+                    c.staff.filter { it.id != data.user.id }.forEachIndexed { i, s ->
                         if (i > 0) V2Divider()
                         V2Row(title = s.name, subtitle = if (s.role == "committee_head") "رئيس اللجنة" else "شيخ", mark = { V2Avatar(s.name) })
                     }
                     V2Divider()
-                    Row(Modifier.padding(10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        V2Button("إضافة / إزالة شيوخ", { actions.loadCandidates(); editing = c }, Modifier.weight(1f), kind = V2ButtonKind.QUIET)
-                        V2Button("المراقبون", { onOpen(c.id) }, Modifier.weight(1f), kind = V2ButtonKind.QUIET)
-                    }
+                    V2Row("إضافة أو إزالة شيوخ", mark = { V2Mark(icon = Icons.Default.Groups) }, onClick = { actions.loadCandidates(); editing = c }, actionLabel = "تعديل الشيوخ")
+                    V2Divider()
+                    V2Row("المراقبون ومراحل اللجنة", mark = { V2Mark(icon = Icons.Default.Visibility) }, onClick = { onOpen(c.id) })
                 }
             }
         }
     }
-    editing?.let { c -> V2StaffDialog(c, data, onDismiss = { editing = null }) { ids -> actions.saveStaff(c, ids); editing = null } }
+    editing?.let { c -> V2StaffDialog(c, data, onRetry = actions.loadCandidates, onDismiss = { editing = null }) { ids -> actions.saveStaff(c, ids); editing = null } }
 }
 
 @Composable
-fun V2StaffDialog(c: Committee, data: V2Data, onDismiss: () -> Unit, onSave: (List<String>) -> Unit) {
+fun V2StaffDialog(c: Committee, data: V2Data, onRetry: () -> Unit, onDismiss: () -> Unit, onSave: (List<String>) -> Unit) {
     val p = LocalV2.current
     var picked by remember(c.id) { mutableStateOf(c.staff.map { it.id }.toSet()) }
     val people = data.candidates?.filter { (it.role == "sheikh" || it.role == "committee_head") && it.id != data.user.id }
@@ -425,14 +446,15 @@ fun V2StaffDialog(c: Committee, data: V2Data, onDismiss: () -> Unit, onSave: (Li
         title = { Text("شيوخ لجنة ${c.committeeNumber}", style = V2Type.heading) },
         text = {
             LazyColumn(Modifier.fillMaxWidth().padding(top = 4.dp)) {
-                if (people == null) item { Text("جارٍ تحميل الأسماء…", style = V2Type.body, color = p.muted) }
+                if (people == null) item { V2LoadingNames(onRetry) }
                 items(people.orEmpty(), key = { it.id }) { person ->
                     val on = person.id in picked
                     V2Row(
                         title = person.name,
                         subtitle = if (person.role == "committee_head") "رئيس لجنة" else "شيخ",
                         mark = { Icon(if (on) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked, null, tint = if (on) p.leaf else p.muted) },
-                        onClick = { picked = if (on) picked - person.id else picked + person.id }
+                        onClick = { picked = if (on) picked - person.id else picked + person.id },
+                        selected = on, multiple = true
                     )
                 }
             }
@@ -456,6 +478,7 @@ fun V2PeopleScreen(data: V2Data, actions: V2Actions, tools: Set<V2Tool>) {
     LaunchedEffect(Unit) { if (!com.example.domain.v2.V2Tools.isAdmin(data.user.role.roleKey)) actions.loadStaff() }
     var query by rememberSaveable { mutableStateOf("") }
     var rejecting by remember { mutableStateOf<StaffUserDto?>(null) }
+    var approving by remember { mutableStateOf<StaffUserDto?>(null) }
     val requests = data.staff.filter { it.status == "pending" && it.role != "super_admin" }
     val approved = data.staff.filter { it.status == "approved" }
         .filter { query.isBlank() || it.name.contains(query.trim()) || it.phone.contains(query.trim()) }
@@ -467,10 +490,10 @@ fun V2PeopleScreen(data: V2Data, actions: V2Actions, tools: Set<V2Tool>) {
                 V2Group {
                     requests.forEachIndexed { i, u ->
                         if (i > 0) V2Divider()
-                        V2Row(title = u.name, subtitle = listOf(roleName(u.role), u.phone).filter { it.isNotBlank() }.joinToString(" · "), mark = { V2Avatar(u.name) })
+                        V2Row(title = u.name, subtitle = listOf(roleName(u.role), v2Phone(u.phone)).filter { it.isNotBlank() }.joinToString(" · "), mark = { V2Avatar(u.name) })
                         if (V2Tool.JOIN_REQUESTS in tools) {
                             Row(Modifier.padding(start = 14.dp, end = 14.dp, bottom = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                V2Button("قبول", { actions.approve(u) }, Modifier.weight(1f))
+                                V2Button("قبول", { approving = u }, Modifier.weight(1f), kind = V2ButtonKind.CTA, icon = Icons.Default.CheckCircle)
                                 V2Button("اعتذار", { rejecting = u }, Modifier.weight(1f), kind = V2ButtonKind.QUIET)
                             }
                         }
@@ -479,33 +502,28 @@ fun V2PeopleScreen(data: V2Data, actions: V2Actions, tools: Set<V2Tool>) {
             }
         }
         item(key = "search") {
-            OutlinedTextField(
-                value = query, onValueChange = { query = it }, singleLine = true,
-                leadingIcon = { Icon(Icons.Default.Search, null) },
-                placeholder = { Text("الاسم أو رقم الموبايل", style = V2Type.body) },
-                shape = RoundedCornerShape(50), textStyle = V2Type.body, colors = v2FieldColors(), modifier = Modifier.fillMaxWidth()
-            )
+            V2SearchField(query, { query = it }, "الاسم أو رقم الموبايل")
         }
         item(key = "users-title") { V2Section(if (data.staffLoading && data.staff.isEmpty()) "جارٍ التحميل…" else "المستخدمون (${approved.size})") }
-        item(key = "users") {
-            if (approved.isNotEmpty()) V2Group {
-                approved.forEachIndexed { i, u ->
-                    if (i > 0) V2Divider()
+        if (approved.isEmpty() && !data.staffLoading) item(key = "users-empty") {
+            V2Empty(if (query.isBlank()) "مفيش مستخدمين لسه" else "مفيش حد بالبحث ده", if (query.isBlank()) "أول ما حد يتقبل هيظهر هنا." else "جرّب جزء من الاسم أو آخر أرقام الموبايل.")
+        }
+        run {
+            v2Rows(approved, key = { "u-${it.id}" }) { u ->
                     val committees = if (u.allCommitteesAllowed) "كل اللجان" else if (u.assignedCommitteeIds.isEmpty()) "بدون لجان" else v2Count(u.assignedCommitteeIds.size, "لجنة واحدة", "لجنتين", "لجان", "لجنة")
                     V2Row(
                         title = u.name,
                         subtitle = "${roleName(u.role)} · $committees",
                         mark = { V2Avatar(u.name) },
-                        trailing = { if (u.phone.isNotBlank()) Icon(Icons.Default.Phone, "اتصال بـ ${u.name}", tint = LocalV2.current.muted) },
-                        onClick = if (u.phone.isNotBlank()) ({ V2Intents.call(context, u.phone) }) else null
+                        trailing = { if (u.phone.isNotBlank()) V2CallButton(u.name) { V2Intents.call(context, u.phone) } }
                     )
-                }
             }
         }
         item(key = "note") {
             Text("تعديل الأدوار والصلاحيات الدقيقة بيفتح في الواجهة الكاملة من «المزيد».", style = V2Type.small, color = LocalV2.current.muted)
         }
     }
+    approving?.let { u -> V2ApproveDialog(u, data, onDismiss = { approving = null }) { role, ids -> actions.approve(u, role, ids); approving = null } }
     rejecting?.let { u ->
         AlertDialog(
             onDismissRequest = { rejecting = null },
@@ -570,7 +588,7 @@ fun V2MoreScreen(data: V2Data, actions: V2Actions, tools: Set<V2Tool>, onPage: (
             text = {
                 Column {
                     data.courses.forEach { c ->
-                        V2Row(c.name, if (c.isDefault) "الحالية" else null, onClick = { actions.selectCourse(c.id); choosingCourse = false },
+                        V2Row(c.name, if (c.isDefault) "الحالية" else null, onClick = { actions.selectCourse(c.id); choosingCourse = false }, selected = c.id == course?.id,
                             mark = { Icon(if (c.id == course?.id) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked, null) })
                     }
                 }
@@ -588,6 +606,7 @@ fun V2AccountScreen(data: V2Data, actions: V2Actions) {
 @Composable
 private fun V2AccountRows(data: V2Data, actions: V2Actions) {
     var choosingTheme by remember { mutableStateOf(false) }
+    var leaving by remember { mutableStateOf(false) }
     V2Group {
         V2Row(data.user.name, roleName(data.user.role.roleKey), mark = { V2Avatar(data.user.name) })
         V2Divider()
@@ -599,9 +618,18 @@ private fun V2AccountRows(data: V2Data, actions: V2Actions) {
         V2Divider()
         V2Row("تغيير كلمة المرور", mark = { V2Mark(icon = Icons.Default.Lock) }, onClick = actions.changePassword)
         V2Divider()
-        V2Row("الرجوع للواجهة القديمة", "تقدر ترجع للواجهات 2 من القائمة", mark = { V2Mark(icon = Icons.Default.SwapHoriz) }, onClick = actions.leaveV2)
+        V2Row("الرجوع للواجهة القديمة", "وترجع هنا تاني من «الواجهات 2» في القائمة", mark = { V2Mark(icon = Icons.Default.SwapHoriz) }, onClick = actions.leaveV2)
         V2Divider()
-        V2Row("تسجيل الخروج", mark = { V2Mark(icon = Icons.AutoMirrored.Filled.Logout, late = true) }, onClick = actions.logout)
+        V2Row("تسجيل الخروج", mark = { V2Mark(icon = Icons.AutoMirrored.Filled.Logout, late = true) }, onClick = { leaving = true })
+    }
+    if (leaving) {
+        AlertDialog(
+            onDismissRequest = { leaving = false },
+            title = { Text("تسجيل الخروج؟", style = V2Type.heading) },
+            text = { Text("هتحتاج رقم الموبايل وكلمة المرور عشان تدخل تاني.", style = V2Type.body) },
+            confirmButton = { TextButton(onClick = { leaving = false; actions.logout() }) { Text("خروج", style = V2Type.bodyStrong, color = LocalV2.current.brick) } },
+            dismissButton = { TextButton(onClick = { leaving = false }) { Text("رجوع", style = V2Type.body) } }
+        )
     }
     if (choosingTheme) {
         AlertDialog(
@@ -610,11 +638,11 @@ private fun V2AccountRows(data: V2Data, actions: V2Actions) {
             text = {
                 LazyColumn {
                     item {
-                        V2Row("تلقائي", "فاتح أو غامق حسب الموبايل", onClick = { actions.v2Theme(com.example.domain.v2.V2Themes.AUTO); choosingTheme = false },
+                        V2Row("تلقائي", "فاتح أو غامق حسب الموبايل", onClick = { actions.v2Theme(com.example.domain.v2.V2Themes.AUTO); choosingTheme = false }, selected = data.themeKey == com.example.domain.v2.V2Themes.AUTO,
                             mark = { Icon(if (data.themeKey == com.example.domain.v2.V2Themes.AUTO) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked, null) })
                     }
                     items(com.example.domain.v2.V2Themes.ALL, key = { it.key }) { t ->
-                        V2Row(t.name, t.story, onClick = { actions.v2Theme(t.key); choosingTheme = false },
+                        V2Row(t.name, t.story, onClick = { actions.v2Theme(t.key); choosingTheme = false }, selected = t.key == data.themeKey,
                             mark = { Icon(if (t.key == data.themeKey) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked, null) },
                             trailing = { V2Swatch(t) })
                     }
@@ -629,6 +657,7 @@ private fun V2AccountRows(data: V2Data, actions: V2Actions) {
 private fun V2NoticeDialog(onDismiss: () -> Unit, onSend: (String, String) -> Unit) {
     var title by remember { mutableStateOf("") }
     var body by remember { mutableStateOf("") }
+    var sent by remember { mutableStateOf(false) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("إرسال تنبيه للجميع", style = V2Type.heading) },
@@ -638,7 +667,7 @@ private fun V2NoticeDialog(onDismiss: () -> Unit, onSend: (String, String) -> Un
                 OutlinedTextField(body, { body = it }, label = { Text("التفاصيل") }, minLines = 3, textStyle = V2Type.body, modifier = Modifier.fillMaxWidth())
             }
         },
-        confirmButton = { TextButton(enabled = title.isNotBlank(), onClick = { onSend(title.trim(), body.trim()) }) { Text("إرسال", style = V2Type.bodyStrong) } },
+        confirmButton = { TextButton(enabled = title.isNotBlank() && !sent, onClick = { sent = true; onSend(title.trim(), body.trim()) }) { Text("إرسال", style = V2Type.bodyStrong) } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("إلغاء", style = V2Type.body) } }
     )
 }
@@ -652,11 +681,8 @@ fun V2InboxScreen(data: V2Data, actions: V2Actions, onOpen: (String) -> Unit) {
         if (data.notifications.any { !it.read }) item(key = "all") {
             V2Button("تعليم الكل كمقروء", actions.readAll, Modifier.fillMaxWidth(), kind = V2ButtonKind.QUIET)
         }
-        item(key = "list") {
-            if (data.notifications.isEmpty()) V2Empty("مفيش إشعارات", "أي إسناد أو دعوة أو تغيير في موعد هيوصلك هنا.")
-            else V2Group {
-                data.notifications.forEachIndexed { i, n ->
-                    if (i > 0) V2Divider()
+        if (data.notifications.isEmpty()) item(key = "empty") { V2Empty("مفيش إشعارات", "أي إسناد أو دعوة أو تغيير في موعد هيوصلك هنا.") }
+        else v2Rows(data.notifications, key = { "n-${it.id}" }) { n ->
                     V2Row(
                         title = n.title,
                         subtitle = n.description,
@@ -667,8 +693,6 @@ fun V2InboxScreen(data: V2Data, actions: V2Actions, onOpen: (String) -> Unit) {
                             n.committeeId?.let { id -> if (data.committees.any { it.id == id }) onOpen(id) }
                         }
                     )
-                }
-            }
         }
     }
 }
@@ -702,47 +726,70 @@ fun V2ExamsScreen(data: V2Data, actions: V2Actions) {
 
 @Composable
 fun V2CalendarScreen(data: V2Data, actions: V2Actions, onOpen: (String) -> Unit) {
-    val upcoming = data.tasks.filter { !it.completed && it.date.take(10) >= data.today }.sortedBy { it.date + TodayFeedBuilder.minutesOf(it.time).toString().padStart(4, '0') }
+    val upcoming = data.tasks.filter { (!it.completed || it.date.take(10) == data.today) && it.date.take(10) >= data.today }.sortedBy { it.date + TodayFeedBuilder.minutesOf(it.time).toString().padStart(4, '0') }
     val late = data.tasks.filter { !it.completed && it.date.isNotBlank() && it.date.take(10) < data.today }
     V2Scroll {
         if (late.isNotEmpty()) {
             item(key = "late-t") { V2Section("متأخرة") }
-            item(key = "late") { V2TaskGroup(late, data, actions, onOpen) }
+            v2Rows(late, key = { "late-${it.id}" }) { t -> V2TaskRow(t, data, actions, onOpen) }
         }
         item(key = "up-t") { V2Section("القادم") }
-        item(key = "up") {
-            if (upcoming.isEmpty()) V2Empty("مفيش مواعيد قادمة", "المهام اللي تتسجل في التقويم بتظهر هنا يوم بيوم.")
-            else V2TaskGroup(upcoming.take(40), data, actions, onOpen)
-        }
+        if (upcoming.isEmpty()) item(key = "up-empty") { V2Empty("مفيش مواعيد قادمة", "المهام اللي تتسجل في التقويم بتظهر هنا يوم بيوم.") }
+        else v2Rows(upcoming.take(60), key = { "up-${it.id}" }) { t -> V2TaskRow(t, data, actions, onOpen) }
     }
 }
 
+/**
+ * One calendar task. Tapping the row opens its committee; marking it done is its own 48dp check on the start side
+ * (never the whole row), and the message that follows offers «تراجع».
+ */
 @Composable
-private fun V2TaskGroup(list: List<com.example.data.model.ScheduleTask>, data: V2Data, actions: V2Actions, onOpen: (String) -> Unit) {
+private fun V2TaskRow(t: com.example.data.model.ScheduleTask, data: V2Data, actions: V2Actions, onOpen: (String) -> Unit) {
     val p = LocalV2.current
-    V2Group {
-        list.forEachIndexed { i, t ->
-            if (i > 0) V2Divider()
-            V2Row(
-                title = t.title,
-                subtitle = listOfNotNull(DayText.relative(t.date.take(10), data.today), t.time.ifBlank { null }, t.committeeNumber?.let { "لجنة $it" }).joinToString(" · "),
-                mark = {
-                    androidx.compose.foundation.layout.Box(
-                        Modifier.padding(2.dp)
-                    ) {
-                        Icon(
-                            if (t.completed) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
-                            contentDescription = "تحديد «${t.title}» كمنجزة",
-                            tint = if (t.completed) p.leaf else p.muted,
-                            modifier = Modifier.padding(8.dp)
-                        )
-                    }
-                },
-                trailing = { if (t.priority == "urgent") V2Tag("عاجل", V2Tone.LATE) },
-                onClick = { actions.toggleTask(t.id) }
-            )
-        }
-    }
+    val undo = LocalV2Undo.current
+    val committee = t.committeeId?.takeIf { id -> data.committees.any { it.id == id } }
+    V2Row(
+        title = t.title,
+        subtitle = listOfNotNull(DayText.relative(t.date.take(10), data.today), t.time.ifBlank { null }, t.committeeNumber?.let { "لجنة $it" }).joinToString(" · "),
+        mark = {
+            Box(
+                Modifier.size(48.dp).clip(CircleShape)
+                    .toggleable(value = t.completed, role = Role.Checkbox, onValueChange = {
+                        actions.toggleTask(t.id)
+                        if (!t.completed) undo.offer("اتعلّمت «${t.title}» كمنجزة") { actions.toggleTask(t.id) }
+                    })
+                    .semantics { contentDescription = "«${t.title}» منجزة" },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(if (t.completed) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked, null, tint = if (t.completed) p.leaf else p.muted)
+            }
+        },
+        trailing = { if (t.priority == "urgent") V2Tag("عاجل", V2Tone.LATE) },
+        onClick = committee?.let { { onOpen(it) } },
+        actionLabel = "فتح اللجنة"
+    )
+}
+
+@Composable
+private fun V2FeedRow(f: com.example.domain.FeedItem, data: V2Data, onOpen: (String) -> Unit) {
+    val c = f.committeeId?.let { id -> data.committees.firstOrNull { it.id == id } }
+    V2Row(
+        title = v2FeedTitle(f, c),
+        subtitle = listOf(DayText.relative(f.date, data.today), f.place).filter { it.isNotBlank() }.joinToString(" · "),
+        mark = {
+            if (c != null) V2Mark(c.committeeNumber.toString(), late = f.overdue)
+            else V2Mark(icon = Icons.Default.CalendarMonth, late = f.overdue)
+        },
+        trailing = {
+            when (f.kind) {
+                FeedKind.CEREMONY -> V2Tag("حفل", V2Tone.WATCH)
+                FeedKind.EXAM -> V2Tag("امتحان", V2Tone.GO)
+                FeedKind.ACTION -> V2Tag("مطلوب منك", V2Tone.ACT)
+                FeedKind.TASK -> if (f.overdue) V2Tag("متأخرة", V2Tone.LATE) else Unit
+            }
+        },
+        onClick = c?.let { { onOpen(it.id) } }
+    )
 }
 
 /**
@@ -756,4 +803,52 @@ internal fun v2FeedTitle(f: com.example.domain.FeedItem, c: com.example.data.mod
         FeedKind.ACTION -> f.title.replace(Regex("^لجنة #\\d+:\\s*"), "").ifBlank { f.title }
         FeedKind.TASK -> f.title
     }
+}
+
+/**
+ * Approving a join request says what the person will be: a role (when the admin may grant one) and their
+ * committees, or all of them. Nobody is approved with nothing to do.
+ */
+@Composable
+private fun V2ApproveDialog(u: StaffUserDto, data: V2Data, onDismiss: () -> Unit, onApprove: (role: String, committeeIds: List<String>?) -> Unit) {
+    val canGrant = Permissions.can("users.grant")
+    var role by remember { mutableStateOf(if (u.role == "committee_head" && canGrant) "committee_head" else "sheikh") }
+    var all by remember { mutableStateOf(false) }
+    var picked by remember { mutableStateOf(setOf<String>()) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("قبول ${u.name}", style = V2Type.heading) },
+        text = {
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                if (canGrant) item {
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        V2Chip("شيخ", role == "sheikh") { role = "sheikh" }
+                        V2Chip("رئيس لجنة", role == "committee_head") { role = "committee_head" }
+                    }
+                }
+                item { V2Row("كل اللجان", "يشوف كل لجان الدورة", onClick = { all = !all }, selected = all, multiple = true) }
+                if (!all) items(data.committees.sortedBy { it.committeeNumber }, key = { it.id }) { c ->
+                    val on = c.id in picked
+                    V2Row("لجنة ${c.committeeNumber}", c.committeeName, onClick = { picked = if (on) picked - c.id else picked + c.id }, selected = on, multiple = true)
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(enabled = all || picked.isNotEmpty(), onClick = { onApprove(role, if (all) null else picked.toList()) }) {
+                Text("قبول", style = V2Type.bodyStrong)
+            }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("رجوع", style = V2Type.body) } }
+    )
+}
+
+/** A round phone button for a person's row (the row itself never dials). */
+@Composable
+fun V2CallButton(name: String, onCall: () -> Unit) {
+    val p = LocalV2.current
+    Box(
+        Modifier.size(48.dp).clip(CircleShape).background(p.tonal).clickable(role = Role.Button, onClick = onCall)
+            .semantics { contentDescription = "اتصال بـ $name" },
+        contentAlignment = Alignment.Center
+    ) { Icon(Icons.Default.Phone, null, tint = p.ink, modifier = Modifier.size(20.dp)) }
 }

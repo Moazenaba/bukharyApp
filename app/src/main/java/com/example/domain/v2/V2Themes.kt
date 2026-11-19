@@ -53,7 +53,7 @@ object V2Themes {
     val NIGHT = V2ThemeSpec(
         key = "night", name = "ليلي", story = "رمادي فحمي، ولمسة كهرماني", dark = true,
         paper = 0xFF0E1015, sheet = 0xFF1A1D24, ink = 0xFFF2F3F6, muted = 0xFFA3A8B5, mist = 0xFF2A2E37,
-        cta = 0xFFF5B84A, onCta = 0xFF1E1400, hero = 0xFF262219, onHero = 0xFFF6F2EA, leaf = 0xFF62C08E, brick = 0xFFF08A76
+        cta = 0xFFF5B84A, onCta = 0xFF1E1400, hero = 0xFF22211E, onHero = 0xFFF6F2EA, leaf = 0xFF62C08E, brick = 0xFFF08A76
     )
     val COFFEE = V2ThemeSpec(
         key = "coffee", name = "قهوة", story = "بني غامق وكريمي، ولمسة وردي", dark = true,
@@ -67,7 +67,7 @@ object V2Themes {
     const val AUTO = "auto"
 
     fun of(key: String?, phoneIsDark: Boolean): V2ThemeSpec =
-        ALL.firstOrNull { it.key == key } ?: if (phoneIsDark) NIGHT else SAND
+        ALL.firstOrNull { it.key == key } ?: if (phoneIsDark) NIGHT else INK
 
     // ---- the rule, as numbers ----------------------------------------------------------------------
 
