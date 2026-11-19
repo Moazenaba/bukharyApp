@@ -75,7 +75,7 @@ object OnlineApi {
 
     suspend fun addObservation(assignmentId: String, note: String) { call("POST", "api/assignments/${enc(assignmentId)}/observations", mapOf("note" to note)) }
 
-    // ------------------------------------------------- temporary heads («رئيس لجنة مؤقت»)
+    // ------------------------------------------------- temporary heads («شيخ اللجنة»)
 
     /** The grants this person may see: all for an admin, the ones on their committees for a head, their own otherwise. */
     suspend fun headGrants(): List<com.example.data.model.HeadGrant> =
