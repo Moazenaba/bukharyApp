@@ -129,7 +129,8 @@ fun V2CommitteeScreen(c: Committee, data: V2Data, actions: V2Actions, tools: Set
                     ).joinToString(" · "),
                     mark = { V2Mark(icon = Icons.Default.Place) }
                 )
-                Logistics.mapsUrl(place)?.let { url ->
+                // A waiting committee already leads with the map in its top card: it is not offered twice.
+                Logistics.mapsUrl(place)?.takeIf { step.canDo || step.kind == StepKind.DONE }?.let { url ->
                     Row(Modifier.padding(start = 14.dp, end = 14.dp, bottom = 12.dp)) {
                         V2Button("افتح في الخرائط", { V2Intents.open(context, url) }, Modifier.fillMaxWidth(), kind = V2ButtonKind.SOLID, icon = Icons.Default.Place)
                     }
