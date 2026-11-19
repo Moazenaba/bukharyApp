@@ -88,13 +88,23 @@ fun Modifier.v2Press(source: MutableInteractionSource): Modifier {
 }
 
 /** What a small label says about the thing it sits on; it always has words, colour is never the only signal. */
-enum class V2Tone { GO, WAIT, LATE, WATCH, DONE }
+enum class V2Tone {
+    /** Something for me to do («مطلوب منك»): the accent, softly. */
+    ACT,
+    /** Plain information («امتحان», «حفل», «فتح»). */
+    GO,
+    WAIT, LATE, WATCH,
+    /** Finished — the only green. */
+    DONE
+}
 
 @Composable
 fun V2Tag(text: String, tone: V2Tone) {
     val p = LocalV2.current
     val (fill, ink) = when (tone) {
-        V2Tone.GO, V2Tone.DONE -> p.leaf.copy(alpha = 0.12f) to p.leaf
+        V2Tone.ACT -> p.cta.copy(alpha = 0.12f) to p.cta
+        V2Tone.GO -> p.tonal to p.ink
+        V2Tone.DONE -> p.leaf.copy(alpha = 0.12f) to p.leaf
         V2Tone.WAIT -> p.tonal to p.muted
         V2Tone.LATE -> p.brick.copy(alpha = 0.12f) to p.brick
         V2Tone.WATCH -> p.tonal to p.ink
@@ -284,11 +294,12 @@ fun V2Steps(done: Int, total: Int = 9, modifier: Modifier = Modifier) {
     ) {
         repeat(total) { i ->
             val c = when {
-                i < done -> p.ink.copy(alpha = 0.55f)
+                i < done -> p.leaf
                 i == done -> p.ink
-                else -> p.mist
+                else -> p.muted.copy(alpha = 0.3f)
             }
-            Box(Modifier.weight(1f).height(5.dp).clip(Capsule).background(c))
+            // The current stage is also taller, so it doesn't rely on colour alone.
+            Box(Modifier.weight(1f).height(if (i == done) 8.dp else 5.dp).clip(Capsule).background(c).align(Alignment.CenterVertically))
         }
     }
 }
@@ -346,7 +357,7 @@ fun V2Chip(text: String, selected: Boolean, onClick: () -> Unit) {
 fun v2FieldColors() = LocalV2.current.let { p ->
     OutlinedTextFieldDefaults.colors(
         focusedContainerColor = p.sheet, unfocusedContainerColor = p.sheet,
-        focusedBorderColor = p.cta, unfocusedBorderColor = p.mist,
+        focusedBorderColor = p.cta, unfocusedBorderColor = p.muted.copy(alpha = 0.6f),
         focusedLeadingIconColor = p.ink, unfocusedLeadingIconColor = p.muted, cursorColor = p.cta
     )
 }

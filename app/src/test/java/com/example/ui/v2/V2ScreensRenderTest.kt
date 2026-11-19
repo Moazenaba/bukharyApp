@@ -107,7 +107,7 @@ class V2ScreensRenderTest {
     private val noop = V2Actions(
         oneTap = { _, _ -> }, toggleTask = {}, openExam = {}, readNotification = {}, readAll = {}, sync = {},
         changePassword = {}, logout = {}, leaveV2 = {}, openClassic = {}, saveStaff = { _, _ -> }, loadCandidates = {},
-        loadStaff = {}, approve = {}, reject = {}, sendNotice = { _, _, _ -> }, selectCourse = {}, v2Theme = {}
+        loadStaff = {}, approve = { _, _, _ -> }, reject = {}, sendNotice = { _, _, _ -> }, selectCourse = {}, v2Theme = {}
     )
 
     private fun shot(name: String) {

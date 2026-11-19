@@ -108,7 +108,12 @@ fun V2CommitteeScreen(c: Committee, data: V2Data, actions: V2Actions, tools: Set
                         kind = V2ButtonKind.CTA
                     )
                 }
-                else -> V2Group { V2Row("اللجنة منتظرة", step.waiting, mark = { V2Mark(icon = Icons.Default.HourglassEmpty) }) }
+                // Nothing to do here yet: the most useful thing is getting there, so the hero offers the map.
+                else -> V2NowCard(step.waiting.ifBlank { "اللجنة منتظرة" }, place.ifBlank { "اللجنة منتظرة" }) {
+                    Logistics.mapsUrl(place)?.let { url ->
+                        V2Button("افتح في الخرائط", { V2Intents.open(context, url) }, Modifier.fillMaxWidth(), kind = V2ButtonKind.CTA, icon = Icons.Default.Place)
+                    }
+                }
             }
         }
 
@@ -177,8 +182,10 @@ fun V2CommitteeScreen(c: Committee, data: V2Data, actions: V2Actions, tools: Set
         item(key = "team-t") { V2Section("فريق اللجنة") }
         item(key = "team") {
             V2Group {
-                if (c.staff.isEmpty()) V2Row("لسه مفيش حد في اللجنة")
-                c.staff.forEachIndexed { i, s ->
+                // The head is already under «رايح فين؟»; the team lists everyone else.
+                val team = c.staff.filter { it.role != "committee_head" }
+                if (team.isEmpty()) V2Row("لسه مفيش شيوخ في اللجنة")
+                team.forEachIndexed { i, s ->
                     if (i > 0) V2Divider()
                     V2Row(s.name, if (s.role == "committee_head") "رئيس اللجنة" else "شيخ", mark = { V2Avatar(s.name) })
                 }

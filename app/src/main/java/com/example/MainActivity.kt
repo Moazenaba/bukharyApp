@@ -479,9 +479,12 @@ class MainActivity : ComponentActivity() {
                                         saveStaff = { c, ids -> viewModel.saveAssignments(mapOf(c.id to ids), emptyMap(), "تم تحديث شيوخ اللجنة ✓") },
                                         loadCandidates = { viewModel.loadCeremonyCandidates() },
                                         loadStaff = { viewModel.loadStaff() },
-                                        approve = { u ->
+                                        approve = { u, role, committeeIds ->
                                             viewModel.saveStaffUser(
-                                                mapOf("id" to u.id, "name" to u.name, "phone" to u.phone, "email" to u.email.ifBlank { null }, "expectedUpdatedAt" to u.updatedAt, "status" to "approved"),
+                                                mapOf(
+                                                    "id" to u.id, "name" to u.name, "phone" to u.phone, "email" to u.email.ifBlank { null }, "expectedUpdatedAt" to u.updatedAt,
+                                                    "status" to "approved", "role" to role
+                                                ) + (if (committeeIds == null) mapOf("allCommitteesAllowed" to true) else mapOf("assignedCommitteeIds" to committeeIds)),
                                                 "تم اعتماد حساب ${u.name} ✓"
                                             ) { }
                                         },

@@ -45,7 +45,7 @@ data class V2Palette(
     val onHero: Color
 ) {
     /** The quiet fill of secondary buttons, marks, chips and avatars: ink, barely there. */
-    val tonal: Color get() = ink.copy(alpha = if (dark) 0.10f else 0.06f)
+    val tonal: Color get() = ink.copy(alpha = if (dark) 0.13f else 0.08f)
 }
 
 fun V2ThemeSpec.palette() = V2Palette(

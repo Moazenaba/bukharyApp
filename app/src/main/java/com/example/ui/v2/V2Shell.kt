@@ -1,5 +1,20 @@
 package com.example.ui.v2
 
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.material.icons.filled.CloudOff
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.AssignmentInd
 import androidx.compose.animation.slideInVertically
@@ -106,7 +121,8 @@ class V2Actions(
     val saveStaff: (Committee, List<String>) -> Unit,
     val loadCandidates: () -> Unit,
     val loadStaff: () -> Unit,
-    val approve: (StaffUserDto) -> Unit,
+    /** Approves a join request with the role and committees picked by the admin («all» when [committeeIds] is null). */
+    val approve: (StaffUserDto, role: String, committeeIds: List<String>?) -> Unit,
     val reject: (StaffUserDto) -> Unit,
     val sendNotice: (title: String, body: String, done: (Boolean) -> Unit) -> Unit,
     val selectCourse: (String?) -> Unit,
@@ -178,7 +194,19 @@ fun V2Shell(
             },
             onBell = { page = V2Page.INBOX }
         )
+        if (!data.isOnline) V2OfflineStrip(onRetry = actions.sync)
+        val snack = remember { SnackbarHostState() }
+        val scope = rememberCoroutineScope()
+        val undo = remember(snack, scope) {
+            V2Undo { message, onUndo ->
+                scope.launch {
+                    snack.currentSnackbarData?.dismiss()
+                    if (snack.showSnackbar(message, actionLabel = "تراجع", duration = SnackbarDuration.Long) == SnackbarResult.ActionPerformed) onUndo()
+                }
+            }
+        }
         Box(Modifier.weight(1f).fillMaxWidth().then(if (open != null) Modifier.navigationBarsPadding() else Modifier)) {
+          CompositionLocalProvider(LocalV2Undo provides undo) {
             AnimatedContent(
                 targetState = Triple(open?.id, page, tab),
                 // A short rise and fade: calm, and quick enough that a cheap phone never waits on it.
@@ -207,13 +235,39 @@ fun V2Shell(
                     }
                 }
             }
+          }
+            SnackbarHost(snack, Modifier.align(Alignment.BottomCenter).padding(horizontal = 16.dp, vertical = 8.dp)) { d ->
+                Snackbar(d, shape = RoundedCornerShape(20.dp), containerColor = p.ink, contentColor = p.paper, actionColor = p.paper)
+            }
         }
         if (open == null) {
             V2TabBar(tabs, tab, unreadForMe = 0) { chosen ->
                 page = null
+                if (chosen != tab) filter = V2Filter.ALL // a filter never follows you silently to another tab
                 tab = chosen
             }
         }
+    }
+}
+
+/** «Undo» for an action just done: a message with «تراجع» above the tab bar. */
+fun interface V2Undo { fun offer(message: String, onUndo: () -> Unit) }
+
+val LocalV2Undo = staticCompositionLocalOf { V2Undo { _, _ -> } }
+
+/** Offline, said plainly under the header (and to TalkBack), with a way to try again. */
+@Composable
+private fun V2OfflineStrip(onRetry: () -> Unit) {
+    val p = LocalV2.current
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp).clip(RoundedCornerShape(16.dp)).background(p.brick.copy(alpha = 0.12f))
+            .semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite }.padding(start = 14.dp, end = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(Icons.Default.CloudOff, null, tint = p.brick, modifier = Modifier.size(20.dp))
+        Spacer(Modifier.width(8.dp))
+        Text("مفيش اتصال. اللي بتعمله هيتبعت لما النت يرجع.", style = V2Type.small, color = p.ink, modifier = Modifier.weight(1f))
+        TextButton(onClick = onRetry, modifier = Modifier.heightIn(min = 48.dp)) { Text("إعادة", style = V2Type.smallStrong, color = p.brick) }
     }
 }
 
@@ -246,8 +300,7 @@ private fun V2Header(hello: String, title: String, unread: Int, isOnline: Boolea
         }
         Column(Modifier.weight(1f)) {
             Text(
-                if (isOnline) hello else "$hello · بدون اتصال", style = V2Type.small,
-                color = if (isOnline) p.muted else p.brick, maxLines = 1, overflow = TextOverflow.Ellipsis
+                hello, style = V2Type.small, color = p.muted, maxLines = 1, overflow = TextOverflow.Ellipsis
             )
             Text(title, style = V2Type.title, color = p.ink, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.semantics { heading() })
         }
