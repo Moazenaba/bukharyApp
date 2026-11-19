@@ -1,5 +1,6 @@
 package com.example.ui.v2
 
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.background
@@ -351,15 +352,10 @@ fun V2CommitteeListScreen(data: V2Data, onOpen: (String) -> Unit, filter: V2Filt
         // Search and filters show for a long list — and always while a filter is on, so it can be seen and cleared.
         if (base.size > 6 || filter != V2Filter.ALL) {
             item(key = "search") {
-                OutlinedTextField(
-                    value = query, onValueChange = { query = it }, singleLine = true,
-                    leadingIcon = { Icon(Icons.Default.Search, null) },
-                    placeholder = { Text("رقم اللجنة أو اسمها أو الشيخ", style = V2Type.body) },
-                    shape = RoundedCornerShape(50), textStyle = V2Type.body, colors = v2FieldColors(), modifier = Modifier.fillMaxWidth()
-                )
+                V2SearchField(query, { query = it }, "رقم اللجنة أو اسمها أو الشيخ")
             }
             item(key = "chips") {
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                FlowRow(Modifier.selectableGroup(), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     V2Filter.values().forEach { f ->
                         val n = when (f) {
                             V2Filter.ALL -> base.size
@@ -437,11 +433,11 @@ fun V2TeamScreen(data: V2Data, actions: V2Actions, onOpen: (String) -> Unit) {
             }
         }
     }
-    editing?.let { c -> V2StaffDialog(c, data, onDismiss = { editing = null }) { ids -> actions.saveStaff(c, ids); editing = null } }
+    editing?.let { c -> V2StaffDialog(c, data, onRetry = actions.loadCandidates, onDismiss = { editing = null }) { ids -> actions.saveStaff(c, ids); editing = null } }
 }
 
 @Composable
-fun V2StaffDialog(c: Committee, data: V2Data, onDismiss: () -> Unit, onSave: (List<String>) -> Unit) {
+fun V2StaffDialog(c: Committee, data: V2Data, onRetry: () -> Unit, onDismiss: () -> Unit, onSave: (List<String>) -> Unit) {
     val p = LocalV2.current
     var picked by remember(c.id) { mutableStateOf(c.staff.map { it.id }.toSet()) }
     val people = data.candidates?.filter { (it.role == "sheikh" || it.role == "committee_head") && it.id != data.user.id }
@@ -450,7 +446,7 @@ fun V2StaffDialog(c: Committee, data: V2Data, onDismiss: () -> Unit, onSave: (Li
         title = { Text("شيوخ لجنة ${c.committeeNumber}", style = V2Type.heading) },
         text = {
             LazyColumn(Modifier.fillMaxWidth().padding(top = 4.dp)) {
-                if (people == null) item { Text("جارٍ تحميل الأسماء…", style = V2Type.body, color = p.muted) }
+                if (people == null) item { V2LoadingNames(onRetry) }
                 items(people.orEmpty(), key = { it.id }) { person ->
                     val on = person.id in picked
                     V2Row(
@@ -494,7 +490,7 @@ fun V2PeopleScreen(data: V2Data, actions: V2Actions, tools: Set<V2Tool>) {
                 V2Group {
                     requests.forEachIndexed { i, u ->
                         if (i > 0) V2Divider()
-                        V2Row(title = u.name, subtitle = listOf(roleName(u.role), u.phone).filter { it.isNotBlank() }.joinToString(" · "), mark = { V2Avatar(u.name) })
+                        V2Row(title = u.name, subtitle = listOf(roleName(u.role), v2Phone(u.phone)).filter { it.isNotBlank() }.joinToString(" · "), mark = { V2Avatar(u.name) })
                         if (V2Tool.JOIN_REQUESTS in tools) {
                             Row(Modifier.padding(start = 14.dp, end = 14.dp, bottom = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 V2Button("قبول", { approving = u }, Modifier.weight(1f), kind = V2ButtonKind.CTA, icon = Icons.Default.CheckCircle)
@@ -506,12 +502,7 @@ fun V2PeopleScreen(data: V2Data, actions: V2Actions, tools: Set<V2Tool>) {
             }
         }
         item(key = "search") {
-            OutlinedTextField(
-                value = query, onValueChange = { query = it }, singleLine = true,
-                leadingIcon = { Icon(Icons.Default.Search, null) },
-                placeholder = { Text("الاسم أو رقم الموبايل", style = V2Type.body) },
-                shape = RoundedCornerShape(50), textStyle = V2Type.body, colors = v2FieldColors(), modifier = Modifier.fillMaxWidth()
-            )
+            V2SearchField(query, { query = it }, "الاسم أو رقم الموبايل")
         }
         item(key = "users-title") { V2Section(if (data.staffLoading && data.staff.isEmpty()) "جارٍ التحميل…" else "المستخدمون (${approved.size})") }
         if (approved.isEmpty() && !data.staffLoading) item(key = "users-empty") {

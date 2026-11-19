@@ -251,7 +251,7 @@ fun V2CommitteeScreen(c: Committee, data: V2Data, actions: V2Actions, tools: Set
             dismissButton = { TextButton(onClick = { confirm = false }) { Text("إلغاء", style = V2Type.body) } }
         )
     }
-    if (editingStaff) V2StaffDialog(c, data, onDismiss = { editingStaff = false }) { ids -> actions.saveStaff(c, ids); editingStaff = false }
+    if (editingStaff) V2StaffDialog(c, data, onRetry = actions.loadCandidates, onDismiss = { editingStaff = false }) { ids -> actions.saveStaff(c, ids); editingStaff = false }
 }
 
 /** For the person sent here as «مراقب»: what they were sent to do, their notes, and a box for a new one. */
@@ -406,7 +406,7 @@ private fun V2ObserversSection(c: Committee, data: V2Data, actions: V2Actions) {
                         OutlinedTextField(search, { search = it }, singleLine = true, textStyle = V2Type.body, shape = RoundedCornerShape(50),
                             colors = v2FieldColors(), placeholder = { Text("ابحث بالاسم", style = V2Type.body) }, modifier = Modifier.fillMaxWidth())
                     }
-                    if (people == null) item { Text("جارٍ تحميل الأسماء…", style = V2Type.body, color = p.muted) }
+                    if (people == null) item { V2LoadingNames { actions.loadCandidates() } }
                     items(people.orEmpty().filter { search.isBlank() || it.name.contains(search.trim()) }, key = { it.id }) { person ->
                         val on = picked == person.id
                         V2Row(person.name, roleName(person.role),

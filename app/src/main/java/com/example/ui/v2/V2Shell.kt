@@ -1,5 +1,7 @@
 package com.example.ui.v2
 
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.material.icons.filled.CloudOff
@@ -184,7 +186,8 @@ fun V2Shell(
             else -> tab.label
         }
         V2Header(
-            hello = "${v2TodayText(data.today)} · ${data.user.role.titleAr}",
+            // The role is said only where it differs from what the screens already show (admins), not on every screen.
+            hello = if (data.user.role.roleKey in setOf("admin", "super_admin")) "${v2TodayText(data.today)} · ${data.user.role.titleAr}" else v2TodayText(data.today),
             title = title,
             unread = unread,
             isOnline = data.isOnline,
@@ -312,7 +315,7 @@ private fun V2Header(hello: String, title: String, unread: Int, isOnline: Boolea
             contentAlignment = Alignment.Center
         ) {
             Icon(Icons.Default.Notifications, null, tint = p.ink)
-            if (unread > 0) Box(Modifier.align(Alignment.TopStart).padding(11.dp).size(9.dp).clip(CircleShape).background(p.cta))
+            if (unread > 0) Box(Modifier.align(Alignment.TopStart).padding(11.dp).size(9.dp).clip(CircleShape).background(p.ink))
         }
     }
 }
@@ -334,7 +337,10 @@ private fun iconFor(tab: V2Tab): ImageVector = when (tab) {
 private fun V2TabBar(tabs: List<V2Tab>, current: V2Tab, unreadForMe: Int, onSelect: (V2Tab) -> Unit) {
     val p = LocalV2.current
     Box(Modifier.fillMaxWidth().background(p.paper).navigationBarsPadding().padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 10.dp)) {
-        Row(Modifier.fillMaxWidth().v2Sheet(RoundedCornerShape(50)).padding(horizontal = 6.dp, vertical = 6.dp)) {
+        // At very large text the labels of the tabs you are not on are dropped (the icon + TalkBack name remain),
+        // so four tabs still fit a phone's width.
+        val big = LocalDensity.current.fontScale >= 1.3f
+        Row(Modifier.fillMaxWidth().v2Sheet(RoundedCornerShape(50)).selectableGroup().padding(horizontal = 6.dp, vertical = 6.dp)) {
             tabs.forEach { t ->
                 val on = t == current
                 val tint by animateColorAsState(if (on) p.cta else p.muted, label = "tab")
@@ -345,8 +351,8 @@ private fun V2TabBar(tabs: List<V2Tab>, current: V2Tab, unreadForMe: Int, onSele
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically)
                 ) {
-                    Icon(iconFor(t), null, tint = tint, modifier = Modifier.size(24.dp))
-                    Text(t.label, style = V2Type.label, color = if (on) p.cta else p.muted, maxLines = 1)
+                    Icon(iconFor(t), if (big && !on) t.label else null, tint = tint, modifier = Modifier.size(24.dp))
+                    if (on || !big) Text(t.label, style = V2Type.label, color = if (on) p.cta else p.muted, maxLines = 1)
                 }
             }
         }

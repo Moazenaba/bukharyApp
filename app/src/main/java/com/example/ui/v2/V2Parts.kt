@@ -1,5 +1,13 @@
 package com.example.ui.v2
 
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.OutlinedTextField
+import kotlinx.coroutines.delay
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.foundation.layout.defaultMinSize
 import android.content.ActivityNotFoundException
 import android.content.Context
@@ -151,6 +159,41 @@ fun <T> LazyListScope.v2Rows(rows: List<T>, key: (T) -> Any, row: @Composable (T
         }
     }
 }
+
+/**
+ * Names being loaded for a picker: «جارٍ التحميل…», and if they have not come after a few seconds, a plain
+ * «تعذر التحميل» with a retry (a list that never arrives must not spin forever).
+ */
+@Composable
+fun V2LoadingNames(onRetry: () -> Unit) {
+    var slow by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { delay(8000); slow = true }
+    if (slow) V2Retry("الأسماء", onRetry)
+    else Text("جارٍ تحميل الأسماء…", style = V2Type.body, color = LocalV2.current.muted, modifier = Modifier.padding(8.dp))
+}
+
+/** A search field: a soft capsule, a «search» key on the keyboard, a clear button, and a label for TalkBack. */
+@Composable
+fun V2SearchField(value: String, onChange: (String) -> Unit, placeholder: String, modifier: Modifier = Modifier) {
+    OutlinedTextField(
+        value = value, onValueChange = onChange, singleLine = true,
+        leadingIcon = { Icon(Icons.Default.Search, null) },
+        trailingIcon = {
+            if (value.isNotEmpty()) {
+                Box(Modifier.size(48.dp).clip(CircleShape).clickable(role = Role.Button, onClickLabel = "مسح البحث") { onChange("") }, contentAlignment = Alignment.Center) {
+                    Icon(Icons.Default.Close, "مسح", tint = LocalV2.current.muted)
+                }
+            }
+        },
+        placeholder = { Text(placeholder, style = V2Type.body) },
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+        shape = Capsule, textStyle = V2Type.body, colors = v2FieldColors(),
+        modifier = modifier.fillMaxWidth().semantics { contentDescription = placeholder }
+    )
+}
+
+/** A phone number inside Arabic text keeps its digits in order (never reversed by the right-to-left run). */
+fun v2Phone(phone: String): String = if (phone.isBlank()) "" else "\u2066$phone\u2069"
 
 /** A row that says a load failed and offers to try again (never an empty list that only looks like «nothing»). */
 @Composable
