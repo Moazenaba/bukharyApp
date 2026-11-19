@@ -168,7 +168,7 @@ class V2ScreensRenderTest {
             // Open a committee and check the page a field worker needs.
             compose.runOnIdle { open = "c12" }
             compose.waitForIdle()
-            compose.onNodeWithText("رايح فين؟").assertExists()
+            compose.onNodeWithText("إلى أين؟").assertExists()
             compose.onAllNodesWithText("مسجد النور", substring = true).fetchSemanticsNodes().let { assertTrue("$tag: place missing", it.isNotEmpty()) }
             assertFingerSized("$tag committee")
             shot("$tag-committee")
@@ -193,7 +193,7 @@ class V2ScreensRenderTest {
         run(UserRole.SHEIKH, V2Themes.ALL, listOf("الآن", "لجاني", "الحفلات", "حسابي"), listOf("الآن", "لجاني", "الحفلات", "حسابي"))
 
     @Test fun `committee head`() =
-        run(UserRole.COMMITTEE_HEAD, listOf(V2Themes.INK), listOf("الآن", "لجاني", "الفريق", "حسابي"), listOf("الفريق", "مطلوب النهارده"))
+        run(UserRole.COMMITTEE_HEAD, listOf(V2Themes.INK), listOf("الآن", "لجاني", "الفريق", "حسابي"), listOf("الفريق", "مطلوب اليوم"))
 
     @Test fun `admin`() =
         run(UserRole.ADMIN, listOf(V2Themes.SAND, V2Themes.COFFEE), listOf("لوحة", "اللجان", "الناس", "المزيد"), listOf("لوحة", "المراحل", "الناس"))

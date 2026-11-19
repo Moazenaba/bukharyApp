@@ -297,7 +297,7 @@ private fun V2OfflineStrip(onRetry: () -> Unit) {
     ) {
         Icon(Icons.Default.CloudOff, null, tint = p.brick, modifier = Modifier.size(20.dp))
         Spacer(Modifier.width(8.dp))
-        Text("مفيش اتصال. اللي بتعمله هيتبعت لما النت يرجع.", style = V2Type.small, color = p.ink, modifier = Modifier.weight(1f))
+        Text("لا يوجد اتصال. ما تقوم به سيُرسل عند عودة الشبكة.", style = V2Type.small, color = p.ink, modifier = Modifier.weight(1f))
         TextButton(onClick = onRetry, modifier = Modifier.heightIn(min = 48.dp)) { Text("إعادة", style = V2Type.smallStrong, color = p.brick) }
     }
 }

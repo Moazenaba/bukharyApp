@@ -124,7 +124,7 @@ fun V2CommitteeScreen(c: Committee, data: V2Data, actions: V2Actions, tools: Set
         item(key = "decision") { V2CeremonyDecision(c) }
 
         // 2. Where to go and whom to call
-        item(key = "where-t") { V2Section("رايح فين؟") }
+        item(key = "where-t") { V2Section("إلى أين؟") }
         item(key = "where") {
             V2Group {
                 V2Row(
@@ -143,7 +143,7 @@ fun V2CommitteeScreen(c: Committee, data: V2Data, actions: V2Actions, tools: Set
                 }
                 V2Divider()
                 V2Row(
-                    title = head?.name ?: "لسه ما اتسندش رئيس لجنة",
+                    title = head?.name ?: "لم يُسند رئيس لجنة بعد",
                     subtitle = if (head == null) null else if (head.phone.isBlank()) "رئيس اللجنة · لم يُسجل له رقم" else "رئيس اللجنة",
                     mark = { V2Avatar(head?.name ?: "؟") }
                 )
@@ -189,9 +189,9 @@ fun V2CommitteeScreen(c: Committee, data: V2Data, actions: V2Actions, tools: Set
         item(key = "team-t") { V2Section("فريق اللجنة") }
         item(key = "team") {
             V2Group {
-                // The head is already under «رايح فين؟»; the team lists everyone else.
+                // The head is already under «إلى أين؟»; the team lists everyone else.
                 val team = c.staff.filter { it.role != "committee_head" }
-                if (team.isEmpty()) V2Row("لسه مفيش شيوخ في اللجنة")
+                if (team.isEmpty()) V2Row("لم يُضَف شيوخ إلى اللجنة بعد")
                 team.forEachIndexed { i, s ->
                     if (i > 0) V2Divider()
                     V2Row(s.name, if (s.role == "committee_head") "رئيس اللجنة" else "شيخ", mark = { V2Avatar(s.name) })
@@ -281,7 +281,7 @@ private fun V2ObserverNotes(c: Committee, mine: List<Pair<String, String>>) {
         when {
             failed -> V2Retry("الملاحظات") { reload++ }
             notes == null -> V2Row("جارٍ تحميل الملاحظات…")
-            notes!!.isEmpty() -> V2Row("لسه مفيش ملاحظات", "اكتب أول ملاحظة تحت.")
+            notes!!.isEmpty() -> V2Row("لا توجد ملاحظات بعد", "اكتب أول ملاحظة أدناه.")
             else -> notes!!.forEachIndexed { i, n ->
                 if (i > 0) V2Divider()
                 V2Row(n.note, v2OpensText(n.at).removeSuffix(" (بتوقيت القاهرة)"))
@@ -340,7 +340,7 @@ private fun V2ObserversSection(c: Committee, data: V2Data, actions: V2Actions) {
                     if (i > 0) V2Divider()
                     V2Row(
                         a.userName,
-                        "${AssignmentText.task(a.task)} · ${AssignmentText.dates(a.startsOn, a.endsOn)} · أسنده ${a.assignedBy}",
+                        "${AssignmentText.task(a.task)} · ${AssignmentText.dates(a.startsOn, a.endsOn)} · أسنهذا ${a.assignedBy}",
                         mark = { V2Avatar(a.userName) },
                         trailing = { V2Tag(AssignmentText.status(a.status), if (a.status == "active") V2Tone.WATCH else V2Tone.WAIT) },
                         onClick = if (a.status == "active") ({ finishing = a to "end" }) else null
