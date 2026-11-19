@@ -622,7 +622,8 @@ private fun V2AccountRows(data: V2Data, actions: V2Actions) {
     var leaving by remember { mutableStateOf(false) }
     // A tap on sync shows a spinner for a moment, so it never looks like nothing happened.
     var syncing by remember { mutableStateOf(false) }
-    LaunchedEffect(syncing) { if (syncing) { delay(2500); syncing = false } }
+    // The spinner stops when the sync really ends; 15 seconds is only a safety net if the phone never answers.
+    LaunchedEffect(syncing) { if (syncing) { delay(15000); syncing = false } }
     Column(verticalArrangement = Arrangement.spacedBy(V2Gap)) {
     V2Group {
         if (data.user.name.isBlank() || data.user.name.startsWith("مستخدم ")) V2Row(roleName(data.user.role.roleKey), v2Phone(data.user.phone).ifBlank { null }, mark = { V2Mark(icon = Icons.Default.Person) })
@@ -635,7 +636,7 @@ private fun V2AccountRows(data: V2Data, actions: V2Actions) {
         V2Divider()
         V2Row("مزامنة الآن", if (data.isOnline) null else "بدون اتصال", mark = { V2Mark(icon = Icons.Default.Sync) },
             trailing = { if (syncing) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp, color = LocalV2.current.muted) },
-            onClick = { if (!syncing) { syncing = true; actions.sync() } })
+            onClick = { if (!syncing) { syncing = true; actions.sync { syncing = false } } })
         V2Divider()
         V2Row("تغيير كلمة المرور", mark = { V2Mark(icon = Icons.Default.Lock) }, onClick = actions.changePassword)
         V2Divider()
