@@ -1,5 +1,9 @@
 package com.example.ui.v2
 
+import androidx.compose.material.icons.automirrored.filled.ViewList
+import androidx.compose.material.icons.filled.AssignmentInd
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.core.tween
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
@@ -36,7 +40,6 @@ import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PersonSearch
 import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.filled.ViewList
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -164,7 +167,7 @@ fun V2Shell(
             else -> tab.label
         }
         V2Header(
-            hello = "${data.user.name.trim().split(" ").take(2).joinToString(" ")} · ${data.user.role.titleAr}",
+            hello = "${v2TodayText(data.today)} · ${data.user.role.titleAr}",
             title = title,
             unread = unread,
             isOnline = data.isOnline,
@@ -178,7 +181,10 @@ fun V2Shell(
         Box(Modifier.weight(1f).fillMaxWidth().then(if (open != null) Modifier.navigationBarsPadding() else Modifier)) {
             AnimatedContent(
                 targetState = Triple(open?.id, page, tab),
-                transitionSpec = { fadeIn() togetherWith fadeOut() },
+                // A short rise and fade: calm, and quick enough that a cheap phone never waits on it.
+                transitionSpec = {
+                    (fadeIn(tween(220, delayMillis = 60)) + slideInVertically(tween(260)) { it / 24 }) togetherWith fadeOut(tween(120))
+                },
                 label = "v2"
             ) { (openId, pg, t) ->
                 val c = openId?.let { id -> data.committees.firstOrNull { it.id == id } }
@@ -259,7 +265,8 @@ private fun V2Header(hello: String, title: String, unread: Int, isOnline: Boolea
 
 private fun iconFor(tab: V2Tab): ImageVector = when (tab) {
     V2Tab.NOW -> Icons.Default.Schedule
-    V2Tab.MINE, V2Tab.COMMITTEES -> Icons.Default.ViewList
+    V2Tab.MINE -> Icons.Default.AssignmentInd
+    V2Tab.COMMITTEES -> Icons.AutoMirrored.Filled.ViewList
     V2Tab.CEREMONIES -> Icons.Default.Celebration
     V2Tab.TEAM -> Icons.Default.Groups
     V2Tab.ME -> Icons.Default.Person

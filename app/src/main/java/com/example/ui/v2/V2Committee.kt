@@ -1,5 +1,6 @@
 package com.example.ui.v2
 
+import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Box
 import androidx.compose.ui.draw.clip
@@ -15,7 +16,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.HourglassEmpty
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Description
@@ -139,7 +139,7 @@ fun V2CommitteeScreen(c: Committee, data: V2Data, actions: V2Actions, tools: Set
                     Row(Modifier.padding(start = 14.dp, end = 14.dp, bottom = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         V2Button("اتصال", { V2Intents.call(context, head.phone) }, Modifier.weight(1f), kind = V2ButtonKind.SOLID, icon = Icons.Default.Phone)
                         WhatsApp.link(head.phone, "السلام عليكم ورحمة الله")?.let { link ->
-                            V2Button("واتساب", { V2Intents.open(context, link) }, Modifier.weight(1f), kind = V2ButtonKind.QUIET, icon = Icons.Default.Chat)
+                            V2Button("واتساب", { V2Intents.open(context, link) }, Modifier.weight(1f), kind = V2ButtonKind.QUIET, icon = Icons.AutoMirrored.Filled.Chat)
                         }
                     }
                 }

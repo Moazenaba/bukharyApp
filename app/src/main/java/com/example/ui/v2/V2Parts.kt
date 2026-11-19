@@ -339,6 +339,12 @@ fun v2FieldColors() = LocalV2.current.let { p ->
     )
 }
 
+/** «الخميس 19 نوفمبر» for the header: the day the person is working in, instead of repeating their name. */
+fun v2TodayText(today: String): String {
+    val d = runCatching { java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).parse(today.take(10)) }.getOrNull() ?: return ""
+    return java.text.SimpleDateFormat("EEEE d MMMM", java.util.Locale("ar")).format(d)
+}
+
 /** [today] («yyyy-MM-dd») plus [days], in the same form. */
 fun v2PlusDays(today: String, days: Int): String {
     val f = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).apply { isLenient = false }
