@@ -1,5 +1,7 @@
 package com.example.ui.v2
 
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.foundation.text.KeyboardOptions
@@ -253,7 +255,8 @@ fun V2Row(
         mark?.invoke()
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(title, style = V2Type.bodyStrong, color = p.ink, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            if (!subtitle.isNullOrBlank()) Text(subtitle, style = V2Type.small, color = p.muted, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            // Three lines: a place and a student count are real data, not something to cut with «…».
+            if (!subtitle.isNullOrBlank()) Text(subtitle, style = V2Type.small, color = p.muted, maxLines = 3, overflow = TextOverflow.Ellipsis)
             under?.invoke()
         }
         trailing?.invoke(this)
@@ -285,7 +288,11 @@ fun V2NowCard(meta: String, title: String, modifier: Modifier = Modifier, conten
  * CTA is the one filled accent button of a view; SOLID and OUTLINE are tonal (a whisper of ink, never a second loud
  * slab); QUIET is a plain text button for the lesser choice («اعتذار» next to «قبول»).
  */
-enum class V2ButtonKind { CTA, SOLID, OUTLINE, QUIET }
+enum class V2ButtonKind {
+    CTA, SOLID, OUTLINE, QUIET,
+    /** A secondary button sitting on the focal block: white on light themes, a soft lift on dark ones. */
+    ON_HERO
+}
 
 @Composable
 fun V2Button(
@@ -295,7 +302,9 @@ fun V2Button(
     kind: V2ButtonKind = V2ButtonKind.SOLID,
     icon: ImageVector? = null,
     enabled: Boolean = true,
-    contentColor: Color? = null
+    contentColor: Color? = null,
+    /** A request is on its way: the label gives way to a spinner and the button ignores taps. */
+    busy: Boolean = false
 ) {
     val p = LocalV2.current
     val source = remember { MutableInteractionSource() }
@@ -310,10 +319,11 @@ fun V2Button(
         V2ButtonKind.SOLID -> p.tonal to p.ink
         V2ButtonKind.OUTLINE -> (contentColor ?: p.ink).copy(alpha = if (p.dark) 0.10f else 0.07f) to (contentColor ?: p.ink)
         V2ButtonKind.QUIET -> Color.Transparent to p.ink
+        V2ButtonKind.ON_HERO -> (if (p.dark) p.onHero.copy(alpha = 0.12f) else p.sheet) to p.onHero
     }
     Row(
-        modifier.heightIn(min = 52.dp).v2Press(source).clip(Capsule).background(if (enabled) bg else bg.copy(alpha = bg.alpha * 0.5f))
-            .clickable(interactionSource = source, indication = LocalIndication.current, enabled = enabled, role = Role.Button, onClick = tap)
+        modifier.heightIn(min = 52.dp).v2Press(source).semantics { if (busy) stateDescription = "جارٍ التنفيذ" }.clip(Capsule).background(if (enabled) bg else bg.copy(alpha = bg.alpha * 0.5f))
+            .clickable(interactionSource = source, indication = LocalIndication.current, enabled = enabled && !busy, role = Role.Button, onClick = tap)
             .padding(horizontal = 18.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center
@@ -322,6 +332,8 @@ fun V2Button(
             Icon(icon, null, tint = if (enabled) fg else fg.copy(alpha = 0.5f), modifier = Modifier.size(20.dp))
             Spacer(Modifier.width(8.dp))
         }
+        if (busy) CircularProgressIndicator(Modifier.size(20.dp), color = fg, strokeWidth = 2.dp)
+        else
         // Two lines when the phone's text is set very large, rather than cutting the label off.
         Text(text, style = V2Type.bodyStrong, color = if (enabled) fg else fg.copy(alpha = 0.5f), maxLines = 2, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
     }
@@ -339,7 +351,7 @@ fun V2Steps(done: Int, total: Int = 9, modifier: Modifier = Modifier) {
             val c = when {
                 i < done -> p.leaf
                 i == done -> p.ink
-                else -> p.muted.copy(alpha = 0.3f)
+                else -> p.muted.copy(alpha = 0.42f)
             }
             // The current stage is also taller, so it doesn't rely on colour alone.
             Box(Modifier.weight(1f).height(if (i == done) 8.dp else 5.dp).clip(Capsule).background(c).align(Alignment.CenterVertically))
@@ -370,8 +382,8 @@ fun V2Avatar(name: String) {
 fun V2Empty(title: String, body: String) {
     val p = LocalV2.current
     Column(
-        Modifier.fillMaxWidth().v2Sheet(lift = false).padding(vertical = 32.dp, horizontal = 20.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp), horizontalAlignment = Alignment.CenterHorizontally
+        Modifier.fillMaxWidth().v2Sheet(lift = false).padding(vertical = 40.dp, horizontal = 20.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp), horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(title, style = V2Type.heading, color = p.ink, textAlign = TextAlign.Center)
         Text(body, style = V2Type.body, color = p.muted, textAlign = TextAlign.Center)

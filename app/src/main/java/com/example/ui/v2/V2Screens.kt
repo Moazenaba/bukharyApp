@@ -1,5 +1,6 @@
 package com.example.ui.v2
 
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -120,7 +121,7 @@ fun V2CommitteeRow(c: Committee, late: Overdue.Item?, onOpen: () -> Unit, showSt
     val observer = Permissions.observingOn(c.id).isNotEmpty() && !Permissions.inScope(c.id)
     val place = Logistics.placeOf(c)
     val exam = c.examDate?.take(10)?.takeIf { it.isNotBlank() && !c.stages.getStage("exam").completed }
-    val sub = listOfNotNull(exam?.let { "الامتحان ${DayText.relative(it, today)}" }, place.ifBlank { null }, Logistics.studentsText(c.studentsCount)).joinToString(" · ")
+    val sub = listOfNotNull(exam?.let { "الامتحان ${DayText.relative(it, today)}" }, place.ifBlank { null }).joinToString(" · ")
     V2Row(
         title = c.committeeName,
         subtitle = sub,
@@ -199,12 +200,12 @@ fun V2NowScreen(data: V2Data, actions: V2Actions, onOpen: (String) -> Unit) {
                             committee != null -> V2Button("افتح اللجنة", { onOpen(committee.id) }, Modifier.weight(1f), kind = V2ButtonKind.CTA)
                         }
                         Logistics.mapsUrl(now.place)?.let { url ->
-                            V2Button("الخرائط", { V2Intents.open(context, url) }, Modifier.weight(1f), kind = V2ButtonKind.OUTLINE, icon = Icons.Default.Place, contentColor = LocalV2.current.onHero)
+                            V2Button("الخرائط", { V2Intents.open(context, url) }, Modifier.weight(1f), kind = V2ButtonKind.ON_HERO, icon = Icons.Default.Place)
                         }
                     }
                     // Never offer to call yourself: the head sees this card too.
                     if (now.headPhone.isNotBlank() && committee?.let { Logistics.headOf(it)?.id } != data.user.id) {
-                        V2Button("اتصال برئيس اللجنة ${now.headName}".trim(), { V2Intents.call(context, now.headPhone) }, Modifier.fillMaxWidth(), kind = V2ButtonKind.OUTLINE, icon = Icons.Default.Phone, contentColor = LocalV2.current.onHero)
+                        V2Button("اتصال برئيس اللجنة ${now.headName}".trim(), { V2Intents.call(context, now.headPhone) }, Modifier.fillMaxWidth(), kind = V2ButtonKind.ON_HERO, icon = Icons.Default.Phone)
                     }
                 }
             }
@@ -218,6 +219,9 @@ fun V2NowScreen(data: V2Data, actions: V2Actions, onOpen: (String) -> Unit) {
         if (later.isNotEmpty()) {
             item(key = "later-title") { V2Section("قادم") }
             v2Rows(later, key = { "later-${it.key}" }) { f -> V2FeedRow(f, data, onOpen) }
+        }
+        if (hero != null && rest.size < 4) item(key = "all-done") {
+            Text("ده كل اللي عليك دلوقتي.", style = V2Type.small, color = LocalV2.current.muted, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp))
         }
         val shownAbove = (listOfNotNull(hero) + rest).mapNotNull { it.committeeId }.toSet()
         val mine = data.committees.filter { (Permissions.inScope(it.id) || Permissions.observingOn(it.id).isNotEmpty()) && it.id !in shownAbove }
@@ -276,10 +280,18 @@ fun V2BoardScreen(data: V2Data, onOpen: (String) -> Unit, onShow: (V2Filter) -> 
             }
         }
         item(key = "stats") {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                V2Stat("متأخرة", late.size, late.isNotEmpty(), Modifier.weight(1f)) { onShow(V2Filter.LATE) }
-                V2Stat("امتحان النهارده", examsToday, false, Modifier.weight(1f)) { onShow(V2Filter.EXAM) }
-                V2Stat("طلب انضمام", pending, false, Modifier.weight(1f), onPeople)
+            V2Group {
+                V2Row("لجان متأخرة", onClick = if (late.isNotEmpty()) ({ onShow(V2Filter.LATE) }) else null, actionLabel = "عرض المتأخر",
+                    trailing = { Text(late.size.toString(), style = V2Type.number, color = if (late.isNotEmpty()) p.brick else p.muted) })
+                V2Divider(inset = 16.dp)
+                V2Row("امتحانات النهارده", onClick = if (examsToday > 0) ({ onShow(V2Filter.EXAM) }) else null, actionLabel = "عرض الامتحانات",
+                    trailing = { Text(examsToday.toString(), style = V2Type.number, color = p.muted) })
+                // While the main card above already says «طلب انضمام مستني», the same fact is not repeated as a row.
+                if (late.isNotEmpty() || pending == 0) {
+                    V2Divider(inset = 16.dp)
+                    V2Row("طلبات انضمام", onClick = if (pending > 0) onPeople else null, actionLabel = "مراجعة الطلبات",
+                        trailing = { Text(pending.toString(), style = V2Type.number, color = p.muted) })
+                }
             }
         }
         item(key = "stages-title") { V2Section("المراحل") }
@@ -504,7 +516,7 @@ fun V2PeopleScreen(data: V2Data, actions: V2Actions, tools: Set<V2Tool>) {
         item(key = "search") {
             V2SearchField(query, { query = it }, "الاسم أو رقم الموبايل")
         }
-        item(key = "users-title") { V2Section(if (data.staffLoading && data.staff.isEmpty()) "جارٍ التحميل…" else "المستخدمون (${approved.size})") }
+        item(key = "users-title") { V2Section(if (data.staffLoading && data.staff.isEmpty()) "جارٍ التحميل…" else if (approved.isEmpty()) "المستخدمون" else "المستخدمون (${approved.size})") }
         if (approved.isEmpty() && !data.staffLoading) item(key = "users-empty") {
             V2Empty(if (query.isBlank()) "مفيش مستخدمين لسه" else "مفيش حد بالبحث ده", if (query.isBlank()) "أول ما حد يتقبل هيظهر هنا." else "جرّب جزء من الاسم أو آخر أرقام الموبايل.")
         }
@@ -580,7 +592,7 @@ fun V2MoreScreen(data: V2Data, actions: V2Actions, tools: Set<V2Tool>, onPage: (
         }
         item(key = "account") { V2AccountRows(data, actions) }
     }
-    if (sending) V2NoticeDialog(onDismiss = { sending = false }) { t, b -> actions.sendNotice(t, b) { ok -> if (ok) sending = false } }
+    if (sending) V2NoticeDialog(onDismiss = { sending = false }) { t, b, done -> actions.sendNotice(t, b) { ok -> done(ok); if (ok) sending = false } }
     if (choosingCourse) {
         AlertDialog(
             onDismissRequest = { choosingCourse = false },
@@ -611,7 +623,7 @@ private fun V2AccountRows(data: V2Data, actions: V2Actions) {
         V2Row(data.user.name, roleName(data.user.role.roleKey), mark = { V2Avatar(data.user.name) })
         V2Divider()
         val theme = com.example.domain.v2.V2Themes.ALL.firstOrNull { it.key == data.themeKey }
-        V2Row("الألوان", theme?.let { "${it.name}: ${it.story}" } ?: "تلقائي (حسب الموبايل)", mark = { V2Mark(icon = Icons.Default.DarkMode) },
+        V2Row("الألوان", theme?.name ?: "تلقائي (حسب الموبايل)", mark = { V2Mark(icon = Icons.Default.DarkMode) },
             trailing = { theme?.let { V2Swatch(it) } }, onClick = { choosingTheme = true })
         V2Divider()
         V2Row("مزامنة الآن", if (data.isOnline) "متصل" else "بدون اتصال", mark = { V2Mark(icon = Icons.Default.Sync) }, onClick = actions.sync)
@@ -654,7 +666,7 @@ private fun V2AccountRows(data: V2Data, actions: V2Actions) {
 }
 
 @Composable
-private fun V2NoticeDialog(onDismiss: () -> Unit, onSend: (String, String) -> Unit) {
+private fun V2NoticeDialog(onDismiss: () -> Unit, onSend: (String, String, (Boolean) -> Unit) -> Unit) {
     var title by remember { mutableStateOf("") }
     var body by remember { mutableStateOf("") }
     var sent by remember { mutableStateOf(false) }
@@ -663,11 +675,11 @@ private fun V2NoticeDialog(onDismiss: () -> Unit, onSend: (String, String) -> Un
         title = { Text("إرسال تنبيه للجميع", style = V2Type.heading) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                OutlinedTextField(title, { title = it }, label = { Text("العنوان") }, singleLine = true, textStyle = V2Type.body, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(body, { body = it }, label = { Text("التفاصيل") }, minLines = 3, textStyle = V2Type.body, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(title, { title = it }, label = { Text("العنوان") }, singleLine = true, textStyle = V2Type.body, shape = RoundedCornerShape(16.dp), colors = v2FieldColors(), modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(body, { body = it }, label = { Text("التفاصيل") }, minLines = 3, textStyle = V2Type.body, shape = RoundedCornerShape(16.dp), colors = v2FieldColors(), modifier = Modifier.fillMaxWidth())
             }
         },
-        confirmButton = { TextButton(enabled = title.isNotBlank() && !sent, onClick = { sent = true; onSend(title.trim(), body.trim()) }) { Text("إرسال", style = V2Type.bodyStrong) } },
+        confirmButton = { TextButton(enabled = title.isNotBlank() && !sent, onClick = { sent = true; onSend(title.trim(), body.trim()) { ok -> if (!ok) sent = false } }) { Text("إرسال", style = V2Type.bodyStrong) } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("إلغاء", style = V2Type.body) } }
     )
 }
