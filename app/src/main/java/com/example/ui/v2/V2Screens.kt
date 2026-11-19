@@ -444,7 +444,8 @@ fun V2StaffDialog(c: Committee, data: V2Data, onDismiss: () -> Unit, onSave: (Li
                         title = person.name,
                         subtitle = if (person.role == "committee_head") "رئيس لجنة" else "شيخ",
                         mark = { Icon(if (on) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked, null, tint = if (on) p.leaf else p.muted) },
-                        onClick = { picked = if (on) picked - person.id else picked + person.id }
+                        onClick = { picked = if (on) picked - person.id else picked + person.id },
+                        selected = on, multiple = true
                     )
                 }
             }
@@ -583,7 +584,7 @@ fun V2MoreScreen(data: V2Data, actions: V2Actions, tools: Set<V2Tool>, onPage: (
             text = {
                 Column {
                     data.courses.forEach { c ->
-                        V2Row(c.name, if (c.isDefault) "الحالية" else null, onClick = { actions.selectCourse(c.id); choosingCourse = false },
+                        V2Row(c.name, if (c.isDefault) "الحالية" else null, onClick = { actions.selectCourse(c.id); choosingCourse = false }, selected = c.id == course?.id,
                             mark = { Icon(if (c.id == course?.id) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked, null) })
                     }
                 }
@@ -633,11 +634,11 @@ private fun V2AccountRows(data: V2Data, actions: V2Actions) {
             text = {
                 LazyColumn {
                     item {
-                        V2Row("تلقائي", "فاتح أو غامق حسب الموبايل", onClick = { actions.v2Theme(com.example.domain.v2.V2Themes.AUTO); choosingTheme = false },
+                        V2Row("تلقائي", "فاتح أو غامق حسب الموبايل", onClick = { actions.v2Theme(com.example.domain.v2.V2Themes.AUTO); choosingTheme = false }, selected = data.themeKey == com.example.domain.v2.V2Themes.AUTO,
                             mark = { Icon(if (data.themeKey == com.example.domain.v2.V2Themes.AUTO) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked, null) })
                     }
                     items(com.example.domain.v2.V2Themes.ALL, key = { it.key }) { t ->
-                        V2Row(t.name, t.story, onClick = { actions.v2Theme(t.key); choosingTheme = false },
+                        V2Row(t.name, t.story, onClick = { actions.v2Theme(t.key); choosingTheme = false }, selected = t.key == data.themeKey,
                             mark = { Icon(if (t.key == data.themeKey) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked, null) },
                             trailing = { V2Swatch(t) })
                     }

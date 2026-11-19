@@ -1,5 +1,6 @@
 package com.example.ui.v2
 
+import androidx.compose.foundation.layout.defaultMinSize
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
@@ -10,6 +11,7 @@ import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Refresh
@@ -160,7 +162,8 @@ fun V2Divider(inset: Dp = 72.dp) {
 fun V2Mark(text: String? = null, icon: ImageVector? = null, late: Boolean = false, size: Dp = 44.dp) {
     val p = LocalV2.current
     Box(
-        Modifier.size(size).clip(CircleShape).background(if (late) p.brick.copy(alpha = 0.12f) else p.tonal),
+        // A circle at normal text size that grows into a capsule when the phone's text is very large.
+        Modifier.defaultMinSize(minWidth = size, minHeight = size).clip(Capsule).background(if (late) p.brick.copy(alpha = 0.12f) else p.tonal).padding(horizontal = 6.dp),
         contentAlignment = Alignment.Center
     ) {
         if (icon != null) Icon(icon, null, tint = if (late) p.brick else p.ink, modifier = Modifier.size(22.dp))
@@ -180,11 +183,19 @@ fun V2Row(
     trailing: @Composable (RowScope.() -> Unit)? = null,
     onClick: (() -> Unit)? = null,
     under: @Composable (() -> Unit)? = null,
-    actionLabel: String = "فتح"
+    actionLabel: String = "فتح",
+    /** For a choice in a list: TalkBack hears «محدد/غير محدد», and the row shows no chevron. */
+    selected: Boolean? = null,
+    /** With [selected]: several may be picked (a checkbox) rather than one (a radio button). */
+    multiple: Boolean = false
 ) {
     val p = LocalV2.current
     var m = Modifier.fillMaxWidth().heightIn(min = 64.dp)
-    if (onClick != null) m = m.clickable(role = Role.Button, onClickLabel = actionLabel, onClick = onClick)
+    if (onClick != null) m = when {
+        selected != null && multiple -> m.toggleable(value = selected, role = Role.Checkbox, onValueChange = { onClick() })
+        selected != null -> m.selectable(selected = selected, role = Role.RadioButton, onClick = onClick)
+        else -> m.clickable(role = Role.Button, onClickLabel = actionLabel, onClick = onClick)
+    }
     Row(m.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         mark?.invoke()
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -193,7 +204,7 @@ fun V2Row(
             under?.invoke()
         }
         trailing?.invoke(this)
-        if (onClick != null) Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = p.muted.copy(alpha = 0.7f), modifier = Modifier.size(20.dp))
+        if (onClick != null && selected == null) Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = p.muted.copy(alpha = 0.7f), modifier = Modifier.size(20.dp))
     }
 }
 
@@ -258,7 +269,8 @@ fun V2Button(
             Icon(icon, null, tint = if (enabled) fg else fg.copy(alpha = 0.5f), modifier = Modifier.size(20.dp))
             Spacer(Modifier.width(8.dp))
         }
-        Text(text, style = V2Type.bodyStrong, color = if (enabled) fg else fg.copy(alpha = 0.5f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+        // Two lines when the phone's text is set very large, rather than cutting the label off.
+        Text(text, style = V2Type.bodyStrong, color = if (enabled) fg else fg.copy(alpha = 0.5f), maxLines = 2, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
     }
 }
 

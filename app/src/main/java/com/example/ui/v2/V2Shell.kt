@@ -249,7 +249,7 @@ private fun V2Header(hello: String, title: String, unread: Int, isOnline: Boolea
                 if (isOnline) hello else "$hello · بدون اتصال", style = V2Type.small,
                 color = if (isOnline) p.muted else p.brick, maxLines = 1, overflow = TextOverflow.Ellipsis
             )
-            Text(title, style = V2Type.title, color = p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.semantics { heading() })
+            Text(title, style = V2Type.title, color = p.ink, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.semantics { heading() })
         }
         Box(
             Modifier.size(48.dp).v2Sheet(CircleShape)

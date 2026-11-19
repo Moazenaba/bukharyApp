@@ -403,7 +403,7 @@ private fun V2ObserversSection(c: Committee, data: V2Data, actions: V2Actions) {
                         val on = picked == person.id
                         V2Row(person.name, roleName(person.role),
                             mark = { Icon(if (on) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked, null, tint = if (on) p.leaf else p.muted) },
-                            onClick = { picked = person.id })
+                            onClick = { picked = person.id }, selected = on)
                     }
                 }
             },
