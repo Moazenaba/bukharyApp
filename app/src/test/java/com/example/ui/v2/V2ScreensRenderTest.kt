@@ -1,5 +1,7 @@
 package com.example.ui.v2
 
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.unit.dp
 import android.graphics.Bitmap
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -171,6 +173,20 @@ class V2ScreensRenderTest {
             assertFingerSized("$tag committee")
             shot("$tag-committee")
         }
+    }
+
+    @Test fun `the hour is the large first line of the main card`() {
+        compose.setContent {
+            V2Theme(theme = V2Themes.INK) {
+                androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.padding(16.dp)) {
+                    V2NowCard(meta = "اليوم", title = "حفل تكريم لجنة 12", time = "09:30 ص") {}
+                }
+            }
+        }
+        compose.waitForIdle()
+        compose.onNodeWithText("09:30 ص").assertExists()
+        compose.onNodeWithText("حفل تكريم لجنة 12").assertExists()
+        shot("now-card-hour")
     }
 
     @Test fun `sheikh, every theme`() =
