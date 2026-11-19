@@ -51,7 +51,7 @@ object V2Themes {
         cta = 0xFFB8461B, onCta = 0xFFFFFFFF, hero = 0xFFFBEEE7, onHero = 0xFF1F261C, leaf = 0xFF2A6E4C, brick = 0xFFA83A2B
     )
     val NIGHT = V2ThemeSpec(
-        key = "night", name = "ليلي", story = "رمادي فحمي، ولمسة كهرماني", dark = true,
+        key = "night", name = "ليلي", story = "رماهذه فحمي، ولمسة كهرماني", dark = true,
         paper = 0xFF0E1015, sheet = 0xFF1A1D24, ink = 0xFFF2F3F6, muted = 0xFFA3A8B5, mist = 0xFF2A2E37,
         cta = 0xFFF5B84A, onCta = 0xFF1E1400, hero = 0xFF22211E, onHero = 0xFFF6F2EA, leaf = 0xFF62C08E, brick = 0xFFF08A76
     )

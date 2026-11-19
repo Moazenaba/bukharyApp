@@ -179,7 +179,7 @@ fun V2NowScreen(data: V2Data, actions: V2Actions, onOpen: (String) -> Unit) {
         if (!tipSeen && hero != null) item(key = "tip") {
             V2Group {
                 V2Row(
-                    "أول مرة هنا؟", "الكارت الكبير فيه اللي مطلوب منك دلوقتي، وزرار واحد ملوّن لتنفيذه. باقي المواعيد تحته.",
+                    "أول مرة هنا؟", "الكارت الكبير فيه الذي مطلوب منك الآن، وزرار واحد ملوّن لتنفيذه. باقي المواعيد تحته.",
                     mark = { V2Mark(icon = Icons.Default.Info) },
                     trailing = {
                         TextButton(onClick = { tipSeen = true; runCatching { prefs.edit().putBoolean("v2_tip_now", true).apply() } }, modifier = Modifier.heightIn(min = 48.dp)) {
@@ -192,7 +192,7 @@ fun V2NowScreen(data: V2Data, actions: V2Actions, onOpen: (String) -> Unit) {
         item(key = "now") {
             val now = hero
             if (now == null) {
-                V2Empty("مفيش حاجة مطلوبة منك دلوقتي", "أول ما يتسند لك امتحان أو حفل أو مهمة هتلاقيه هنا.")
+                V2Empty("لا يوجد ما هو مطلوب منك الآن", "أول ما يُسند إليك امتحان أو حفل أو مهمة ستجهذا هنا.")
             } else {
                 val committee = now.committeeId?.let { id -> data.committees.firstOrNull { it.id == id } }
                 val step = committee?.let { NextStep.of(it) { a -> canOn(a, it.id) } }
@@ -241,7 +241,7 @@ fun V2NowScreen(data: V2Data, actions: V2Actions, onOpen: (String) -> Unit) {
         // Due today (or already late) is said apart from what is coming, so «later» never hides «now».
         val (dueNow, later) = rest.partition { it.overdue || it.today || it.date.isBlank() }
         if (dueNow.isNotEmpty()) {
-            item(key = "due-title") { V2Section("مطلوب النهارده") }
+            item(key = "due-title") { V2Section("مطلوب اليوم") }
             v2Rows(dueNow, key = { "due-${it.key}" }) { f -> V2FeedRow(f, data, onOpen) }
         }
         if (later.isNotEmpty()) {
@@ -249,7 +249,7 @@ fun V2NowScreen(data: V2Data, actions: V2Actions, onOpen: (String) -> Unit) {
             v2Rows(later, key = { "later-${it.key}" }) { f -> V2FeedRow(f, data, onOpen) }
         }
         if (hero != null && rest.size < 4) item(key = "all-done") {
-            Text("ده كل اللي عليك دلوقتي.", style = V2Type.small, color = LocalV2.current.muted, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp))
+            Text("هذا كل الذي عليك الآن.", style = V2Type.small, color = LocalV2.current.muted, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp))
         }
         val shownAbove = (listOfNotNull(hero) + rest).mapNotNull { it.committeeId }.toSet()
         val mine = data.committees.filter { (Permissions.inScope(it.id) || Permissions.observingOn(it.id).isNotEmpty()) && it.id !in shownAbove }
@@ -300,18 +300,18 @@ fun V2BoardScreen(data: V2Data, onOpen: (String) -> Unit, onShow: (V2Filter) -> 
                     V2Button("راجع الطلبات", onPeople, Modifier.fillMaxWidth(), kind = V2ButtonKind.CTA)
                 }
             } else if (examsToday > 0) {
-                V2NowCard("مفيش لجان متأخرة", v2Count(examsToday, "امتحان النهارده", "امتحانين النهارده", "امتحانات النهارده", "امتحان النهارده")) {
-                    V2Button("عرض امتحانات النهارده", { onShow(V2Filter.EXAM) }, Modifier.fillMaxWidth(), kind = V2ButtonKind.CTA)
+                V2NowCard("لا توجد لجان متأخرة", v2Count(examsToday, "امتحان اليوم", "امتحانان اليوم", "امتحانات اليوم", "امتحان اليوم")) {
+                    V2Button("عرض امتحانات اليوم", { onShow(V2Filter.EXAM) }, Modifier.fillMaxWidth(), kind = V2ButtonKind.CTA)
                 }
             } else {
-                V2NowCard("كل اللجان ماشية في مواعيدها", "مفيش حاجة مستنياك")
+                V2NowCard("كل اللجان تسير في مواعيدها", "لا يوجد ما ينتظرك")
             }
         }
         // Only what has something in it: a «0» row says nothing and opens nothing. The join request is not repeated
         // while the main card above already says «طلب انضمام مستني».
         val rows = buildList<Triple<String, Int, () -> Unit>> {
             if (late.isNotEmpty()) add(Triple("لجان متأخرة", late.size, { onShow(V2Filter.LATE) }))
-            if (examsToday > 0) add(Triple("امتحانات النهارده", examsToday, { onShow(V2Filter.EXAM) }))
+            if (examsToday > 0) add(Triple("امتحانات اليوم", examsToday, { onShow(V2Filter.EXAM) }))
             if (pending > 0 && late.isNotEmpty()) add(Triple("طلبات انضمام", pending, { onPeople() }))
         }
         if (rows.isNotEmpty()) item(key = "stats") {
@@ -397,7 +397,7 @@ fun V2CommitteeListScreen(data: V2Data, onOpen: (String) -> Unit, filter: V2Filt
         }
         if (shown.isEmpty()) item(key = "empty") {
             V2Empty(
-                if (base.isEmpty()) (if (mineOnly) "لسه مفيش لجنة متسندة لك" else "مفيش لجان في الدورة دي") else "مفيش لجنة بالبحث ده",
+                if (base.isEmpty()) (if (mineOnly) "لم تُسند إليك لجنة بعد" else "لا توجد لجان في هذه الدورة") else "لا توجد لجنة مطابقة للبحث",
                 if (base.isEmpty()) "أول ما تتسند لك لجنة هيوصلك إشعار وتظهر هنا." else "جرّب رقم اللجنة أو امسح التصفية."
             )
         } else v2Rows(shown, key = { "c-${it.id}" }) { c -> V2CommitteeRow(c, late[c.id], { onOpen(c.id) }, today = data.today) }
@@ -414,7 +414,7 @@ fun V2CeremoniesScreen(data: V2Data, onOpen: (String) -> Unit) {
         .sortedBy { it.ceremonyDetails.date.ifBlank { "9999" } }
     V2Scroll {
         item(key = "list") {
-            if (list.isEmpty()) V2Empty("مفيش حفلات ليك لسه", "لما تتدعى لحفل يوصلك إشعار ويظهر هنا بموعده ومكانه.")
+            if (list.isEmpty()) V2Empty("لا توجد حفلات لك بعد", "عند دعوتك لحفل سيصلك إشعار يظهر هنا بموعهذا ومكانه.")
             else V2Group {
                 list.forEachIndexed { i, c ->
                     if (i > 0) V2Divider()
@@ -442,12 +442,12 @@ fun V2TeamScreen(data: V2Data, actions: V2Actions, onOpen: (String) -> Unit) {
     val mine = data.committees.filter { Permissions.canOn("committees.members", it.id) }.sortedBy { it.committeeNumber }
     var editing by remember { mutableStateOf<Committee?>(null) }
     V2Scroll {
-        if (mine.isEmpty()) item(key = "empty") { V2Empty("مفيش لجان ترأسها", "لما الإدارة تسند لك لجنة تقدر تضيف شيوخها من هنا.") }
+        if (mine.isEmpty()) item(key = "empty") { V2Empty("لا توجد لجان ترأسها", "عندما تُسند إليك الإدارة لجنة يمكنك إضافة شيوخها من هنا.") }
         mine.forEach { c ->
             item(key = "t-${c.id}") { V2Section("لجنة ${c.committeeNumber} · ${c.committeeName}") }
             item(key = "g-${c.id}") {
                 V2Group {
-                    if (c.staff.none { it.id != data.user.id }) V2Row(title = "لسه مفيش شيوخ في اللجنة")
+                    if (c.staff.none { it.id != data.user.id }) V2Row(title = "لم يُضَف شيوخ إلى اللجنة بعد")
                     // The head is the reader: list the sheikhs only, then two plain rows for what can be done.
                     c.staff.filter { it.id != data.user.id }.forEachIndexed { i, s ->
                         if (i > 0) V2Divider()
@@ -535,7 +535,7 @@ fun V2PeopleScreen(data: V2Data, actions: V2Actions, tools: Set<V2Tool>) {
         }
         item(key = "users-title") { V2Section(if (data.staffLoading && data.staff.isEmpty()) "جارٍ التحميل…" else if (approved.isEmpty()) "المستخدمون" else "المستخدمون (${approved.size})") }
         if (approved.isEmpty() && !data.staffLoading) item(key = "users-empty") {
-            V2Empty(if (query.isBlank()) "مفيش مستخدمين لسه" else "مفيش حد بالبحث ده", if (query.isBlank()) "أول ما حد يتقبل هيظهر هنا." else "جرّب جزء من الاسم أو آخر أرقام الموبايل.")
+            V2Empty(if (query.isBlank()) "لا يوجد مستخدمون بعد" else "لا يوجد نتيجة للبحث", if (query.isBlank()) "أول من يُقبل سيظهر هنا." else "جرّب جزءاً من الاسم أو آخر أرقام الهاتف.")
         }
         run {
             v2Rows(approved, key = { "u-${it.id}" }) { u ->
@@ -589,7 +589,7 @@ fun V2MoreScreen(data: V2Data, actions: V2Actions, tools: Set<V2Tool>, onPage: (
                     V2Row("الامتحانات", v2Count(data.exams.size, "ورقة واحدة", "ورقتين", "ورقات", "ورقة"), mark = { V2Mark(icon = Icons.Default.Description) }, onClick = { onPage(V2Page.EXAMS) })
                 }
                 V2Divider()
-                V2Row("التقويم", if (todays > 0) v2Count(todays, "مهمة النهارده", "مهمتين النهارده", "مهام النهارده", "مهمة النهارده") else "المواعيد والمهام", mark = { V2Mark(icon = Icons.Default.CalendarMonth) }, onClick = { onPage(V2Page.CALENDAR) })
+                V2Row("التقويم", if (todays > 0) v2Count(todays, "مهمة اليوم", "مهمتين اليوم", "مهام اليوم", "مهمة اليوم") else "المواعيد والمهام", mark = { V2Mark(icon = Icons.Default.CalendarMonth) }, onClick = { onPage(V2Page.CALENDAR) })
                 if (V2Tool.SEND_NOTICE in tools) {
                     V2Divider()
                     V2Row("إرسال تنبيه", "يوصل لكل المستخدمين", mark = { V2Mark(icon = Icons.Default.Campaign) }, onClick = { sending = true })
@@ -670,7 +670,7 @@ private fun V2AccountRows(data: V2Data, actions: V2Actions) {
         AlertDialog(
             onDismissRequest = { leaving = false },
             title = { Text("تسجيل الخروج؟", style = V2Type.heading) },
-            text = { Text("هتحتاج رقم الموبايل وكلمة المرور عشان تدخل تاني.", style = V2Type.body) },
+            text = { Text("هتحتاج رقم الموبايل وكلمة المرور لكي تدخل تاني.", style = V2Type.body) },
             confirmButton = { TextButton(onClick = { leaving = false; actions.logout() }) { Text("خروج", style = V2Type.bodyStrong, color = LocalV2.current.brick) } },
             dismissButton = { TextButton(onClick = { leaving = false }) { Text("رجوع", style = V2Type.body) } }
         )
@@ -732,7 +732,7 @@ fun V2InboxScreen(data: V2Data, actions: V2Actions, onOpen: (String) -> Unit) {
         if (data.notifications.any { !it.read }) item(key = "all") {
             V2Button("تعليم الكل كمقروء", actions.readAll, Modifier.fillMaxWidth(), kind = V2ButtonKind.QUIET)
         }
-        if (data.notifications.isEmpty()) item(key = "empty") { V2Empty("مفيش إشعارات", "أي إسناد أو دعوة أو تغيير في موعد هيوصلك هنا.") }
+        if (data.notifications.isEmpty()) item(key = "empty") { V2Empty("لا توجد إشعارات", "أي إسناد أو دعوة أو تغيير في موعد سيصلك هنا.") }
         else v2Rows(data.notifications, key = { "n-${it.id}" }) { n ->
                     V2Row(
                         title = n.title,
@@ -753,7 +753,7 @@ fun V2ExamsScreen(data: V2Data, actions: V2Actions) {
     val p = LocalV2.current
     V2Scroll {
         item(key = "list") {
-            if (data.exams.isEmpty()) V2Empty("مفيش أوراق متاحة لك", "الورقة بتظهر هنا لما الإدارة تتيحها لك أو تتكلف بمراقبة امتحان.")
+            if (data.exams.isEmpty()) V2Empty("لا توجد أوراق متاحة لك", "تظهر الورقة هنا عندما تتيحها الإدارة لك أو تُكلَّف بمراقبة امتحان.")
             else V2Group {
                 data.exams.forEachIndexed { i, e ->
                     if (i > 0) V2Divider()
@@ -785,7 +785,7 @@ fun V2CalendarScreen(data: V2Data, actions: V2Actions, onOpen: (String) -> Unit)
             v2Rows(late, key = { "late-${it.id}" }) { t -> V2TaskRow(t, data, actions, onOpen) }
         }
         item(key = "up-t") { V2Section("القادم") }
-        if (upcoming.isEmpty()) item(key = "up-empty") { V2Empty("مفيش مواعيد قادمة", "المهام اللي تتسجل في التقويم بتظهر هنا يوم بيوم.") }
+        if (upcoming.isEmpty()) item(key = "up-empty") { V2Empty("لا توجد مواعيد قادمة", "المهام المسجلة في التقويم تظهر هنا يوماً بيوم.") }
         else v2Rows(upcoming.take(60), key = { "up-${it.id}" }) { t -> V2TaskRow(t, data, actions, onOpen) }
     }
 }

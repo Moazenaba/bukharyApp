@@ -1,5 +1,7 @@
 package com.example.ui.v2
 
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.unit.dp
 import android.graphics.Bitmap
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -166,18 +168,32 @@ class V2ScreensRenderTest {
             // Open a committee and check the page a field worker needs.
             compose.runOnIdle { open = "c12" }
             compose.waitForIdle()
-            compose.onNodeWithText("رايح فين؟").assertExists()
+            compose.onNodeWithText("إلى أين؟").assertExists()
             compose.onAllNodesWithText("مسجد النور", substring = true).fetchSemanticsNodes().let { assertTrue("$tag: place missing", it.isNotEmpty()) }
             assertFingerSized("$tag committee")
             shot("$tag-committee")
         }
     }
 
+    @Test fun `the hour is the large first line of the main card`() {
+        compose.setContent {
+            V2Theme(theme = V2Themes.INK) {
+                androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.padding(16.dp)) {
+                    V2NowCard(meta = "اليوم", title = "حفل تكريم لجنة 12", time = "09:30 ص") {}
+                }
+            }
+        }
+        compose.waitForIdle()
+        compose.onNodeWithText("09:30 ص").assertExists()
+        compose.onNodeWithText("حفل تكريم لجنة 12").assertExists()
+        shot("now-card-hour")
+    }
+
     @Test fun `sheikh, every theme`() =
         run(UserRole.SHEIKH, V2Themes.ALL, listOf("الآن", "لجاني", "الحفلات", "حسابي"), listOf("الآن", "لجاني", "الحفلات", "حسابي"))
 
     @Test fun `committee head`() =
-        run(UserRole.COMMITTEE_HEAD, listOf(V2Themes.INK), listOf("الآن", "لجاني", "الفريق", "حسابي"), listOf("الفريق", "مطلوب النهارده"))
+        run(UserRole.COMMITTEE_HEAD, listOf(V2Themes.INK), listOf("الآن", "لجاني", "الفريق", "حسابي"), listOf("الفريق", "مطلوب اليوم"))
 
     @Test fun `admin`() =
         run(UserRole.ADMIN, listOf(V2Themes.SAND, V2Themes.COFFEE), listOf("لوحة", "اللجان", "الناس", "المزيد"), listOf("لوحة", "المراحل", "الناس"))

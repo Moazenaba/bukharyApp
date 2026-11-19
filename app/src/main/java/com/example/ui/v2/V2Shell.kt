@@ -1,5 +1,7 @@
 package com.example.ui.v2
 
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.scaleIn
 import androidx.compose.foundation.layout.height
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalContext
@@ -155,7 +157,7 @@ fun V2Shell(
 ) {
     val p = LocalV2.current
     val role = data.user.role.roleKey
-    val tabs = V2Tools.tabs(role)
+    val tabs = V2Tools.tabs(role, heads = Permissions.headCommitteeIds.isNotEmpty())
     val observing = Permissions.observing
     val tools = V2Tools.tools({ Permissions.can(it) }, observesExam = observing.any { it.task == "exam" }, observesAny = observing.isNotEmpty())
 
@@ -229,8 +231,16 @@ fun V2Shell(
                     // «Remove animations» in the phone's settings (scale 0) is respected: the screens just swap.
                     // Moving between tabs is instant (no slide on every tap); only opening or closing a screen animates.
                     val tabOnly = initialState.first == targetState.first && initialState.second == targetState.second
-                    if (reduceMotion || tabOnly) EnterTransition.None togetherWith ExitTransition.None
-                    else (fadeIn(tween(220, delayMillis = 60)) + slideInVertically(tween(260)) { it / 24 }) togetherWith fadeOut(tween(120))
+                    // Opening a committee grows it out of its row and closing shrinks it back: scale and alpha only, which the
+                    // renderer does without rebuilding the screen, so it stays cheap on slow phones.
+                    val opening = initialState.first == null && targetState.first != null
+                    val closing = initialState.first != null && targetState.first == null
+                    when {
+                        reduceMotion || tabOnly -> EnterTransition.None togetherWith ExitTransition.None
+                        opening -> (scaleIn(initialScale = 0.94f, animationSpec = tween(240)) + fadeIn(tween(200))) togetherWith fadeOut(tween(120))
+                        closing -> fadeIn(tween(160)) togetherWith (scaleOut(targetScale = 0.94f, animationSpec = tween(200)) + fadeOut(tween(160)))
+                        else -> (fadeIn(tween(220, delayMillis = 60)) + slideInVertically(tween(260)) { it / 24 }) togetherWith fadeOut(tween(120))
+                    }
                 },
                 label = "v2"
             ) { (openId, pg, t) ->
@@ -287,7 +297,7 @@ private fun V2OfflineStrip(onRetry: () -> Unit) {
     ) {
         Icon(Icons.Default.CloudOff, null, tint = p.brick, modifier = Modifier.size(20.dp))
         Spacer(Modifier.width(8.dp))
-        Text("مفيش اتصال. اللي بتعمله هيتبعت لما النت يرجع.", style = V2Type.small, color = p.ink, modifier = Modifier.weight(1f))
+        Text("لا يوجد اتصال. ما تقوم به سيُرسل عند عودة الشبكة.", style = V2Type.small, color = p.ink, modifier = Modifier.weight(1f))
         TextButton(onClick = onRetry, modifier = Modifier.heightIn(min = 48.dp)) { Text("إعادة", style = V2Type.smallStrong, color = p.brick) }
     }
 }

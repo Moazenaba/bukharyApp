@@ -120,8 +120,11 @@ fun V2CommitteeScreen(c: Committee, data: V2Data, actions: V2Actions, tools: Set
             }
         }
 
+        // 1b. The ceremony decision of a temporary head (only when such a grant is on this committee)
+        item(key = "decision") { V2CeremonyDecision(c) }
+
         // 2. Where to go and whom to call
-        item(key = "where-t") { V2Section("رايح فين؟") }
+        item(key = "where-t") { V2Section("إلى أين؟") }
         item(key = "where") {
             V2Group {
                 V2Row(
@@ -140,7 +143,7 @@ fun V2CommitteeScreen(c: Committee, data: V2Data, actions: V2Actions, tools: Set
                 }
                 V2Divider()
                 V2Row(
-                    title = head?.name ?: "لسه ما اتسندش رئيس لجنة",
+                    title = head?.name ?: "لم يُسند رئيس لجنة بعد",
                     subtitle = if (head == null) null else if (head.phone.isBlank()) "رئيس اللجنة · لم يُسجل له رقم" else "رئيس اللجنة",
                     mark = { V2Avatar(head?.name ?: "؟") }
                 )
@@ -186,9 +189,9 @@ fun V2CommitteeScreen(c: Committee, data: V2Data, actions: V2Actions, tools: Set
         item(key = "team-t") { V2Section("فريق اللجنة") }
         item(key = "team") {
             V2Group {
-                // The head is already under «رايح فين؟»; the team lists everyone else.
+                // The head is already under «إلى أين؟»; the team lists everyone else.
                 val team = c.staff.filter { it.role != "committee_head" }
-                if (team.isEmpty()) V2Row("لسه مفيش شيوخ في اللجنة")
+                if (team.isEmpty()) V2Row("لم يُضَف شيوخ إلى اللجنة بعد")
                 team.forEachIndexed { i, s ->
                     if (i > 0) V2Divider()
                     V2Row(s.name, if (s.role == "committee_head") "رئيس اللجنة" else "شيخ", mark = { V2Avatar(s.name) })
@@ -278,7 +281,7 @@ private fun V2ObserverNotes(c: Committee, mine: List<Pair<String, String>>) {
         when {
             failed -> V2Retry("الملاحظات") { reload++ }
             notes == null -> V2Row("جارٍ تحميل الملاحظات…")
-            notes!!.isEmpty() -> V2Row("لسه مفيش ملاحظات", "اكتب أول ملاحظة تحت.")
+            notes!!.isEmpty() -> V2Row("لا توجد ملاحظات بعد", "اكتب أول ملاحظة أدناه.")
             else -> notes!!.forEachIndexed { i, n ->
                 if (i > 0) V2Divider()
                 V2Row(n.note, v2OpensText(n.at).removeSuffix(" (بتوقيت القاهرة)"))
@@ -337,7 +340,7 @@ private fun V2ObserversSection(c: Committee, data: V2Data, actions: V2Actions) {
                     if (i > 0) V2Divider()
                     V2Row(
                         a.userName,
-                        "${AssignmentText.task(a.task)} · ${AssignmentText.dates(a.startsOn, a.endsOn)} · أسنده ${a.assignedBy}",
+                        "${AssignmentText.task(a.task)} · ${AssignmentText.dates(a.startsOn, a.endsOn)} · أسنهذا ${a.assignedBy}",
                         mark = { V2Avatar(a.userName) },
                         trailing = { V2Tag(AssignmentText.status(a.status), if (a.status == "active") V2Tone.WATCH else V2Tone.WAIT) },
                         onClick = if (a.status == "active") ({ finishing = a to "end" }) else null
@@ -447,3 +450,62 @@ private fun V2ObserversSection(c: Committee, data: V2Data, actions: V2Actions) {
         )
     }
 }
+
+/**
+ * «القرار في الحفل»: a temporary head (or the committee's head, or an admin) says whether a ceremony happens. The
+ * server decides who may answer and never lets a lower decision overwrite a higher one; this only offers the choices.
+ */
+@Composable
+private fun V2CeremonyDecision(c: Committee) {
+    val p = LocalV2.current
+    val scope = rememberCoroutineScope()
+    var grants by remember(c.id) { mutableStateOf<List<com.example.data.model.HeadGrant>>(emptyList()) }
+    var reload by remember { mutableIntStateOf(0) }
+    LaunchedEffect(c.id, reload) {
+        // A grant that cannot be read simply shows nothing here; the committee itself still works offline.
+        grants = try {
+            OnlineApi.headGrants().filter { it.status == "active" && c.id in it.committeeIds }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+    if (grants.isEmpty()) return
+    val label = mapOf("yes" to "سيكون هناك حفل", "no" to "لن يكون هناك حفل", "undecided" to "لم يُحدد بعد")
+    V2Section("القرار في الحفل")
+    V2Group {
+        grants.forEachIndexed { i, g ->
+            if (i > 0) V2Divider()
+            V2Row(
+                g.userName,
+                "رئيس لجنة مؤقت من ${g.startsOn} حتى ${g.endsOn} · ${label[g.ceremonyDecision] ?: ""}",
+                mark = { V2Avatar(g.userName) }
+            )
+            Column(Modifier.padding(start = 14.dp, end = 14.dp, bottom = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf("yes", "no", "undecided").forEach { d ->
+                    val chosen = g.ceremonyDecision == d
+                    V2Button(
+                        label[d].orEmpty(),
+                        {
+                            scope.launch {
+                                try {
+                                    OnlineApi.decideHeadGrant(g.id, d)
+                                    reload++
+                                } catch (e: CancellationException) {
+                                    throw e
+                                } catch (e: Exception) {
+                                    UiMessages.show("تعذر تسجيل القرار. حاول مرة أخرى.")
+                                }
+                            }
+                        },
+                        Modifier.fillMaxWidth(),
+                        kind = if (chosen) V2ButtonKind.CTA else V2ButtonKind.SOLID,
+                        icon = if (chosen) Icons.Default.CheckCircle else null
+                    )
+                }
+            }
+        }
+    }
+}
+

@@ -14,6 +14,8 @@ class V2ToolsTest {
         assertEquals(listOf(V2Tab.NOW, V2Tab.MINE, V2Tab.CEREMONIES, V2Tab.ME), V2Tools.tabs("sheikh"))
         assertEquals(listOf(V2Tab.NOW, V2Tab.MINE, V2Tab.TEAM, V2Tab.ME), V2Tools.tabs("committee_head"))
         assertEquals(listOf(V2Tab.BOARD, V2Tab.COMMITTEES, V2Tab.PEOPLE, V2Tab.MORE), V2Tools.tabs("admin"))
+        // A sheikh with a temporary head grant gets the team tab, like a committee head.
+        assertEquals(listOf(V2Tab.NOW, V2Tab.MINE, V2Tab.TEAM, V2Tab.ME), V2Tools.tabs("sheikh", heads = true))
         assertEquals(V2Tools.tabs("admin"), V2Tools.tabs("super_admin"))
         assertTrue(V2Tools.tabs("anything-else").all { it.ordinal <= V2Tab.ME.ordinal })
     }
