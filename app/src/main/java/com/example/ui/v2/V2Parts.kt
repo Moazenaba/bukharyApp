@@ -1,5 +1,7 @@
 package com.example.ui.v2
 
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.foundation.text.KeyboardOptions
@@ -286,7 +288,11 @@ fun V2NowCard(meta: String, title: String, modifier: Modifier = Modifier, conten
  * CTA is the one filled accent button of a view; SOLID and OUTLINE are tonal (a whisper of ink, never a second loud
  * slab); QUIET is a plain text button for the lesser choice («اعتذار» next to «قبول»).
  */
-enum class V2ButtonKind { CTA, SOLID, OUTLINE, QUIET }
+enum class V2ButtonKind {
+    CTA, SOLID, OUTLINE, QUIET,
+    /** A secondary button sitting on the focal block: white on light themes, a soft lift on dark ones. */
+    ON_HERO
+}
 
 @Composable
 fun V2Button(
@@ -296,7 +302,9 @@ fun V2Button(
     kind: V2ButtonKind = V2ButtonKind.SOLID,
     icon: ImageVector? = null,
     enabled: Boolean = true,
-    contentColor: Color? = null
+    contentColor: Color? = null,
+    /** A request is on its way: the label gives way to a spinner and the button ignores taps. */
+    busy: Boolean = false
 ) {
     val p = LocalV2.current
     val source = remember { MutableInteractionSource() }
@@ -311,10 +319,11 @@ fun V2Button(
         V2ButtonKind.SOLID -> p.tonal to p.ink
         V2ButtonKind.OUTLINE -> (contentColor ?: p.ink).copy(alpha = if (p.dark) 0.10f else 0.07f) to (contentColor ?: p.ink)
         V2ButtonKind.QUIET -> Color.Transparent to p.ink
+        V2ButtonKind.ON_HERO -> (if (p.dark) p.onHero.copy(alpha = 0.12f) else p.sheet) to p.onHero
     }
     Row(
-        modifier.heightIn(min = 52.dp).v2Press(source).clip(Capsule).background(if (enabled) bg else bg.copy(alpha = bg.alpha * 0.5f))
-            .clickable(interactionSource = source, indication = LocalIndication.current, enabled = enabled, role = Role.Button, onClick = tap)
+        modifier.heightIn(min = 52.dp).v2Press(source).semantics { if (busy) stateDescription = "جارٍ التنفيذ" }.clip(Capsule).background(if (enabled) bg else bg.copy(alpha = bg.alpha * 0.5f))
+            .clickable(interactionSource = source, indication = LocalIndication.current, enabled = enabled && !busy, role = Role.Button, onClick = tap)
             .padding(horizontal = 18.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center
@@ -323,6 +332,8 @@ fun V2Button(
             Icon(icon, null, tint = if (enabled) fg else fg.copy(alpha = 0.5f), modifier = Modifier.size(20.dp))
             Spacer(Modifier.width(8.dp))
         }
+        if (busy) CircularProgressIndicator(Modifier.size(20.dp), color = fg, strokeWidth = 2.dp)
+        else
         // Two lines when the phone's text is set very large, rather than cutting the label off.
         Text(text, style = V2Type.bodyStrong, color = if (enabled) fg else fg.copy(alpha = 0.5f), maxLines = 2, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
     }

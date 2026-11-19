@@ -109,7 +109,7 @@ fun V2CommitteeScreen(c: Committee, data: V2Data, actions: V2Actions, tools: Set
                     )
                 }
                 // Nothing to do here yet: the most useful thing is getting there, so the hero offers the map.
-                else -> V2NowCard(step.waiting.ifBlank { "اللجنة منتظرة" }, place.ifBlank { "اللجنة منتظرة" }) {
+                else -> V2NowCard(place.ifBlank { "المكان لم يُحدد بعد" }, step.waiting.ifBlank { "اللجنة منتظرة" }) {
                     Logistics.mapsUrl(place)?.let { url ->
                         V2Button("افتح في الخرائط", { V2Intents.open(context, url) }, Modifier.fillMaxWidth(), kind = V2ButtonKind.CTA, icon = Icons.Default.Place)
                     }
@@ -302,7 +302,7 @@ private fun V2ObserverNotes(c: Committee, mine: List<Pair<String, String>>) {
                         saving = false
                     }
                 }
-            }, Modifier.fillMaxWidth(), enabled = text.isNotBlank() && !saving)
+            }, Modifier.fillMaxWidth(), enabled = text.isNotBlank() && !saving, busy = saving)
         }
     }
 }

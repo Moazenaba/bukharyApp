@@ -121,7 +121,7 @@ fun V2CommitteeRow(c: Committee, late: Overdue.Item?, onOpen: () -> Unit, showSt
     val observer = Permissions.observingOn(c.id).isNotEmpty() && !Permissions.inScope(c.id)
     val place = Logistics.placeOf(c)
     val exam = c.examDate?.take(10)?.takeIf { it.isNotBlank() && !c.stages.getStage("exam").completed }
-    val sub = listOfNotNull(exam?.let { "الامتحان ${DayText.relative(it, today)}" }, place.ifBlank { null }, Logistics.studentsText(c.studentsCount)).joinToString(" · ")
+    val sub = listOfNotNull(exam?.let { "الامتحان ${DayText.relative(it, today)}" }, place.ifBlank { null }).joinToString(" · ")
     V2Row(
         title = c.committeeName,
         subtitle = sub,
@@ -200,12 +200,12 @@ fun V2NowScreen(data: V2Data, actions: V2Actions, onOpen: (String) -> Unit) {
                             committee != null -> V2Button("افتح اللجنة", { onOpen(committee.id) }, Modifier.weight(1f), kind = V2ButtonKind.CTA)
                         }
                         Logistics.mapsUrl(now.place)?.let { url ->
-                            V2Button("الخرائط", { V2Intents.open(context, url) }, Modifier.weight(1f), kind = V2ButtonKind.OUTLINE, icon = Icons.Default.Place, contentColor = LocalV2.current.onHero)
+                            V2Button("الخرائط", { V2Intents.open(context, url) }, Modifier.weight(1f), kind = V2ButtonKind.ON_HERO, icon = Icons.Default.Place)
                         }
                     }
                     // Never offer to call yourself: the head sees this card too.
                     if (now.headPhone.isNotBlank() && committee?.let { Logistics.headOf(it)?.id } != data.user.id) {
-                        V2Button("اتصال برئيس اللجنة ${now.headName}".trim(), { V2Intents.call(context, now.headPhone) }, Modifier.fillMaxWidth(), kind = V2ButtonKind.OUTLINE, icon = Icons.Default.Phone, contentColor = LocalV2.current.onHero)
+                        V2Button("اتصال برئيس اللجنة ${now.headName}".trim(), { V2Intents.call(context, now.headPhone) }, Modifier.fillMaxWidth(), kind = V2ButtonKind.ON_HERO, icon = Icons.Default.Phone)
                     }
                 }
             }
@@ -280,10 +280,15 @@ fun V2BoardScreen(data: V2Data, onOpen: (String) -> Unit, onShow: (V2Filter) -> 
             }
         }
         item(key = "stats") {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                V2Stat("متأخرة", late.size, late.isNotEmpty(), Modifier.weight(1f)) { onShow(V2Filter.LATE) }
-                V2Stat("امتحان النهارده", examsToday, false, Modifier.weight(1f)) { onShow(V2Filter.EXAM) }
-                V2Stat("طلب انضمام", pending, false, Modifier.weight(1f), onPeople)
+            V2Group {
+                V2Row("لجان متأخرة", onClick = { onShow(V2Filter.LATE) }, actionLabel = "عرض المتأخر",
+                    trailing = { Text(late.size.toString(), style = V2Type.number, color = if (late.isNotEmpty()) p.brick else p.muted) })
+                V2Divider(inset = 16.dp)
+                V2Row("امتحانات النهارده", onClick = { onShow(V2Filter.EXAM) }, actionLabel = "عرض الامتحانات",
+                    trailing = { Text(examsToday.toString(), style = V2Type.number, color = p.muted) })
+                V2Divider(inset = 16.dp)
+                V2Row("طلبات انضمام", onClick = onPeople, actionLabel = "مراجعة الطلبات",
+                    trailing = { Text(pending.toString(), style = V2Type.number, color = p.muted) })
             }
         }
         item(key = "stages-title") { V2Section("المراحل") }
@@ -584,7 +589,7 @@ fun V2MoreScreen(data: V2Data, actions: V2Actions, tools: Set<V2Tool>, onPage: (
         }
         item(key = "account") { V2AccountRows(data, actions) }
     }
-    if (sending) V2NoticeDialog(onDismiss = { sending = false }) { t, b -> actions.sendNotice(t, b) { ok -> if (ok) sending = false } }
+    if (sending) V2NoticeDialog(onDismiss = { sending = false }) { t, b, done -> actions.sendNotice(t, b) { ok -> done(ok); if (ok) sending = false } }
     if (choosingCourse) {
         AlertDialog(
             onDismissRequest = { choosingCourse = false },
@@ -658,7 +663,7 @@ private fun V2AccountRows(data: V2Data, actions: V2Actions) {
 }
 
 @Composable
-private fun V2NoticeDialog(onDismiss: () -> Unit, onSend: (String, String) -> Unit) {
+private fun V2NoticeDialog(onDismiss: () -> Unit, onSend: (String, String, (Boolean) -> Unit) -> Unit) {
     var title by remember { mutableStateOf("") }
     var body by remember { mutableStateOf("") }
     var sent by remember { mutableStateOf(false) }
@@ -667,11 +672,11 @@ private fun V2NoticeDialog(onDismiss: () -> Unit, onSend: (String, String) -> Un
         title = { Text("إرسال تنبيه للجميع", style = V2Type.heading) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                OutlinedTextField(title, { title = it }, label = { Text("العنوان") }, singleLine = true, textStyle = V2Type.body, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(body, { body = it }, label = { Text("التفاصيل") }, minLines = 3, textStyle = V2Type.body, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(title, { title = it }, label = { Text("العنوان") }, singleLine = true, textStyle = V2Type.body, shape = RoundedCornerShape(16.dp), colors = v2FieldColors(), modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(body, { body = it }, label = { Text("التفاصيل") }, minLines = 3, textStyle = V2Type.body, shape = RoundedCornerShape(16.dp), colors = v2FieldColors(), modifier = Modifier.fillMaxWidth())
             }
         },
-        confirmButton = { TextButton(enabled = title.isNotBlank() && !sent, onClick = { sent = true; onSend(title.trim(), body.trim()) }) { Text("إرسال", style = V2Type.bodyStrong) } },
+        confirmButton = { TextButton(enabled = title.isNotBlank() && !sent, onClick = { sent = true; onSend(title.trim(), body.trim()) { ok -> if (!ok) sent = false } }) { Text("إرسال", style = V2Type.bodyStrong) } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("إلغاء", style = V2Type.body) } }
     )
 }

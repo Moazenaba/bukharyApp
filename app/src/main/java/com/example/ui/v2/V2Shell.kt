@@ -191,7 +191,7 @@ fun V2Shell(
         }
         V2Header(
             // The role is said only where it differs from what the screens already show (admins), not on every screen.
-            hello = if (data.user.role.roleKey in setOf("admin", "super_admin")) "${v2TodayText(data.today)} · ${data.user.role.titleAr}" else v2TodayText(data.today),
+            hello = if (data.user.role.roleKey in setOf("admin", "super_admin")) "${v2TodayText(data.today)} · ${roleName(data.user.role.roleKey)}" else v2TodayText(data.today),
             title = title,
             unread = unread,
             isOnline = data.isOnline,

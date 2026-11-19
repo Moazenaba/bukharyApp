@@ -73,7 +73,7 @@ class V2ScreensRenderTest {
         )
     )
 
-    private fun user(role: UserRole) = AppUser(id = if (role == UserRole.SHEIKH) "s1" else "u-${role.roleKey}", name = "مستخدم ${role.titleAr}", phone = "0100", role = role)
+    private fun user(role: UserRole) = AppUser(id = when (role) { UserRole.SHEIKH -> "s1"; UserRole.COMMITTEE_HEAD -> "h1"; else -> "u-${role.roleKey}" }, name = "مستخدم ${role.titleAr}", phone = "0100", role = role)
 
     private fun grant(role: UserRole) {
         Permissions.role = role.roleKey
