@@ -38,6 +38,8 @@ data class ServerPermissions(
     val grantableRoles: List<String> = listOf("sheikh"),
     /** Active extra assignments (read-only powers on other committees); the server enforces them. */
     val observing: List<ObservedRef> = emptyList(),
+    /** Committees this person heads by a temporary grant right now. */
+    val headCommitteeIds: List<String> = emptyList(),
     val mustChangePassword: Boolean = false
 )
 

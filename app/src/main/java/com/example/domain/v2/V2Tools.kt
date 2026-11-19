@@ -28,9 +28,10 @@ object V2Tools {
     fun isAdmin(role: String): Boolean = role == "admin" || role == "super_admin"
 
     /** Four tabs at most, in the order a person of that role reaches for them. */
-    fun tabs(role: String): List<V2Tab> = when {
+    /** [heads]: a sheikh holding a temporary head grant gets the head's team tab too. */
+    fun tabs(role: String, heads: Boolean = false): List<V2Tab> = when {
         isAdmin(role) -> listOf(V2Tab.BOARD, V2Tab.COMMITTEES, V2Tab.PEOPLE, V2Tab.MORE)
-        role == "committee_head" -> listOf(V2Tab.NOW, V2Tab.MINE, V2Tab.TEAM, V2Tab.ME)
+        role == "committee_head" || heads -> listOf(V2Tab.NOW, V2Tab.MINE, V2Tab.TEAM, V2Tab.ME)
         else -> listOf(V2Tab.NOW, V2Tab.MINE, V2Tab.CEREMONIES, V2Tab.ME)
     }
 

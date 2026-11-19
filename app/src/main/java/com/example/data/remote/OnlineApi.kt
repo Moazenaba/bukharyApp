@@ -75,6 +75,16 @@ object OnlineApi {
 
     suspend fun addObservation(assignmentId: String, note: String) { call("POST", "api/assignments/${enc(assignmentId)}/observations", mapOf("note" to note)) }
 
+    // ------------------------------------------------- temporary heads («رئيس لجنة مؤقت»)
+
+    /** The grants this person may see: all for an admin, the ones on their committees for a head, their own otherwise. */
+    suspend fun headGrants(): List<com.example.data.model.HeadGrant> =
+        get("api/grants", "grants", com.example.data.model.HeadGrant::class.java)
+
+    /** "yes", "no" or "undecided". The server refuses a decision from anyone who may not make it. */
+    suspend fun decideHeadGrant(id: String, decision: String): com.example.data.model.HeadGrant? =
+        one("POST", "api/grants/${enc(id)}/decision", mapOf("decision" to decision), "grant", com.example.data.model.HeadGrant::class.java)
+
     // ---------------------------------------------------------------- courses
 
     /** Short fingerprint of all server data (GET /api/sync/state); null on an older server. */

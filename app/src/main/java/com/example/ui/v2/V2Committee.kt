@@ -120,6 +120,9 @@ fun V2CommitteeScreen(c: Committee, data: V2Data, actions: V2Actions, tools: Set
             }
         }
 
+        // 1b. The ceremony decision of a temporary head (only when such a grant is on this committee)
+        item(key = "decision") { V2CeremonyDecision(c) }
+
         // 2. Where to go and whom to call
         item(key = "where-t") { V2Section("رايح فين؟") }
         item(key = "where") {
@@ -447,3 +450,62 @@ private fun V2ObserversSection(c: Committee, data: V2Data, actions: V2Actions) {
         )
     }
 }
+
+/**
+ * «القرار في الحفل»: a temporary head (or the committee's head, or an admin) says whether a ceremony happens. The
+ * server decides who may answer and never lets a lower decision overwrite a higher one; this only offers the choices.
+ */
+@Composable
+private fun V2CeremonyDecision(c: Committee) {
+    val p = LocalV2.current
+    val scope = rememberCoroutineScope()
+    var grants by remember(c.id) { mutableStateOf<List<com.example.data.model.HeadGrant>>(emptyList()) }
+    var reload by remember { mutableIntStateOf(0) }
+    LaunchedEffect(c.id, reload) {
+        // A grant that cannot be read simply shows nothing here; the committee itself still works offline.
+        grants = try {
+            OnlineApi.headGrants().filter { it.status == "active" && c.id in it.committeeIds }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+    if (grants.isEmpty()) return
+    val label = mapOf("yes" to "سيكون هناك حفل", "no" to "لن يكون هناك حفل", "undecided" to "لم يُحدد بعد")
+    V2Section("القرار في الحفل")
+    V2Group {
+        grants.forEachIndexed { i, g ->
+            if (i > 0) V2Divider()
+            V2Row(
+                g.userName,
+                "رئيس لجنة مؤقت من ${g.startsOn} حتى ${g.endsOn} · ${label[g.ceremonyDecision] ?: ""}",
+                mark = { V2Avatar(g.userName) }
+            )
+            Column(Modifier.padding(start = 14.dp, end = 14.dp, bottom = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf("yes", "no", "undecided").forEach { d ->
+                    val chosen = g.ceremonyDecision == d
+                    V2Button(
+                        label[d].orEmpty(),
+                        {
+                            scope.launch {
+                                try {
+                                    OnlineApi.decideHeadGrant(g.id, d)
+                                    reload++
+                                } catch (e: CancellationException) {
+                                    throw e
+                                } catch (e: Exception) {
+                                    UiMessages.show("تعذر تسجيل القرار. حاول مرة أخرى.")
+                                }
+                            }
+                        },
+                        Modifier.fillMaxWidth(),
+                        kind = if (chosen) V2ButtonKind.CTA else V2ButtonKind.SOLID,
+                        icon = if (chosen) Icons.Default.CheckCircle else null
+                    )
+                }
+            }
+        }
+    }
+}
+

@@ -31,6 +31,12 @@ object Permissions {
     @Volatile
     var observing: List<ObservedRef> = emptyList()
 
+    /** Committees this person heads by a temporary grant right now (the team tab and the decision follow them). */
+    @Volatile
+    var headCommitteeIds: Set<String> = emptySet()
+
+    fun headsOn(committeeId: String): Boolean = committeeId in headCommitteeIds
+
     /** The user's active assignments on this committee (empty when none). */
     fun observingOn(committeeId: String): List<ObservedRef> = observing.filter { it.committeeId == committeeId }
 
@@ -65,6 +71,7 @@ object Permissions {
         role = ""
         grantableRoles = listOf("sheikh")
         observing = emptyList()
+        headCommitteeIds = emptySet()
         committeeScope = emptySet()
         examScope = emptySet()
     }
