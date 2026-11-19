@@ -201,7 +201,8 @@ fun V2NowScreen(data: V2Data, actions: V2Actions, onOpen: (String) -> Unit) {
                             V2Button("الخرائط", { V2Intents.open(context, url) }, Modifier.weight(1f), kind = V2ButtonKind.OUTLINE, icon = Icons.Default.Place, contentColor = LocalV2.current.onHero)
                         }
                     }
-                    if (now.headPhone.isNotBlank()) {
+                    // Never offer to call yourself: the head sees this card too.
+                    if (now.headPhone.isNotBlank() && committee?.let { Logistics.headOf(it)?.id } != data.user.id) {
                         V2Button("اتصال برئيس اللجنة ${now.headName}".trim(), { V2Intents.call(context, now.headPhone) }, Modifier.fillMaxWidth(), kind = V2ButtonKind.OUTLINE, icon = Icons.Default.Phone, contentColor = LocalV2.current.onHero)
                     }
                 }
