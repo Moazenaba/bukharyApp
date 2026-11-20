@@ -95,7 +95,10 @@ fun MenuScreen(
     val today = Dates.today()
     val todays = tasks.count { it.date == today && !it.completed }
     val ceremonies = committees.count { it.stages.ceremony.completed }
-    val myCommittees = if (user.role == UserRole.SUPER_ADMIN || user.allCommitteesAllowed) committees.size else user.assignedCommitteeIds.size
+    // Counts the server's scope (assigned committees plus active «شيخ اللجنة» grants), not only the assigned list.
+    val scope = Permissions.committeeScope
+    val myCommittees = if (user.role == UserRole.SUPER_ADMIN || user.allCommitteesAllowed) committees.size
+        else scope?.size ?: user.assignedCommitteeIds.size
     val sections = listOf(
         "العمليات الميدانية والكشوفات" to listOf(
             MenuEntry(AppNavScreen.HOME, "الرئيسية ونظرة عامة", Icons.Default.Home, null),
