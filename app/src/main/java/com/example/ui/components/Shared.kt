@@ -6,6 +6,7 @@ import com.example.ui.theme.tFg
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import com.example.ui.theme.TextMuted
+import android.content.ActivityNotFoundException
 import android.content.Context
 import android.print.PrintAttributes
 import android.print.PrintManager
@@ -149,7 +150,11 @@ fun shareFile(context: Context, bytes: ByteArray, fileName: String, mime: String
         .setType(mime)
         .putExtra(android.content.Intent.EXTRA_STREAM, uri)
         .addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
-    context.startActivity(android.content.Intent.createChooser(send, fileName).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
+    try {
+        context.startActivity(android.content.Intent.createChooser(send, fileName).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
+    } catch (e: ActivityNotFoundException) {
+        UiMessages.show("لا يوجد تطبيق لمشاركة هذا الملف")
+    }
 }
 
 const val XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"

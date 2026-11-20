@@ -1,6 +1,8 @@
 package com.example.ui.theme
 
 import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -79,6 +81,15 @@ val BukhariShapes = Shapes(
     extraLarge = RoundedCornerShape(28.dp)
 )
 
+fun Context.findActivity(): Activity? {
+    var current = this
+    while (current is ContextWrapper) {
+        if (current is Activity) return current
+        current = current.baseContext
+    }
+    return null
+}
+
 @Composable
 fun BukhariTheme(
     darkTheme: Boolean = ThemeState.dark,
@@ -89,7 +100,8 @@ fun BukhariTheme(
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
-            val window = (view.context as Activity).window
+            val activity = view.context.findActivity() ?: return@SideEffect
+            val window = activity.window
             val controller = WindowCompat.getInsetsController(window, view)
             // Dark icons only over a light background. The bars follow the app's look, not the phone's.
             controller.isAppearanceLightStatusBars = lightBackgroundBehindStatusBar && !darkTheme

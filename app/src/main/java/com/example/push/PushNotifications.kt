@@ -16,6 +16,7 @@ import com.example.BuildConfig
 import com.example.MainActivity
 import com.example.R
 import com.example.data.remote.OnlineApi
+import com.example.data.remote.SessionManager
 import com.example.data.sync.QueueFlushWorker
 import com.google.firebase.FirebaseApp
 import com.google.firebase.FirebaseOptions
@@ -141,7 +142,9 @@ class BukhariMessagingService : FirebaseMessagingService() {
         val body = message.notification?.body ?: message.data["body"] ?: ""
         PushNotifications.show(this, title, body, message.data["type"] ?: "info")
         PushNotifications.onPushReceived?.invoke()
-        // Bring the new data in even if the app is closed.
-        QueueFlushWorker.enqueue(applicationContext)
+        // Bring the new data in even if the app is closed, provided we have an authenticated session.
+        if (!SessionManager.get(applicationContext).refreshToken.isNullOrBlank()) {
+            QueueFlushWorker.enqueue(applicationContext)
+        }
     }
 }

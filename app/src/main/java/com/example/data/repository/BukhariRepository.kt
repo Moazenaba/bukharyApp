@@ -11,8 +11,10 @@ import com.example.data.local.entities.PendingOpEntity
 import com.example.data.local.entities.ScheduleTaskEntity
 import com.example.data.model.AggregationDetails
 import com.example.data.model.AppUser
+import com.example.data.model.CeremonyAttendee
 import com.example.data.model.CeremonyDetails
 import com.example.data.model.Committee
+import com.example.data.model.CommitteeStaff
 import com.example.data.model.Course
 import com.example.data.model.CustomPermission
 import com.example.data.model.DatabaseStatus
@@ -40,6 +42,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import retrofit2.Response
+import java.net.URLDecoder
 import java.net.URLEncoder
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -134,7 +137,11 @@ class BukhariRepository(
 
             db.withTransaction {
                 courses?.let { db.courseDao().clearAll(); db.courseDao().insertCourses(it) }
-                committees?.let { db.committeeDao().clearAll(); db.committeeDao().insertCommittees(it) }
+                committees?.let {
+                    db.committeeDao().clearAll()
+                    db.committeeDao().insertCommittees(it)
+                    reapplyPendingCommitteeAssignments()
+                }
                 users?.let { db.appUserDao().clearAll(); db.appUserDao().insertUsers(it) }
                 exams?.let { db.examDao().clearAll(); db.examDao().insertExams(it) }
                 tasks?.let { db.scheduleTaskDao().clearAll(); db.scheduleTaskDao().insertTasks(it) }
@@ -211,9 +218,10 @@ class BukhariRepository(
                         break
                     }
                     code == 426 -> {
-                        // This app version is too old for the server: keep the write until the app is updated.
-                        db.pendingOpDao().recordFailure(op.id, op.attempts, false, res.message ?: "يرجى تحديث التطبيق")
-                        outcomes[op.id] = WriteResult.Rejected(res.message ?: "يرجى تحديث التطبيق إلى أحدث إصدار")
+                        // This app version is too old for the server: mark rejected so it does not block the queue.
+                        val message = res.message ?: "يرجى تحديث التطبيق إلى أحدث إصدار"
+                        db.pendingOpDao().markRejected(op.id, 426, message)
+                        outcomes[op.id] = WriteResult.Rejected(message)
                         break
                     }
                     code >= 500 || code == 429 -> {
@@ -432,16 +440,91 @@ class BukhariRepository(
         )
     }
 
+    private suspend fun applyCommitteeMembersLocally(entity: CommitteeEntity, userIds: List<String>) {
+        val existingStaff = entity.staff.associateBy { it.id }
+        val updatedStaff = userIds.map { id ->
+            val user = db.appUserDao().getUserById(id)
+            if (user != null) {
+                val role = if (user.roleKey == "committee_head") "committee_head" else existingStaff[id]?.role ?: "sheikh"
+                CommitteeStaff(id = user.id, name = user.name, role = role, phone = user.phone.ifBlank { existingStaff[id]?.phone ?: "" })
+            } else {
+                existingStaff[id] ?: CommitteeStaff(id = id, name = id, role = "sheikh")
+            }
+        }
+        db.committeeDao().updateCommittee(entity.copy(staff = updatedStaff))
+    }
+
+    private suspend fun applyCeremonyAttendeesLocally(entity: CommitteeEntity, add: List<String>, remove: List<String>) {
+        val removeSet = remove.toSet()
+        val currentAttendees = entity.ceremonyDetails.attendees.filter { it.id !in removeSet }.toMutableList()
+        val currentIds = currentAttendees.map { it.id }.toSet()
+        for (id in add) {
+            if (id !in currentIds) {
+                val user = db.appUserDao().getUserById(id)
+                val name = user?.name ?: id
+                currentAttendees.add(CeremonyAttendee(id = id, name = name))
+            }
+        }
+        val updatedDetails = entity.ceremonyDetails.copy(attendees = currentAttendees)
+        db.committeeDao().updateCommittee(entity.copy(ceremonyDetails = updatedDetails))
+    }
+
+    private suspend fun reapplyPendingCommitteeAssignments() {
+        val pending = db.pendingOpDao().getAllActive() + db.pendingOpDao().getFailed()
+        for (op in pending) {
+            when (op.label) {
+                "setCommitteeMembers" -> {
+                    val committeeId = op.path.removePrefix("api/committees/").removeSuffix("/members").let {
+                        try { URLDecoder.decode(it, "UTF-8") } catch (e: Exception) { it }
+                    }
+                    val entity = db.committeeDao().getCommitteeById(committeeId) ?: continue
+                    val body = op.bodyJson?.let {
+                        try {
+                            val map = ApiClient.moshi.adapter(Map::class.java).fromJson(it)
+                            (map?.get("userIds") as? List<*>)?.mapNotNull { item -> item?.toString() }
+                        } catch (e: Exception) { null }
+                    }
+                    if (body != null) {
+                        applyCommitteeMembersLocally(entity, body)
+                    }
+                }
+                "setCeremonyAttendees" -> {
+                    val committeeId = op.path.removePrefix("api/committees/").removeSuffix("/ceremony-attendees").let {
+                        try { URLDecoder.decode(it, "UTF-8") } catch (e: Exception) { it }
+                    }
+                    val entity = db.committeeDao().getCommitteeById(committeeId) ?: continue
+                    val (add, remove) = op.bodyJson?.let {
+                        try {
+                            val map = ApiClient.moshi.adapter(Map::class.java).fromJson(it)
+                            val addList = (map?.get("add") as? List<*>)?.mapNotNull { item -> item?.toString() } ?: emptyList()
+                            val removeList = (map?.get("remove") as? List<*>)?.mapNotNull { item -> item?.toString() } ?: emptyList()
+                            addList to removeList
+                        } catch (e: Exception) { null }
+                    } ?: (emptyList<String>() to emptyList<String>())
+                    applyCeremonyAttendeesLocally(entity, add, remove)
+                }
+            }
+        }
+    }
+
     /**
      * Places committee heads and sheikhs on a committee: [userIds] is the full list the caller can
      * place (people the caller cannot place keep their membership). Everyone added or removed is notified.
      */
     suspend fun setCommitteeMembers(committeeId: String, userIds: List<String>): WriteResult = withContext(Dispatchers.IO) {
+        val entity = db.committeeDao().getCommitteeById(committeeId)
+        if (entity != null) {
+            applyCommitteeMembersLocally(entity, userIds)
+        }
         push("setCommitteeMembers", "PUT", "api/committees/${enc(committeeId)}/members", mapOf("userIds" to userIds))
     }
 
     /** Invites people to (or removes them from) a committee's ceremony without changing its details. */
     suspend fun setCeremonyAttendees(committeeId: String, add: List<String>, remove: List<String>): WriteResult = withContext(Dispatchers.IO) {
+        val entity = db.committeeDao().getCommitteeById(committeeId)
+        if (entity != null) {
+            applyCeremonyAttendeesLocally(entity, add, remove)
+        }
         push("setCeremonyAttendees", "POST", "api/committees/${enc(committeeId)}/ceremony-attendees", mapOf("add" to add, "remove" to remove))
     }
 
@@ -521,6 +604,16 @@ class BukhariRepository(
         val entity = db.scheduleTaskDao().getTaskById(taskId) ?: return@withContext WriteResult.Rejected("المهمة غير موجودة")
         val newStatus = !entity.completed
         db.scheduleTaskDao().updateTask(entity.copy(completed = newStatus, completedAt = if (newStatus) now() else null))
+        if (taskId.startsWith("task-ceremony-") || entity.type == "ceremony") {
+            val committeeId = if (taskId.startsWith("task-ceremony-")) taskId.removePrefix("task-ceremony-") else entity.committeeId
+            if (committeeId.isNotBlank()) {
+                val committee = db.committeeDao().getCommitteeById(committeeId)
+                if (committee != null) {
+                    val updatedStages = committee.stages.updateStage("ceremony", newStatus, if (newStatus) now() else null)
+                    db.committeeDao().updateCommittee(committee.copy(stages = updatedStages))
+                }
+            }
+        }
         push("toggleTask", "PATCH", "api/tasks/${enc(taskId)}/toggle", mapOf("completed" to newStatus))
     }
 

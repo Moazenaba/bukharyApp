@@ -296,24 +296,25 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 return@withLock true
             }
             val result = repository.syncWithRemoteApi()
-            _lastSyncOk.value = result.online
-            if (result.online) lastServerVersion = versionBefore
-            if (result.online) {
+            val status = repository.getDatabaseStatus()
+            _databaseStatus.value = status
+            _unsentCount.value = repository.unsentCount()
+            val syncSuccess = result.online && status.pendingWrites == 0
+            _lastSyncOk.value = syncSuccess
+            if (syncSuccess) {
                 // Lists that only the management screens use, loaded with the rest like on the web.
                 try { _books.value = OnlineApi.books() } catch (_: Exception) { }
                 try { com.example.data.remote.AppSettings.current = OnlineApi.settings() } catch (_: Exception) { }
                 if (com.example.data.remote.Permissions.can("users.read")) {
                     try { _staffUsers.value = OnlineApi.users() } catch (_: Exception) { }
                 }
+                lastServerVersion = versionBefore
             }
-            val status = repository.getDatabaseStatus()
-            _databaseStatus.value = status
-            _unsentCount.value = repository.unsentCount()
             // Writes the background worker sent and the server refused are reported, not lost (MOB-03).
             if (status.refusedWrites.isNotEmpty()) {
                 showMessage("رفض الخادم ${status.refusedWrites.size} من التعديلات المرسلة؛ راجعها في «حالة البيانات والمزامنة»")
             }
-            result.online
+            syncSuccess
         } finally {
             _isSyncing.value = false
         }

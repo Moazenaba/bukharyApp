@@ -121,6 +121,23 @@ class PendingOpsQueueTest {
     }
 
     @Test
+    fun `HTTP 426 upgrade required is marked rejected and does not block the queue`() = runBlocking {
+        queue("outdated")
+        queue("next")
+        sender.replies += reply(426, "يرجى تحديث التطبيق")
+        sender.replies += reply(200)
+
+        val report = repository.flushPendingOps()
+
+        val outcome = report.outcomes.values.first()
+        assertTrue(outcome is WriteResult.Rejected)
+        assertEquals(0, db.pendingOpDao().getActive("u1").size)
+        val refused = repository.refusedWrites().single()
+        assertEquals("outdated", refused.label)
+        assertEquals(426, refused.httpCode)
+    }
+
+    @Test
     fun `a refused write can be sent again or discarded`() = runBlocking {
         queue("refused")
         sender.replies += reply(409, "conflict")
