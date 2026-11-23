@@ -88,7 +88,11 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        if (intent.getBooleanExtra(com.example.push.PushNotifications.EXTRA_OPEN_NOTIFICATIONS, false)) {
+        val committeeId = intent.getStringExtra(com.example.push.PushNotifications.EXTRA_COMMITTEE_ID)
+        if (!committeeId.isNullOrBlank()) {
+            // A notice about a committee (assigned, activated, ceremony moved…) opens that committee.
+            viewModel.openCommitteeDetail(committeeId)
+        } else if (intent.getBooleanExtra(com.example.push.PushNotifications.EXTRA_OPEN_NOTIFICATIONS, false)) {
             viewModel.navigateTo(com.example.ui.AppNavScreen.NOTIFICATIONS)
         }
     }
@@ -99,6 +103,8 @@ class MainActivity : ComponentActivity() {
         com.example.push.PushNotifications.init(this)
         com.example.update.UpdateWorker.schedule(this)
         val openNotifications = intent?.getBooleanExtra(com.example.push.PushNotifications.EXTRA_OPEN_NOTIFICATIONS, false) == true
+        // A tapped notice about a committee (from the tray, also when the app was closed: FCM puts its data in the extras).
+        val openCommitteeId = intent?.getStringExtra(com.example.push.PushNotifications.EXTRA_COMMITTEE_ID)?.takeIf { it.isNotBlank() }
 
         // While the app is on screen it refreshes on return and every minute (data entered on the web
         // or another phone appears without restarting the app).
@@ -205,7 +211,8 @@ class MainActivity : ComponentActivity() {
                         if (com.example.push.PushNotifications.isConfigured && com.example.push.PushNotifications.needsPermission(this@MainActivity) &&
                             android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU
                         ) askNotifications.launch(android.Manifest.permission.POST_NOTIFICATIONS)
-                        if (openNotifications) viewModel.navigateTo(AppNavScreen.NOTIFICATIONS)
+                        if (openCommitteeId != null) viewModel.openCommitteeDetail(openCommitteeId)
+                        else if (openNotifications) viewModel.navigateTo(AppNavScreen.NOTIFICATIONS)
                     }
                 }
 

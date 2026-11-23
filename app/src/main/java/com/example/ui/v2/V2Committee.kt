@@ -207,7 +207,7 @@ fun V2CommitteeScreen(c: Committee, data: V2Data, actions: V2Actions, tools: Set
 
         // 6. Observers sent to this committee
         if (V2Tool.OBSERVERS in tools && Permissions.canOn("assignments.manage", c.id)) {
-            item(key = "observers") { V2ObserversSection(c, data, actions) }
+            item(key = "flow") { com.example.ui.screens.committees.CommitteeFlowSection(c) }
         }
 
         // 7. The nine stages

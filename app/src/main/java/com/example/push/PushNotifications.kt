@@ -34,6 +34,8 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 object PushNotifications {
     const val CHANNEL_ID = "bukhari_alerts"
     const val EXTRA_OPEN_NOTIFICATIONS = "open_notifications"
+    /** The committee a notice is about: tapping it opens that committee. */
+    const val EXTRA_COMMITTEE_ID = "committeeId"
     private const val TAG = "PushNotifications"
     private const val PREFS = "push"
     private const val KEY_TOKEN = "fcm_token"
@@ -103,12 +105,14 @@ object PushNotifications {
 
     fun forget(context: Context) = saveToken(context, null)
 
-    fun show(context: Context, title: String, body: String, type: String) {
+    fun show(context: Context, title: String, body: String, type: String, committeeId: String? = null) {
         if (needsPermission(context)) return
         val open = Intent(context, MainActivity::class.java)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
             .putExtra(EXTRA_OPEN_NOTIFICATIONS, true)
-        val pending = PendingIntent.getActivity(context, 0, open, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+            .apply { if (!committeeId.isNullOrBlank()) putExtra(EXTRA_COMMITTEE_ID, committeeId) }
+        val requestCode = (committeeId ?: "").hashCode()
+        val pending = PendingIntent.getActivity(context, requestCode, open, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.mipmap.ic_launcher)
             .setContentTitle(title)
@@ -140,7 +144,7 @@ class BukhariMessagingService : FirebaseMessagingService() {
     override fun onMessageReceived(message: RemoteMessage) {
         val title = message.notification?.title ?: message.data["title"] ?: return
         val body = message.notification?.body ?: message.data["body"] ?: ""
-        PushNotifications.show(this, title, body, message.data["type"] ?: "info")
+        PushNotifications.show(this, title, body, message.data["type"] ?: "info", message.data["committeeId"])
         PushNotifications.onPushReceived?.invoke()
         // Bring the new data in even if the app is closed, provided we have an authenticated session.
         if (!SessionManager.get(applicationContext).refreshToken.isNullOrBlank()) {
