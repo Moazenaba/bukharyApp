@@ -54,7 +54,7 @@ fun UpdateRow(modifier: Modifier = Modifier) {
         border = BorderStroke(1.dp, tEdge(Color(0xFFE2E8F0)))
     ) {
         Column(Modifier.padding(14.dp), verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp)) {
-            Text("تحديث التطبيق — النسخة الحالية ${BuildConfig.VERSION_NAME}", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = tFg(Color(0xFF0F172A)))
+            Text("تحديث التطبيق — النسخة الحالية ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = tFg(Color(0xFF0F172A)))
             val r = report
             Text(
                 if (busy) "جارٍ الفحص…" else r?.let { UpdateText.title(it) } ?: "اضغط «افحص الآن» لمعرفة لو في تحديث.",
