@@ -222,7 +222,6 @@ class BukhariRepository(
                         val message = res.message ?: "يرجى تحديث التطبيق إلى أحدث إصدار"
                         db.pendingOpDao().markRejected(op.id, 426, message)
                         outcomes[op.id] = WriteResult.Rejected(message)
-                        break
                     }
                     code >= 500 || code == 429 -> {
                         val attempts = op.attempts + 1
