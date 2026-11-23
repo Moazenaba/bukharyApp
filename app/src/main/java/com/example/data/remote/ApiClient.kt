@@ -125,7 +125,7 @@ object ApiClient {
         .build()
 
     /** Outcome of a raw request: HTTP status (null = server unreachable), the server's message and error code. */
-    data class SendResult(val code: Int?, val message: String?, val body: String? = null, val errorCode: String? = null)
+    data class SendResult(val code: Int?, val message: String?, val body: String? = null, val errorCode: String? = null, val errorBody: String? = null)
 
     private data class ErrorBody(val message: String? = null, val code: String? = null)
 
@@ -147,7 +147,7 @@ object ApiClient {
         okHttpClient.newCall(request).execute().use { res ->
             val text = res.body?.string()
             if (res.isSuccessful) SendResult(res.code, null, text)
-            else SendResult(res.code, serverMessage(text), null, serverCode(text))
+            else SendResult(res.code, serverMessage(text), null, serverCode(text), text)
         }
     } catch (e: Exception) {
         SendResult(null, null)

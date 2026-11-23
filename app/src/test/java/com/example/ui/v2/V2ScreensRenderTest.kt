@@ -85,6 +85,7 @@ class V2ScreensRenderTest {
             UserRole.SHEIKH -> listOf("committees.read", "tasks.read")
             UserRole.COMMITTEE_HEAD -> head
             UserRole.ADMIN -> admin
+            UserRole.EXAMS_MANAGER -> head + listOf("lifecycle.manager", "committees.driver", "committees.ceremony", "people.availability")
             UserRole.SUPER_ADMIN -> admin + listOf("audit.read", "database.admin")
         }.associateWith { true }
         Permissions.applyServerScope(if (role == UserRole.SHEIKH || role == UserRole.COMMITTEE_HEAD) listOf("c12", "c9") else "all", "all")

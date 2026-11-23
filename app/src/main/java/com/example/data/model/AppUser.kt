@@ -10,7 +10,9 @@ import com.example.ui.AppNavScreen
 enum class UserRole(val roleKey: String, val titleAr: String, val emoji: String) {
     SUPER_ADMIN("super_admin", "المشرف العام (سوبر أدمن)", "👑"),
     ADMIN("admin", "أدمن", "🛡️"),
-    COMMITTEE_HEAD("committee_head", "رئيس لجنة", "👨‍🏫"),
+    /** «مدير إدارة الحفلات والامتحانات»: staffs observers and ceremony sheikhs, activates committees. */
+    EXAMS_MANAGER("exams_manager", "مدير إدارة الحفلات والامتحانات", "🗂️"),
+    COMMITTEE_HEAD("committee_head", "شيخ لجنة", "👨‍🏫"),
     SHEIKH("sheikh", "شيخ", "👤");
 
     companion object {

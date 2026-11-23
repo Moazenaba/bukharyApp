@@ -226,7 +226,7 @@ fun SimpleCommitteeScreen(
             // 4. Team, and the observers sent to this committee (or, for an observer, what they were sent to do)
             com.example.ui.screens.committees.MyObservationSection(committee)
             CommitteeStaffSection(committee, myId, candidates, onLoadCandidates, onSaveStaff)
-            com.example.ui.screens.committees.CommitteeObserversSection(committee)
+            com.example.ui.screens.committees.CommitteeFlowSection(committee)
 
             // 5. All stages (collapsed, read only)
             SimpleCard(onClick = { allStages = !allStages }, onClickLabel = if (allStages) "إخفاء كل المراحل" else "عرض كل المراحل") {

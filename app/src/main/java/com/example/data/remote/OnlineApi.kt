@@ -14,7 +14,7 @@ import java.net.URLEncoder
 object OnlineApi {
 
     /** A failed call: the server's message, or a connection message when it could not be reached. */
-    class ApiFailure(message: String, val httpCode: Int?) : Exception(message)
+    class ApiFailure(message: String, val httpCode: Int?, val errorCode: String? = null, val errorBody: String? = null) : Exception(message)
 
     private val mapType = Types.newParameterizedType(Map::class.java, String::class.java, Any::class.java)
     private val mapAdapter = ApiClient.moshi.adapter<Map<String, Any?>>(mapType)
@@ -31,7 +31,7 @@ object OnlineApi {
                 ApiClient.onUnauthorized?.invoke()
                 throw ApiFailure("انتهت الجلسة، يرجى تسجيل الدخول مرة أخرى", 401)
             }
-            res.code !in 200..299 -> throw ApiFailure(res.message ?: "رفض الخادم الطلب (HTTP ${res.code})", res.code)
+            res.code !in 200..299 -> throw ApiFailure(res.message ?: "رفض الخادم الطلب (HTTP ${res.code})", res.code, res.errorCode, res.errorBody)
             else -> res.body.orEmpty()
         }
     }
@@ -49,6 +49,46 @@ object OnlineApi {
         val raw = mapAdapter.fromJson(text)?.get(key) ?: return null
         return ApiClient.moshi.adapter(cls).fromJsonValue(raw)
     }
+
+    // ------------------------------------------------- committee flow (docs/PLAN_ROLES_AND_FLOW.md on the server)
+
+    /** A JSON object as a map (numbers are Doubles). */
+    fun parse(text: String?): Map<String, Any?> = text?.let { mapAdapter.fromJson(it) } ?: emptyMap()
+
+    /** The people on a committee as the server lets this person see them, with the committee's step. */
+    suspend fun committeePeople(committeeId: String): Map<String, Any?> = parse(call("GET", "api/committees/${enc(committeeId)}/people"))
+
+    suspend fun lifecycleStep(committeeId: String, to: String) { call("POST", "api/committees/${enc(committeeId)}/lifecycle", mapOf("to" to to)) }
+
+    /** Adds an observer or a ceremony sheikh; a same-day conflict fails with errorCode "schedule_conflict" until confirmed. */
+    suspend fun addStaff(committeeId: String, userId: String, role: String, note: String?, confirmConflicts: Boolean) {
+        call(
+            "POST", "api/committees/${enc(committeeId)}/staff",
+            buildMap<String, Any?> {
+                put("userId", userId); put("role", role); put("confirmConflicts", confirmConflicts)
+                if (!note.isNullOrBlank()) put("note", note)
+            }
+        )
+    }
+
+    suspend fun removeStaff(committeeId: String, staffId: String) { call("DELETE", "api/committees/${enc(committeeId)}/staff/${enc(staffId)}") }
+
+    suspend fun excuse(committeeId: String, staffId: String, reason: String) {
+        call("POST", "api/committees/${enc(committeeId)}/staff/${enc(staffId)}/excuse", mapOf("reason" to reason))
+    }
+
+    suspend fun setCanAssign(committeeId: String, value: Boolean) { call("PATCH", "api/committees/${enc(committeeId)}/owner/can-assign", mapOf("value" to value)) }
+
+    suspend fun setDriver(committeeId: String, hasDriver: Boolean, name: String, phone: String) {
+        call("PATCH", "api/committees/${enc(committeeId)}/driver", mapOf("hasDriver" to hasDriver, "name" to name, "phone" to phone))
+    }
+
+    suspend fun saveCeremony(committeeId: String, date: String, time: String, place: String) {
+        call("POST", "api/committees/${enc(committeeId)}/ceremony", mapOf("ceremonyDate" to date, "ceremonyTime" to time, "ceremonyPlace" to place))
+    }
+
+    /** People who may be placed, with what keeps them busy on [date] (admins and the exams manager). */
+    suspend fun availability(date: String): Map<String, Any?> = parse(call("GET", "api/people/availability?date=${enc(date)}"))
 
     // ------------------------------------------------- extra assignments («مراقب»)
 
