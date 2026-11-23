@@ -606,7 +606,7 @@ class BukhariRepository(
         db.scheduleTaskDao().updateTask(entity.copy(completed = newStatus, completedAt = if (newStatus) now() else null))
         if (taskId.startsWith("task-ceremony-") || entity.type == "ceremony") {
             val committeeId = if (taskId.startsWith("task-ceremony-")) taskId.removePrefix("task-ceremony-") else entity.committeeId
-            if (committeeId.isNotBlank()) {
+            if (!committeeId.isNullOrBlank()) {
                 val committee = db.committeeDao().getCommitteeById(committeeId)
                 if (committee != null) {
                     val updatedStages = committee.stages.updateStage("ceremony", newStatus, if (newStatus) now() else null)
