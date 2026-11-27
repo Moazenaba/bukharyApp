@@ -79,7 +79,12 @@ import androidx.compose.ui.unit.dp
 import com.example.data.model.Committee
 import com.example.data.remote.AppSettings
 import com.example.data.remote.Permissions
+import com.example.data.remote.OnlineApi
 import com.example.data.remote.StaffUserDto
+import com.example.domain.NoticeTime
+import com.example.data.model.NotificationItem
+import androidx.compose.material.icons.filled.PriorityHigh
+import androidx.compose.material.icons.filled.Outbox
 import com.example.domain.NoticeAudience
 import com.example.domain.NoticeTo
 import com.example.domain.DayText
@@ -581,6 +586,7 @@ fun roleName(role: String) = when (role) { "super_admin" -> "مشرف عام"; "
 @Composable
 fun V2MoreScreen(data: V2Data, actions: V2Actions, tools: Set<V2Tool>, onPage: (V2Page) -> Unit) {
     var sending by remember { mutableStateOf(false) }
+    var showingSent by remember { mutableStateOf(false) }
     var choosingCourse by remember { mutableStateOf(false) }
     val unread = data.notifications.count { !it.read }
     val todays = data.tasks.count { it.date.take(10) == data.today && !it.completed }
@@ -598,6 +604,8 @@ fun V2MoreScreen(data: V2Data, actions: V2Actions, tools: Set<V2Tool>, onPage: (
                 if (V2Tool.SEND_NOTICE in tools) {
                     V2Divider()
                     V2Row("إرسال تنبيه", "للجميع، أو لفئة، أو لأشخاص محددين", mark = { V2Mark(icon = Icons.Default.Campaign) }, onClick = { sending = true })
+                    V2Divider()
+                    V2Row("التنبيهات المرسلة", "وصلت لمين، وكام واحد قرأها", mark = { V2Mark(icon = Icons.Default.Outbox) }, onClick = { showingSent = true })
                 }
                 if (data.courses.size > 1) {
                     V2Divider()
@@ -618,7 +626,8 @@ fun V2MoreScreen(data: V2Data, actions: V2Actions, tools: Set<V2Tool>, onPage: (
         }
         item(key = "account") { V2AccountRows(data, actions) }
     }
-    if (sending) V2NoticeDialog(data.staff, actions.loadStaff, onDismiss = { sending = false }) { t, b, audience, done -> actions.sendNoticeTo(t, b, audience) { ok -> done(ok); if (ok) sending = false } }
+    if (sending) V2NoticeDialog(data.staff, actions.loadStaff, onDismiss = { sending = false }) { t, b, audience, urgent, done -> actions.sendNoticeTo(t, b, audience, urgent) { ok -> done(ok); if (ok) sending = false } }
+    if (showingSent) V2SentNoticesDialog(onDismiss = { showingSent = false })
     if (choosingCourse) {
         AlertDialog(
             onDismissRequest = { choosingCourse = false },
@@ -711,9 +720,12 @@ private fun V2NoticeDialog(
     staff: List<StaffUserDto>,
     onLoadStaff: () -> Unit,
     onDismiss: () -> Unit,
-    onSend: (String, String, Map<String, Any?>, (Boolean) -> Unit) -> Unit
+    onSend: (String, String, Map<String, Any?>, Boolean, (Boolean) -> Unit) -> Unit
 ) {
     var title by remember { mutableStateOf("") }
+    var urgent by remember { mutableStateOf(false) }
+    /** How many people the current choice reaches (from the server); null while unknown. */
+    var reach by remember { mutableStateOf<Int?>(null) }
     var body by remember { mutableStateOf("") }
     var sent by remember { mutableStateOf(false) }
     var to by remember { mutableStateOf(NoticeTo.ALL) }
@@ -722,9 +734,18 @@ private fun V2NoticeDialog(
     var query by remember { mutableStateOf("") }
     var armed by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { if (staff.isEmpty()) onLoadStaff() }
-    val people = staff.filter { it.status == "approved" && (query.isBlank() || it.name.contains(query.trim()) || it.phone.contains(query.trim())) }.sortedBy { it.name }
+    val matching = staff.filter { it.status == "approved" && (query.isBlank() || it.name.contains(query.trim()) || it.phone.contains(query.trim())) }.sortedBy { it.name }
+    // The picked ones stay on top, and the list is cut at 40 rows: a dialog drawing hundreds of rows is slow; search narrows it.
+    val people = (matching.filter { it.id in picked } + matching.filter { it.id !in picked }).take(40)
     val audience = NoticeAudience.of(to, groups, picked)
     val heading = NoticeAudience.heading(to, picked.size)
+    // Asks the server who the choice reaches, a moment after the choice settles (not on every tap).
+    LaunchedEffect(audience) {
+        reach = null
+        if (audience == null) return@LaunchedEffect
+        delay(400)
+        reach = try { OnlineApi.previewAudience(audience) } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (_: Exception) { null }
+    }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(heading, style = V2Type.heading) },
@@ -760,19 +781,67 @@ private fun V2NoticeDialog(
                                     mark = { Icon(if (u.id in picked) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked, null) })
                             }
                         }
-                        if (picked.isNotEmpty()) Text("تم اختيار ${picked.size}", style = V2Type.small, color = LocalV2.current.muted)
+                        if (matching.size > people.size) Text("يظهر أول ${people.size} من ${matching.size}؛ اكتب جزءًا من الاسم للبحث.", style = V2Type.small, color = LocalV2.current.muted)
                     }
+                }
+                V2Group {
+                    V2Row("عاجل", "يرنّ ويظهر فوق الشاشة؛ للأمور اللي محتاجة تصرف دلوقتي", onClick = { urgent = !urgent }, selected = urgent, multiple = true,
+                        mark = { Icon(if (urgent) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked, null) })
+                }
+                reach?.let { n ->
+                    Text(
+                        if (n == 0) "لا يوجد مستلمون لهذا الاختيار." else "سيصل إلى ${v2Count(n, "شخص واحد", "شخصين", "أشخاص", "شخص")}.",
+                        style = V2Type.smallStrong, color = if (n == 0) LocalV2.current.brick else LocalV2.current.ink
+                    )
                 }
             }
         },
         confirmButton = {
             val everyone = to == NoticeTo.ALL
-            TextButton(enabled = title.isNotBlank() && audience != null && !sent, onClick = {
+            TextButton(enabled = title.isNotBlank() && audience != null && reach != 0 && !sent, onClick = {
                 if (everyone && !armed) armed = true
-                else { sent = true; onSend(title.trim(), body.trim(), audience!!) { ok -> if (!ok) { sent = false; armed = false } } }
+                else { sent = true; onSend(title.trim(), body.trim(), audience!!, urgent) { ok -> if (!ok) { sent = false; armed = false } } }
             }) { Text(if (everyone && armed) "تأكيد الإرسال للجميع" else "إرسال", style = V2Type.bodyStrong, color = if (everyone && armed) LocalV2.current.brick else LocalV2.current.ink) }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("إلغاء", style = V2Type.body) } }
+    )
+}
+
+/** Messages sent by hand: when, to how many, and how many opened them (admins see all, the exams manager theirs). */
+@Composable
+private fun V2SentNoticesDialog(onDismiss: () -> Unit) {
+    var sent by remember { mutableStateOf<List<OnlineApi.SentNotice>?>(null) }
+    var failed by remember { mutableStateOf(false) }
+    var reload by remember { mutableStateOf(0) }
+    LaunchedEffect(reload) {
+        failed = false
+        sent = try { OnlineApi.sentNotices() } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (_: Exception) { failed = true; null }
+    }
+    val now = remember { System.currentTimeMillis() }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("التنبيهات المرسلة", style = V2Type.heading) },
+        text = {
+            Column(Modifier.heightIn(max = 460.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                when {
+                    failed -> V2Retry("التنبيهات المرسلة") { reload++ }
+                    sent == null -> Text("جارٍ التحميل…", style = V2Type.small, color = LocalV2.current.muted)
+                    sent!!.isEmpty() -> Text("لم يُرسل تنبيه بعد.", style = V2Type.body, color = LocalV2.current.muted)
+                    else -> V2Group {
+                        sent!!.forEachIndexed { i, s ->
+                            if (i > 0) V2Divider()
+                            V2Row(
+                                s.title,
+                                listOf(NoticeTime.short(s.createdAt, now), "قرأه ${s.read} من ${s.recipients}", s.sentBy).filter { it.isNotBlank() }.joinToString(" · "),
+                                mark = { V2Mark(icon = if (s.type == "urgent") Icons.Default.PriorityHigh else Icons.Default.Campaign, late = s.type == "urgent") },
+                                trailing = { if (s.recipients > 0 && s.read == s.recipients) V2Tag("قرأه الكل", V2Tone.DONE) }
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("إغلاق", style = V2Type.body) } }
     )
 }
 
@@ -780,24 +849,55 @@ private fun V2NoticeDialog(
 
 @Composable
 fun V2InboxScreen(data: V2Data, actions: V2Actions, onOpen: (String) -> Unit) {
-    val p = LocalV2.current
+    var opened by remember { mutableStateOf<NotificationItem?>(null) }
+    // Re-read every minute, so «منذ 5 دقائق» does not stay frozen while the screen is open.
+    var now by remember { mutableStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(Unit) { while (true) { delay(60_000); now = System.currentTimeMillis() } }
+    val groups = remember(data.notifications, now) { data.notifications.groupBy { NoticeTime.group(it.createdAt, now) } }
     V2Scroll {
         if (data.notifications.any { !it.read }) item(key = "all") {
             V2Button("تعليم الكل كمقروء", actions.readAll, Modifier.fillMaxWidth(), kind = V2ButtonKind.QUIET)
         }
         if (data.notifications.isEmpty()) item(key = "empty") { V2Empty("لا توجد إشعارات", "أي إسناد أو دعوة أو تغيير في موعد سيصلك هنا.") }
-        else v2Rows(data.notifications, key = { "n-${it.id}" }) { n ->
-                    V2Row(
-                        title = n.title,
-                        subtitle = n.description,
-                        mark = { V2Mark(icon = Icons.Default.Notifications, late = n.type == "urgent") },
-                        trailing = { if (!n.read) V2Tag("جديد", V2Tone.WATCH) },
-                        onClick = {
-                            actions.readNotification(n)
-                            n.committeeId?.let { id -> if (data.committees.any { it.id == id }) onOpen(id) }
-                        }
-                    )
+        else NoticeTime.Group.values().forEach { g ->
+            val list = groups[g].orEmpty()
+            if (list.isEmpty()) return@forEach
+            item(key = "g-${g.name}") { V2Section(g.label) }
+            v2Rows(list, key = { "n-${it.id}" }) { n ->
+                V2Row(
+                    title = n.title,
+                    // The time first, so it is never the part cut off; the full text is one tap away.
+                    subtitle = listOf(NoticeTime.short(n.createdAt, now), n.description).filter { it.isNotBlank() }.joinToString(" · "),
+                    mark = { V2Mark(icon = if (n.type == "urgent") Icons.Default.PriorityHigh else Icons.Default.Notifications, late = n.type == "urgent") },
+                    trailing = { if (!n.read) V2Tag("جديد", V2Tone.WATCH) },
+                    actionLabel = "قراءة الإشعار",
+                    onClick = {
+                        if (!n.read) actions.readNotification(n)
+                        opened = n
+                    }
+                )
+            }
         }
+    }
+    opened?.let { n ->
+        val committee = n.committeeId?.let { id -> data.committees.firstOrNull { it.id == id } }
+        AlertDialog(
+            onDismissRequest = { opened = null },
+            title = { Text(n.title, style = V2Type.heading) },
+            text = {
+                Column(Modifier.heightIn(max = 420.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    if (n.type == "urgent") V2Tag("عاجل", V2Tone.LATE)
+                    if (n.description.isNotBlank()) Text(n.description, style = V2Type.body, color = LocalV2.current.ink)
+                    val time = NoticeTime.full(n.createdAt)
+                    if (time.isNotBlank()) Text(time, style = V2Type.small, color = LocalV2.current.muted)
+                }
+            },
+            confirmButton = {
+                if (committee != null) TextButton(onClick = { opened = null; onOpen(committee.id) }) { Text("فتح لجنة ${committee.committeeNumber}", style = V2Type.bodyStrong) }
+                else TextButton(onClick = { opened = null }) { Text("تم", style = V2Type.bodyStrong) }
+            },
+            dismissButton = { if (committee != null) TextButton(onClick = { opened = null }) { Text("إغلاق", style = V2Type.body) } }
+        )
     }
 }
 

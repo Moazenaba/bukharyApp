@@ -126,6 +126,14 @@ fun NotificationsScreen(
         var armed by remember { mutableStateOf(false) }
         LaunchedEffect(Unit) { if (staff.isEmpty()) onLoadStaff() }
         val audience = NoticeAudience.of(to, groups, picked)
+        // Who the choice reaches, asked from the server a moment after the choice settles.
+        var reach by remember { mutableStateOf<Int?>(null) }
+        LaunchedEffect(audience) {
+            reach = null
+            if (audience == null) return@LaunchedEffect
+            kotlinx.coroutines.delay(400)
+            reach = try { com.example.data.remote.OnlineApi.previewAudience(audience) } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (_: Exception) { null }
+        }
         val people = staff.filter { it.status == "approved" && (query.isBlank() || it.name.contains(query.trim()) || it.phone.contains(query.trim())) }.sortedBy { it.name }
         AlertDialog(
             onDismissRequest = { composing = false },
@@ -160,6 +168,10 @@ fun NotificationsScreen(
                             if (picked.isNotEmpty()) Text("تم اختيار ${picked.size}", style = MaterialTheme.typography.labelSmall, color = tFg(TextMuted))
                         }
                     }
+                    reach?.let { n ->
+                        Text(if (n == 0) "لا يوجد مستلمون لهذا الاختيار." else "سيصل إلى $n شخص.", fontWeight = FontWeight.Bold,
+                            color = if (n == 0) tFg(Color(0xFFB91C1C)) else tFg(Color(0xFF0F766E)))
+                    }
                     Text("النوع", fontWeight = FontWeight.Bold)
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         listOf("info" to "معلومة", "success" to "إنجاز", "urgent" to "عاجل").forEach { (k, l) -> FilterChip(selected = type == k, onClick = { type = k }, label = { Text(l) }) }
@@ -179,7 +191,7 @@ fun NotificationsScreen(
             },
             confirmButton = {
                 val everyone = to == NoticeTo.ALL
-                Button(enabled = title.isNotBlank() && audience != null && !sending, onClick = {
+                Button(enabled = title.isNotBlank() && audience != null && reach != 0 && !sending, onClick = {
                     if (everyone && !armed) armed = true
                     else {
                         sending = true

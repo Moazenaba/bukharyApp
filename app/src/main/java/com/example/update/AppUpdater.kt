@@ -344,7 +344,7 @@ object AppUpdater {
             context, NOTIFICATION_ID, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         val notification = NotificationCompat.Builder(context, PushNotifications.CHANNEL_ID)
-            .setSmallIcon(R.mipmap.ic_launcher)
+            .setSmallIcon(R.drawable.ic_stat_notify)
             .setContentTitle("تحديث جديد للتطبيق")
             .setContentText("اضغط لتثبيت التحديث")
             .setContentIntent(pending)
