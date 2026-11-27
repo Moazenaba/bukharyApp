@@ -138,7 +138,7 @@ class V2Actions(
     val reject: (StaffUserDto) -> Unit,
     val sendNotice: (title: String, body: String, done: (Boolean) -> Unit) -> Unit,
     /** A message to a chosen audience: everyone, a category, or picked people (see V2NoticeDialog). */
-    val sendNoticeTo: (title: String, body: String, audience: Map<String, Any?>, done: (Boolean) -> Unit) -> Unit = { _, _, _, d -> d(false) },
+    val sendNoticeTo: (title: String, body: String, audience: Map<String, Any?>, urgent: Boolean, done: (Boolean) -> Unit) -> Unit = { _, _, _, _, d -> d(false) },
     /** Completes ([done] true) or reopens one stage of a committee; the server checks order and rights. */
     val setStage: (Committee, stageKey: String, done: Boolean) -> Unit = { _, _, _ -> },
     val selectCourse: (String?) -> Unit,

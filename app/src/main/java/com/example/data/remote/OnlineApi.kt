@@ -211,6 +211,16 @@ object OnlineApi {
         call("POST", "api/notifications", mapOf("title" to title, "description" to description, "type" to type, "committeeId" to committeeId, "audience" to audience))
     }
 
+    /** How many people a choice of recipients reaches (POST /api/notifications/preview), before sending. */
+    suspend fun previewAudience(audience: Map<String, Any?>): Int? =
+        (mapAdapter.fromJson(call("POST", "api/notifications/preview", mapOf("audience" to audience)))?.get("recipients") as? Number)?.toInt()
+
+    /** A message sent by hand and how many of its recipients opened it (GET /api/notifications/sent). */
+    data class SentNotice(val batchId: String = "", val title: String = "", val description: String = "", val type: String = "info",
+                          val createdAt: String = "", val recipients: Int = 0, val read: Int = 0, val sentBy: String = "")
+
+    suspend fun sentNotices(): List<SentNotice> = get("api/notifications/sent", "sent", SentNotice::class.java)
+
     suspend fun markAllNotificationsRead() { call("POST", "api/notifications/read-all") }
 
     /** Registers this phone for push notifications (FCM). */

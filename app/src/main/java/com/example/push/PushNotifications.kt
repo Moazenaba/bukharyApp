@@ -24,6 +24,7 @@ import com.google.firebase.messaging.FirebaseMessaging
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import kotlin.coroutines.resume
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 
 /**
@@ -32,7 +33,12 @@ import kotlinx.coroutines.suspendCancellableCoroutine
  * The server sends the same notifications the app shows in its bell (server/push.ts).
  */
 object PushNotifications {
-    const val CHANNEL_ID = "bukhari_alerts"
+    /** Routine notices: in the tray, quietly. Also app updates. */
+    const val CHANNEL_ID = "bukhari_general"
+    /** Urgent notices: sound and pop-up. Separate, so people can keep these on and quiet the rest. */
+    const val URGENT_CHANNEL_ID = "bukhari_urgent"
+    /** The single loud channel of versions up to 1.1.34; removed so it no longer shows in the phone's settings. */
+    private const val OLD_CHANNEL_ID = "bukhari_alerts"
     const val EXTRA_OPEN_NOTIFICATIONS = "open_notifications"
     /** The committee a notice is about: tapping it opens that committee. */
     const val EXTRA_COMMITTEE_ID = "committeeId"
@@ -66,11 +72,19 @@ object PushNotifications {
     private fun createChannel(context: Context) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val manager = context.getSystemService(NotificationManager::class.java)
+        // A channel's importance cannot be changed once created, hence new channels instead of lowering the old one.
         manager.createNotificationChannel(
-            NotificationChannel(CHANNEL_ID, "تنبيهات المسابقة", NotificationManager.IMPORTANCE_HIGH).apply {
-                description = "المهام والاعتمادات ومواعيد الحفلات والتنبيهات العامة"
+            NotificationChannel(URGENT_CHANNEL_ID, "تنبيهات عاجلة", NotificationManager.IMPORTANCE_HIGH).apply {
+                description = "ما يحتاج تصرفًا الآن: بصوت وتظهر فوق الشاشة"
             }
         )
+        manager.createNotificationChannel(
+            NotificationChannel(CHANNEL_ID, "تنبيهات عامة", NotificationManager.IMPORTANCE_DEFAULT).apply {
+                description = "المهام والتكليفات ومواعيد الحفلات والتحديثات"
+                setSound(null, null)
+            }
+        )
+        manager.deleteNotificationChannel(OLD_CHANNEL_ID)
     }
 
     /** Android 13+ asks the user before showing notifications. */
@@ -113,12 +127,17 @@ object PushNotifications {
             .apply { if (!committeeId.isNullOrBlank()) putExtra(EXTRA_COMMITTEE_ID, committeeId) }
         val requestCode = (committeeId ?: "").hashCode()
         val pending = PendingIntent.getActivity(context, requestCode, open, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-        val notification = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(R.mipmap.ic_launcher)
+        val urgent = type == "urgent"
+        val notification = NotificationCompat.Builder(context, if (urgent) URGENT_CHANNEL_ID else CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_stat_notify)
+            .setColor(0xFF005C55.toInt())
+            .setCategory(if (urgent) NotificationCompat.CATEGORY_REMINDER else NotificationCompat.CATEGORY_MESSAGE)
+            .setWhen(System.currentTimeMillis())
+            .setShowWhen(true)
             .setContentTitle(title)
             .setContentText(body)
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))
-            .setPriority(if (type == "urgent") NotificationCompat.PRIORITY_HIGH else NotificationCompat.PRIORITY_DEFAULT)
+            .setPriority(if (urgent) NotificationCompat.PRIORITY_HIGH else NotificationCompat.PRIORITY_DEFAULT)
             .setAutoCancel(true)
             .setContentIntent(pending)
             .build()
@@ -137,8 +156,17 @@ object PushNotifications {
 /** Receives pushes. In the background Android shows them itself; in the foreground the app does. */
 class BukhariMessagingService : FirebaseMessagingService() {
     override fun onNewToken(token: String) {
-        // Registered with the server at the next sign-in or app start (needs the session).
-        getSharedPreferences("push", MODE_PRIVATE).edit().putString("fcm_token_pending", token).apply()
+        // Firebase replaced this phone's token: tell the server now, or pushes stop until the next app start.
+        // Without a session it is registered at the next sign-in.
+        if (SessionManager.get(applicationContext).refreshToken.isNullOrBlank()) return
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+            try {
+                OnlineApi.registerDevice(token)
+                getSharedPreferences("push", MODE_PRIVATE).edit().putString("fcm_token", token).apply()
+            } catch (e: Exception) {
+                Log.w("PushNotifications", "Token refresh not sent: ${e.message}")
+            }
+        }
     }
 
     override fun onMessageReceived(message: RemoteMessage) {

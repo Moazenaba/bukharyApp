@@ -41,7 +41,10 @@
         </service>
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"
-            android:value="bukhari_alerts" />
+            android:value="bukhari_general" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/ic_stat_notify" />
 
         <!-- Result of installing an app update. -->
         <receiver

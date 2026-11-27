@@ -51,8 +51,6 @@ import com.example.ui.theme.tEdge
 import com.example.ui.theme.tFg
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
-import java.time.LocalDate
-import java.time.ZoneId
 
 // The committee's flow (the server's docs/PLAN_ROLES_AND_FLOW.md), on the committee page: its step and the next one
 // for whoever takes it, the person's own job with «اعتذار», the owner («شيخ اللجنة») and the driver, the observers,
@@ -370,7 +368,9 @@ private fun AddStaffDialog(committee: Committee, role: String, onDone: () -> Uni
             if (Permissions.can("people.availability")) {
                 val day = (if (role == "ceremony_sheikh") committee.ceremonyDetails.date else committee.examDate)
                     ?.takeIf { it.length >= 10 }?.take(10)
-                    ?: LocalDate.now(ZoneId.of("Africa/Cairo")).toString()
+                    // java.time needs Android 8; the app runs from Android 7 (minSdk 24), where it would crash here.
+                    ?: java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
+                        .apply { timeZone = java.util.TimeZone.getTimeZone("Africa/Cairo") }.format(java.util.Date())
                 val a = OnlineApi.availability(day)
                 val free = a.objs("available").map { Triple(it.str("id"), it.str("name"), "") }
                 val busy = a.objs("busy").map { p ->
