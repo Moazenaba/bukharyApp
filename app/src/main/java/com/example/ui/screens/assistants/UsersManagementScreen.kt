@@ -307,7 +307,7 @@ fun UsersManagementScreen(
                 item {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text("مركز بناء بروفايلات الصلاحيات", fontWeight = FontWeight.Bold, color = tFg(Color(0xFF134E4A)), modifier = Modifier.weight(1f))
-                        if (canWriteProfiles) Button(onClick = { profileCreating = true }, colors = ButtonDefaults.buttonColors(containerColor = tBg(Color(0xFF0F766E)))) { Text("+ بروفايل جديد") }
+                        if (canWriteProfiles) Button(onClick = { profileCreating = true }, colors = ButtonDefaults.buttonColors(containerColor = tBg(Color(0xFF0F766E)), contentColor = Color.White)) { Text("+ بروفايل جديد") }
                     }
                 }
                 if (profiles.isEmpty() && !isLoading) item { Text("لا توجد بروفايلات بعد", color = tFg(TextMuted)) }
@@ -356,7 +356,7 @@ fun UsersManagementScreen(
                             if (u.status == "interview") u.interviewDate?.let { InfoLine("موعد المقابلة:", it) }
                             if (u.status == "rejected") u.rejectionReason?.let { InfoLine("سبب الاعتذار:", it) }
                             if (canManage) ChipFlow(Modifier, 6.dp) {
-                                Button(onClick = { approving = u }, colors = ButtonDefaults.buttonColors(containerColor = tBg(Color(0xFF059669)))) { Text("اعتماد") }
+                                Button(onClick = { approving = u }, colors = ButtonDefaults.buttonColors(containerColor = tBg(Color(0xFF059669)), contentColor = Color.White)) { Text("اعتماد") }
                                 OutlinedButton(onClick = { interviewing = u }) { Text("تحديد مقابلة") }
                                 OutlinedButton(onClick = { dossier = u }) { Text("الملف") }
                                 if (u.status != "rejected") OutlinedButton(onClick = { rejecting = u }) { Text("اعتذار", color = tFg(Danger)) }
@@ -429,7 +429,7 @@ fun UsersManagementScreen(
             confirmButton = {
                 Button(onClick = {
                     onSaveUser(u, identity(u).apply { put("status", "rejected"); put("rejectionReason", reason) }, "تم تسجيل الاعتذار عن الطلب") { ok -> if (ok) rejecting = null }
-                }, colors = ButtonDefaults.buttonColors(containerColor = tBg(Danger))) { Text("تأكيد الاعتذار") }
+                }, colors = ButtonDefaults.buttonColors(containerColor = tBg(Danger), contentColor = Color.White)) { Text("تأكيد الاعتذار") }
             },
             dismissButton = { TextButton(onClick = { rejecting = null }) { Text("إلغاء") } }
         )
@@ -829,7 +829,7 @@ private fun ApproveDialog(
                 } else access["assignedCommitteeIds"] = committeeIds
                 saving = true
                 onApprove(access) { saving = false }
-            }, colors = ButtonDefaults.buttonColors(containerColor = tBg(Color(0xFF059669)))) { Text("اعتماد الحساب") }
+            }, colors = ButtonDefaults.buttonColors(containerColor = tBg(Color(0xFF059669)), contentColor = Color.White)) { Text("اعتماد الحساب") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("إلغاء") } }
     )

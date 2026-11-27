@@ -80,6 +80,8 @@ import com.example.data.model.Committee
 import com.example.data.remote.AppSettings
 import com.example.data.remote.Permissions
 import com.example.data.remote.StaffUserDto
+import com.example.domain.NoticeAudience
+import com.example.domain.NoticeTo
 import com.example.domain.DayText
 import com.example.domain.FeedKind
 import com.example.domain.Logistics
@@ -700,11 +702,6 @@ private fun V2AccountRows(data: V2Data, actions: V2Actions) {
     }
 }
 
-private enum class NoticeTo(val label: String) { ALL("للجميع"), GROUP("لفئة معينة"), PEOPLE("لأشخاص محددين") }
-
-/** The categories of people a notice can go to: the jobs on committees (server `staffRole`). */
-private val NOTICE_GROUPS = listOf("observer" to "المراقبون", "ceremony_sheikh" to "مشايخ الحفلات", "owner" to "مشايخ اللجان (أصحاب اللجان)")
-
 /**
  * «إرسال تنبيه»: to everyone, to a category (observers, ceremony sheikhs, committee sheikhs), or to people picked
  * from the system (one or many). A message to everyone is sent on the second tap.
@@ -726,20 +723,8 @@ private fun V2NoticeDialog(
     var armed by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { if (staff.isEmpty()) onLoadStaff() }
     val people = staff.filter { it.status == "approved" && (query.isBlank() || it.name.contains(query.trim()) || it.phone.contains(query.trim())) }.sortedBy { it.name }
-    val audience: Map<String, Any?>? = when (to) {
-        NoticeTo.ALL -> mapOf("kind" to "all")
-        NoticeTo.GROUP -> when (groups.size) {
-            0 -> null
-            1 -> mapOf("kind" to "staffRole", "staffRole" to groups.first())
-            else -> mapOf("kind" to "staffRole", "staffRoles" to groups.toList())
-        }
-        NoticeTo.PEOPLE -> if (picked.isEmpty()) null else mapOf("kind" to "users", "userIds" to picked.toList())
-    }
-    val heading = when (to) {
-        NoticeTo.ALL -> "إرسال تنبيه للجميع"
-        NoticeTo.GROUP -> "إرسال تنبيه لفئة"
-        NoticeTo.PEOPLE -> if (picked.size == 1) "إرسال تنبيه لشخص" else "إرسال تنبيه لأشخاص"
-    }
+    val audience = NoticeAudience.of(to, groups, picked)
+    val heading = NoticeAudience.heading(to, picked.size)
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(heading, style = V2Type.heading) },
@@ -758,7 +743,7 @@ private fun V2NoticeDialog(
                 when (to) {
                     NoticeTo.ALL -> Text("يوصل لكل المستخدمين المعتمدين.", style = V2Type.small, color = LocalV2.current.muted)
                     NoticeTo.GROUP -> V2Group {
-                        NOTICE_GROUPS.forEachIndexed { i, (key, label) ->
+                        NoticeAudience.GROUPS.forEachIndexed { i, (key, label) ->
                             if (i > 0) V2Divider()
                             V2Row(label, onClick = { groups = if (key in groups) groups - key else groups + key; armed = false }, selected = key in groups, multiple = true,
                                 mark = { Icon(if (key in groups) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked, null) })

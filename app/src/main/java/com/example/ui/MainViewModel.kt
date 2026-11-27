@@ -926,8 +926,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun sendNotification(title: String, description: String, type: String, committeeId: String?, onDone: (Boolean) -> Unit) =
         online("تم إرسال التنبيه", onDone) { OnlineApi.sendNotification(title, description, type, committeeId) }
 
-    fun sendNotificationTo(title: String, description: String, audience: Map<String, Any?>, onDone: (Boolean) -> Unit) =
-        online("تم إرسال التنبيه", onDone) { OnlineApi.sendNotificationTo(title, description, audience) }
+    fun sendNotificationTo(title: String, description: String, audience: Map<String, Any?>, onDone: (Boolean) -> Unit, type: String = "info", committeeId: String? = null) =
+        online("تم إرسال التنبيه", onDone) { OnlineApi.sendNotificationTo(title, description, audience, type, committeeId) }
 
     // ---------------- audit log
 

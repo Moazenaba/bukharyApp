@@ -381,7 +381,7 @@ fun CommitteeDetailModal(
                         if (canReception) Button(
                             onClick = { onAssistantReception(asstPhone, false) },
                             modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.buttonColors(containerColor = tBg(Primary700)),
+                            colors = ButtonDefaults.buttonColors(containerColor = tBg(Primary700), contentColor = Color.White),
                             shape = RoundedCornerShape(10.dp)
                         ) {
                             Text(if (committee.receivedByAssistant != null) "تحديث توثيق الاستلام 📥" else "توثيق واعتماد الاستلام الميداني 📥")
@@ -428,7 +428,7 @@ fun CommitteeDetailModal(
                         if (canReception && committee.examApprovedBy == null) Button(
                             onClick = { onApproveExam(false) },
                             modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.buttonColors(containerColor = tBg(Color(0xFF2563EB))),
+                            colors = ButtonDefaults.buttonColors(containerColor = tBg(Color(0xFF2563EB)), contentColor = Color.White),
                             shape = RoundedCornerShape(10.dp)
                         ) {
                             Text("اعتماد بدء وتوزيع الامتحان 🟦")
@@ -580,7 +580,7 @@ fun CommitteeDetailModal(
                                 )
                             },
                             modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.buttonColors(containerColor = tBg(Color(0xFFD97706))),
+                            colors = ButtonDefaults.buttonColors(containerColor = tBg(Color(0xFFD97706)), contentColor = Color.White),
                             shape = RoundedCornerShape(10.dp)
                         ) {
                             Text("حفظ أسماء المصححين والأسئلة الجديدة 🟠")
@@ -665,7 +665,7 @@ fun CommitteeDetailModal(
                                 )
                             },
                             modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.buttonColors(containerColor = tBg(Color(0xFF4338CA))),
+                            colors = ButtonDefaults.buttonColors(containerColor = tBg(Color(0xFF4338CA)), contentColor = Color.White),
                             shape = RoundedCornerShape(10.dp)
                         ) {
                             Text("توثيق واعتماد تجميع الدرجات 🔵")
@@ -764,7 +764,7 @@ fun CommitteeDetailModal(
                                 )
                             },
                             modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.buttonColors(containerColor = tBg(Color(0xFF16A34A))),
+                            colors = ButtonDefaults.buttonColors(containerColor = tBg(Color(0xFF16A34A)), contentColor = Color.White),
                             shape = RoundedCornerShape(10.dp)
                         ) {
                             Text("حفظ وجدولة حفل التكريم بالتقويم 🎓")

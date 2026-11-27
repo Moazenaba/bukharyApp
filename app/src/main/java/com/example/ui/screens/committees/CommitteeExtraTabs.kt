@@ -149,7 +149,7 @@ fun CommitteeBaseDataTab(
                             )
                         )
                     },
-                    modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = tBg(Primary700))
+                    modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = tBg(Primary700), contentColor = Color.White)
                 ) { Text("حفظ بيانات اللجنة") }
             } else Text("تعديل البيانات الأساسية غير متاح لدورك.", style = MaterialTheme.typography.labelSmall, color = tFg(TextMuted))
             if (canDelete) OutlinedButton(onClick = { confirmDelete = true }, modifier = Modifier.fillMaxWidth()) { Text("حذف اللجنة", color = tFg(Color(0xFFB91C1C))) }

@@ -24,6 +24,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.Alignment
+import com.example.data.remote.StaffUserDto
+import com.example.domain.NoticeAudience
+import com.example.domain.NoticeTo
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
@@ -57,8 +63,11 @@ fun NotificationsScreen(
     onMarkRead: (String) -> Unit,
     onMarkAllRead: () -> Unit,
     onOpenCommittee: (String) -> Unit,
-    onSend: (title: String, description: String, type: String, committeeId: String?, (Boolean) -> Unit) -> Unit,
-    modifier: Modifier = Modifier
+    onSend: (title: String, description: String, type: String, committeeId: String?, audience: Map<String, Any?>, (Boolean) -> Unit) -> Unit,
+    modifier: Modifier = Modifier,
+    /** People to pick from when a notice goes to chosen people (loaded on demand by [onLoadStaff]). */
+    staff: List<StaffUserDto> = emptyList(),
+    onLoadStaff: () -> Unit = {}
 ) {
     var composing by remember { mutableStateOf(false) }
     val canSend = Permissions.can("notifications.create")
@@ -73,7 +82,7 @@ fun NotificationsScreen(
             ScreenBanner("الإشعارات والتنبيهات", "آخر التنبيهات الميدانية من المنظومة ($unread غير مقروء)", Icons.Default.Notifications, listOf(Primary800, Color(0xFF1E40AF))) {
                 Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     if (unread > 0) OutlinedButton(onClick = onMarkAllRead) { Text("تحديد الكل كمقروء", color = Color.White) }
-                    if (canSend) Button(onClick = { composing = true }) { Text("إرسال تنبيه للجميع") }
+                    if (canSend) Button(onClick = { composing = true }) { Text("إرسال تنبيه") }
                 }
             }
         }
@@ -109,13 +118,48 @@ fun NotificationsScreen(
         var type by remember { mutableStateOf("info") }
         var committeeId by remember { mutableStateOf<String?>(null) }
         var sending by remember { mutableStateOf(false) }
+        var to by remember { mutableStateOf(NoticeTo.ALL) }
+        var groups by remember { mutableStateOf(setOf<String>()) }
+        var picked by remember { mutableStateOf(setOf<String>()) }
+        var query by remember { mutableStateOf("") }
+        // A message to everyone is sent on the second tap.
+        var armed by remember { mutableStateOf(false) }
+        LaunchedEffect(Unit) { if (staff.isEmpty()) onLoadStaff() }
+        val audience = NoticeAudience.of(to, groups, picked)
+        val people = staff.filter { it.status == "approved" && (query.isBlank() || it.name.contains(query.trim()) || it.phone.contains(query.trim())) }.sortedBy { it.name }
         AlertDialog(
             onDismissRequest = { composing = false },
-            title = { Text("إرسال تنبيه للجميع") },
+            title = { Text(NoticeAudience.heading(to, picked.size)) },
             text = {
                 Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(title, { title = it }, label = { Text("العنوان") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                     OutlinedTextField(description, { description = it }, label = { Text("نص التنبيه") }, minLines = 3, modifier = Modifier.fillMaxWidth())
+                    Text("إلى مين؟", fontWeight = FontWeight.Bold)
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        NoticeTo.values().forEach { o -> FilterChip(selected = to == o, onClick = { to = o; armed = false }, label = { Text(o.label) }) }
+                    }
+                    when (to) {
+                        NoticeTo.ALL -> Text("يوصل لكل المستخدمين المعتمدين.", style = MaterialTheme.typography.bodySmall, color = tFg(TextMuted))
+                        NoticeTo.GROUP -> NoticeAudience.GROUPS.forEach { (key, label) ->
+                            Row(Modifier.fillMaxWidth().clickable { groups = if (key in groups) groups - key else groups + key; armed = false }, verticalAlignment = Alignment.CenterVertically) {
+                                Checkbox(checked = key in groups, onCheckedChange = { groups = if (it) groups + key else groups - key; armed = false })
+                                Text(label)
+                            }
+                        }
+                        NoticeTo.PEOPLE -> {
+                            OutlinedTextField(query, { query = it }, label = { Text("بحث بالاسم أو الموبايل") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                            if (staff.isEmpty()) Text("جارٍ تحميل المستخدمين…", style = MaterialTheme.typography.bodySmall, color = tFg(TextMuted))
+                            Column(Modifier.heightIn(max = 220.dp).verticalScroll(rememberScrollState())) {
+                                people.forEach { u ->
+                                    Row(Modifier.fillMaxWidth().clickable { picked = if (u.id in picked) picked - u.id else picked + u.id; armed = false }, verticalAlignment = Alignment.CenterVertically) {
+                                        Checkbox(checked = u.id in picked, onCheckedChange = { picked = if (it) picked + u.id else picked - u.id; armed = false })
+                                        Text(u.name)
+                                    }
+                                }
+                            }
+                            if (picked.isNotEmpty()) Text("تم اختيار ${picked.size}", style = MaterialTheme.typography.labelSmall, color = tFg(TextMuted))
+                        }
+                    }
                     Text("النوع", fontWeight = FontWeight.Bold)
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         listOf("info" to "معلومة", "success" to "إنجاز", "urgent" to "عاجل").forEach { (k, l) -> FilterChip(selected = type == k, onClick = { type = k }, label = { Text(l) }) }
@@ -134,10 +178,14 @@ fun NotificationsScreen(
                 }
             },
             confirmButton = {
-                Button(enabled = title.isNotBlank() && !sending, onClick = {
-                    sending = true
-                    onSend(title.trim(), description.trim(), type, committeeId) { ok -> sending = false; if (ok) composing = false }
-                }) { Text(if (sending) "جارٍ الإرسال..." else "إرسال") }
+                val everyone = to == NoticeTo.ALL
+                Button(enabled = title.isNotBlank() && audience != null && !sending, onClick = {
+                    if (everyone && !armed) armed = true
+                    else {
+                        sending = true
+                        onSend(title.trim(), description.trim(), type, committeeId, audience!!) { ok -> sending = false; armed = false; if (ok) composing = false }
+                    }
+                }) { Text(if (sending) "جارٍ الإرسال..." else if (everyone && armed) "تأكيد الإرسال للجميع" else "إرسال") }
             },
             dismissButton = { TextButton(onClick = { composing = false }) { Text("إلغاء") } }
         )
