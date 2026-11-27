@@ -369,7 +369,7 @@ private fun V2ObserversSection(c: Committee, data: V2Data, actions: V2Actions) {
                     if (i > 0) V2Divider()
                     V2Row(
                         a.userName,
-                        "${AssignmentText.task(a.task)} · ${AssignmentText.dates(a.startsOn, a.endsOn)} · أسنهذا ${a.assignedBy}",
+                        "${AssignmentText.task(a.task)} · ${AssignmentText.dates(a.startsOn, a.endsOn)} · أسنده ${a.assignedBy}",
                         mark = { V2Avatar(a.userName) },
                         trailing = { V2Tag(AssignmentText.status(a.status), if (a.status == "active") V2Tone.WATCH else V2Tone.WAIT) },
                         onClick = if (a.status == "active") ({ finishing = a to "end" }) else null
