@@ -492,7 +492,7 @@ fun ExamCard(
                 Button(
                     onClick = onPreview,
                     shape = RoundedCornerShape(8.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = tBg(Primary700)),
+                    colors = ButtonDefaults.buttonColors(containerColor = tBg(Primary700), contentColor = Color.White),
                     contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 8.dp)
                 ) {
                     Text("معاينة الأسئلة 👁️", style = MaterialTheme.typography.labelSmall, color = Color.White)
@@ -590,7 +590,7 @@ fun ExamPreviewDialog(
         confirmButton = {
             Button(
                 onClick = onDismiss,
-                colors = ButtonDefaults.buttonColors(containerColor = tBg(Primary700))
+                colors = ButtonDefaults.buttonColors(containerColor = tBg(Primary700), contentColor = Color.White)
             ) {
                 Text("إغلاق")
             }
@@ -776,7 +776,7 @@ fun AddExamDialog(
                         onSave(exam, pdf)
                     }
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = tBg(Primary700))
+                colors = ButtonDefaults.buttonColors(containerColor = tBg(Primary700), contentColor = Color.White)
             ) {
                 Text("حفظ النموذج")
             }

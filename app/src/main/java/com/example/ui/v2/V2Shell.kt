@@ -137,6 +137,10 @@ class V2Actions(
     val approve: (StaffUserDto, role: String, committeeIds: List<String>?) -> Unit,
     val reject: (StaffUserDto) -> Unit,
     val sendNotice: (title: String, body: String, done: (Boolean) -> Unit) -> Unit,
+    /** A message to a chosen audience: everyone, a category, or picked people (see V2NoticeDialog). */
+    val sendNoticeTo: (title: String, body: String, audience: Map<String, Any?>, done: (Boolean) -> Unit) -> Unit = { _, _, _, d -> d(false) },
+    /** Completes ([done] true) or reopens one stage of a committee; the server checks order and rights. */
+    val setStage: (Committee, stageKey: String, done: Boolean) -> Unit = { _, _, _ -> },
     val selectCourse: (String?) -> Unit,
     val v2Theme: (String) -> Unit = {}
 )
@@ -159,7 +163,7 @@ fun V2Shell(
     val role = data.user.role.roleKey
     val tabs = V2Tools.tabs(role, heads = Permissions.headCommitteeIds.isNotEmpty())
     val observing = Permissions.observing
-    val tools = V2Tools.tools({ Permissions.can(it) }, observesExam = observing.any { it.task == "exam" }, observesAny = observing.isNotEmpty())
+    val tools = V2Tools.tools({ Permissions.can(it) }, observesExam = observing.any { it.task == "exam" }, observesAny = observing.isNotEmpty(), role = role)
 
     var tab by rememberSaveable { mutableStateOf(tabs.first()) }
     if (tab !in tabs) tab = tabs.first()

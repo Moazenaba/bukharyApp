@@ -1,6 +1,7 @@
 package com.example.ui.screens.committees
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -16,6 +17,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
@@ -144,21 +146,41 @@ fun CommitteeFlowSection(committee: Committee) {
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         FlowCard {
             Text("مرحلة اللجنة: ${d.str("lifecycleLabel")}", fontWeight = FontWeight.Bold, color = tFg(Primary900))
+            // Each step is a chip: done (✓, tinted), the current one (bold, outlined), the ones ahead (faint).
             FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 FlowSteps.all.forEachIndexed { i, s ->
+                    val current = i == at
+                    val done = i < at
                     Text(
-                        (if (i < at) "✓ " else "") + s.label,
+                        (if (done) "✓ " else "") + s.label,
                         style = MaterialTheme.typography.labelMedium,
-                        fontWeight = if (i == at) FontWeight.Bold else FontWeight.Normal,
-                        color = if (i == at) tFg(Primary900) else tFg(TextMuted)
+                        fontWeight = if (current) FontWeight.Bold else FontWeight.Normal,
+                        color = if (current) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier
+                            .background(
+                                if (current) MaterialTheme.colorScheme.primaryContainer else if (done) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent,
+                                RoundedCornerShape(50)
+                            )
+                            .padding(horizontal = 10.dp, vertical = 4.dp)
                     )
                 }
             }
             if (at in 1 until FlowSteps.index("active")) {
                 Text("تنبيهات الأعضاء محبوسة حتى يفعّل مدير الحفلات والامتحانات اللجنة.", style = MaterialTheme.typography.bodySmall, color = tFg(TextMuted))
             }
+            if (next != null) {
+                Text(
+                    if (canStep) "الخطوة التالية: ${next.label}" else "الخطوة التالية: ${next.label} (على ${if (next.by == "admin") "الإدارة" else "مدير الحفلات والامتحانات"})",
+                    style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface
+                )
+            }
             if (canStep && next != null) {
-                Button(onClick = { stepTo = next }, modifier = Modifier.heightIn(min = 48.dp)) { Text(next.label) }
+                // Colours are explicit (accent on its own "on" colour) so the label is readable in every look.
+                Button(
+                    onClick = { stepTo = next },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary, contentColor = MaterialTheme.colorScheme.onSecondary),
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                ) { Text("تنفيذ: ${next.label}", color = MaterialTheme.colorScheme.onSecondary, fontWeight = FontWeight.Bold) }
             }
         }
 

@@ -176,7 +176,7 @@ fun CoursesScreen(
                     Button(
                         onClick = { onShowCourseCommittees(course.id) },
                         modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(containerColor = tBg(Primary700)),
+                        colors = ButtonDefaults.buttonColors(containerColor = tBg(Primary700), contentColor = Color.White),
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         Icon(Icons.Default.Groups, null, Modifier.size(18.dp))
@@ -281,7 +281,7 @@ fun CourseFormDialog(course: Course?, onDismiss: () -> Unit, onSave: (Course) ->
                         createdAt = course?.createdAt ?: Dates.today()
                     )
                 )
-            }, colors = ButtonDefaults.buttonColors(containerColor = tBg(Primary700))) { Text("حفظ الدورة") }
+            }, colors = ButtonDefaults.buttonColors(containerColor = tBg(Primary700), contentColor = Color.White)) { Text("حفظ الدورة") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("إلغاء") } }
     )

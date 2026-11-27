@@ -804,7 +804,7 @@ fun AddCommitteeDialog(
                     )
                     onSave(newCommittee)
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = tBg(Primary700))
+                colors = ButtonDefaults.buttonColors(containerColor = tBg(Primary700), contentColor = Color.White)
             ) { Text("حفظ وتسجيل اللجنة") }
             TextButton(onClick = onDismiss) { Text("إلغاء") }
             }

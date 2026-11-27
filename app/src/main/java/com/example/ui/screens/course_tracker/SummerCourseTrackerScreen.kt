@@ -582,7 +582,7 @@ private fun AddRowDialog(courses: List<Course>, initialCourseId: String?, nextNu
                         createdDate = now
                     )
                 )
-            }, colors = ButtonDefaults.buttonColors(containerColor = tBg(Primary700))) { Text("إضافة") }
+            }, colors = ButtonDefaults.buttonColors(containerColor = tBg(Primary700), contentColor = Color.White)) { Text("إضافة") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("إلغاء") } }
     )

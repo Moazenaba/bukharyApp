@@ -224,7 +224,9 @@ fun UsersManagementScreen(
                 if (shownApproved.isEmpty() && !isLoading) item { Text("لا يوجد مستخدمون مطابقون", color = tFg(TextMuted)) }
                 items(shownApproved, key = { it.id }) { u ->
                     val profile = profiles.find { it.id == u.profileId }
-                    val canEditUser = canGrant || (u.role == "sheikh" && canManage) || u.id == me.id
+                    // Another admin's account is shown to an admin but only a super admin changes it.
+                    val readOnlyAdmin = u.role == "admin" && !isSuperAdmin && u.id != me.id
+                    val canEditUser = !readOnlyAdmin && (canGrant || (u.role == "sheikh" && canManage) || u.id == me.id)
                     val placedOn = committees.count { c -> c.staff.any { it.id == u.id } }
                     val invitedTo = committees.filter { c -> c.ceremonyDetails.attendees.any { it.id == u.id } }
                     val canPlace = (u.role == "sheikh" || (u.role == "committee_head" && canGrant)) &&
@@ -241,10 +243,11 @@ fun UsersManagementScreen(
                                         if (u.role == "super_admin") Text("  👑 سوبر أدمن", style = MaterialTheme.typography.labelSmall, color = tFg(Color(0xFF92400E)))
                                     }
                                     Text("📞 ${u.phone} • ${roleLabel(u.role)}", style = MaterialTheme.typography.bodySmall, color = tFg(TextMuted))
+                                    if (readOnlyAdmin) Text("حساب أدمن: للعرض فقط، يعدّله المشرف العام", style = MaterialTheme.typography.labelSmall, color = tFg(TextMuted))
                                     if (u.mustChangePassword) Text("بانتظار تغيير كلمة المرور المؤقتة", style = MaterialTheme.typography.labelSmall, color = tFg(Color(0xFFB45309)))
                                 }
                                 if (canEditUser) IconButton(onClick = { editing = u }) { Icon(Icons.Default.Edit, "تعديل ${u.name}", tint = tFg(Primary700)) }
-                                if (u.role != "super_admin" && u.id != me.id && canDelete) IconButton(onClick = { deleting = u }) { Icon(Icons.Default.Delete, "حذف الحساب", tint = tFg(Danger)) }
+                                if (!readOnlyAdmin && u.role != "super_admin" && u.id != me.id && canDelete) IconButton(onClick = { deleting = u }) { Icon(Icons.Default.Delete, "حذف الحساب", tint = tFg(Danger)) }
                             }
                             InfoLine(
                                 "نظام الصلاحية المطبق:",
@@ -286,7 +289,7 @@ fun UsersManagementScreen(
                                 if (canPlace) {
                                     Button(onClick = { placing = u }) { Text("اللجان والحفلات") }
                                 }
-                                if (canGrant && u.role != "super_admin" && profiles.isNotEmpty()) {
+                                if (canGrant && !readOnlyAdmin && u.role != "super_admin" && profiles.isNotEmpty()) {
                                     OutlinedButton(onClick = { assigningProfile = u }) { Text("تغيير نظام الصلاحية") }
                                 }
                                 if (isSuperAdmin && u.id != me.id) {
@@ -307,7 +310,7 @@ fun UsersManagementScreen(
                 item {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text("مركز بناء بروفايلات الصلاحيات", fontWeight = FontWeight.Bold, color = tFg(Color(0xFF134E4A)), modifier = Modifier.weight(1f))
-                        if (canWriteProfiles) Button(onClick = { profileCreating = true }, colors = ButtonDefaults.buttonColors(containerColor = tBg(Color(0xFF0F766E)))) { Text("+ بروفايل جديد") }
+                        if (canWriteProfiles) Button(onClick = { profileCreating = true }, colors = ButtonDefaults.buttonColors(containerColor = tBg(Color(0xFF0F766E)), contentColor = Color.White)) { Text("+ بروفايل جديد") }
                     }
                 }
                 if (profiles.isEmpty() && !isLoading) item { Text("لا توجد بروفايلات بعد", color = tFg(TextMuted)) }
@@ -356,7 +359,7 @@ fun UsersManagementScreen(
                             if (u.status == "interview") u.interviewDate?.let { InfoLine("موعد المقابلة:", it) }
                             if (u.status == "rejected") u.rejectionReason?.let { InfoLine("سبب الاعتذار:", it) }
                             if (canManage) ChipFlow(Modifier, 6.dp) {
-                                Button(onClick = { approving = u }, colors = ButtonDefaults.buttonColors(containerColor = tBg(Color(0xFF059669)))) { Text("اعتماد") }
+                                Button(onClick = { approving = u }, colors = ButtonDefaults.buttonColors(containerColor = tBg(Color(0xFF059669)), contentColor = Color.White)) { Text("اعتماد") }
                                 OutlinedButton(onClick = { interviewing = u }) { Text("تحديد مقابلة") }
                                 OutlinedButton(onClick = { dossier = u }) { Text("الملف") }
                                 if (u.status != "rejected") OutlinedButton(onClick = { rejecting = u }) { Text("اعتذار", color = tFg(Danger)) }
@@ -429,7 +432,7 @@ fun UsersManagementScreen(
             confirmButton = {
                 Button(onClick = {
                     onSaveUser(u, identity(u).apply { put("status", "rejected"); put("rejectionReason", reason) }, "تم تسجيل الاعتذار عن الطلب") { ok -> if (ok) rejecting = null }
-                }, colors = ButtonDefaults.buttonColors(containerColor = tBg(Danger))) { Text("تأكيد الاعتذار") }
+                }, colors = ButtonDefaults.buttonColors(containerColor = tBg(Danger), contentColor = Color.White)) { Text("تأكيد الاعتذار") }
             },
             dismissButton = { TextButton(onClick = { rejecting = null }) { Text("إلغاء") } }
         )
@@ -829,7 +832,7 @@ private fun ApproveDialog(
                 } else access["assignedCommitteeIds"] = committeeIds
                 saving = true
                 onApprove(access) { saving = false }
-            }, colors = ButtonDefaults.buttonColors(containerColor = tBg(Color(0xFF059669)))) { Text("اعتماد الحساب") }
+            }, colors = ButtonDefaults.buttonColors(containerColor = tBg(Color(0xFF059669)), contentColor = Color.White)) { Text("اعتماد الحساب") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("إلغاء") } }
     )

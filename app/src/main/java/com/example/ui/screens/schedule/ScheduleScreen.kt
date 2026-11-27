@@ -649,7 +649,7 @@ fun AddTaskDialog(
                         onSave(task)
                     }
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = tBg(Primary700))
+                colors = ButtonDefaults.buttonColors(containerColor = tBg(Primary700), contentColor = Color.White)
             ) {
                 Text("جدولة المهمة")
             }

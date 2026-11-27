@@ -502,6 +502,8 @@ class MainActivity : ComponentActivity() {
                                             ) { }
                                         },
                                         sendNotice = { t, b, done -> viewModel.sendNotification(t, b, "info", null, done) },
+                                        sendNoticeTo = { t, b, audience, done -> viewModel.sendNotificationTo(t, b, audience, done) },
+                                        setStage = { c, key, done -> viewModel.toggleStage(c.id, key, !done) },
                                         selectCourse = { viewModel.setSelectedCourseId(it) },
                                         v2Theme = { key ->
                                             v2Theme.value = key
@@ -736,7 +738,9 @@ class MainActivity : ComponentActivity() {
                                         onMarkRead = { viewModel.markNotificationRead(it) },
                                         onMarkAllRead = { viewModel.markAllNotificationsRead() },
                                         onOpenCommittee = { viewModel.openCommitteeDetail(it) },
-                                        onSend = { t, d, type, cId, done -> viewModel.sendNotification(t, d, type, cId, done) }
+                                        onSend = { t, d, type, cId, audience, done -> viewModel.sendNotificationTo(t, d, audience, done, type, cId) },
+                                        staff = staffUsers,
+                                        onLoadStaff = { viewModel.loadStaff() }
                                     )
                                     AppNavScreen.MENU -> com.example.ui.screens.menu.MenuScreen(
                                         currentUser = currentUser,

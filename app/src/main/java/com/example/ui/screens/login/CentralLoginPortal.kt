@@ -332,7 +332,7 @@ private fun LoginForm(isSubmitting: Boolean, onLogin: (String, String) -> Unit, 
             .height(50.dp)
             .testTag("btn_submit_login"),
         shape = RoundedCornerShape(12.dp),
-        colors = ButtonDefaults.buttonColors(containerColor = tBg(Primary700))
+        colors = ButtonDefaults.buttonColors(containerColor = tBg(Primary700), contentColor = Color.White)
     ) {
         Text(
             text = if (isSubmitting) "جاري تسجيل الدخول..." else "تسجيل الدخول للمنظومة",
@@ -489,7 +489,7 @@ private fun RegisterForm(
             .height(50.dp)
             .testTag("btn_submit_register"),
         shape = RoundedCornerShape(12.dp),
-        colors = ButtonDefaults.buttonColors(containerColor = tBg(Primary700))
+        colors = ButtonDefaults.buttonColors(containerColor = tBg(Primary700), contentColor = Color.White)
     ) {
         Text(
             text = if (isSubmitting) "جاري إرسال الطلب..." else "إرسال طلب الانضمام",
@@ -547,7 +547,7 @@ private fun TrackForm(
             .height(48.dp)
             .testTag("btn_track"),
         shape = RoundedCornerShape(12.dp),
-        colors = ButtonDefaults.buttonColors(containerColor = tBg(Primary700))
+        colors = ButtonDefaults.buttonColors(containerColor = tBg(Primary700), contentColor = Color.White)
     ) {
         Text(if (searching) "جاري الاستعلام..." else "استعلام عن الطلب", color = Color.White, fontWeight = FontWeight.Bold)
     }

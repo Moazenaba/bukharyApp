@@ -42,6 +42,11 @@ class V2ToolsTest {
         assertFalse(V2Tool.AUDIT in t || V2Tool.SEND_NOTICE in t || V2Tool.JOIN_REQUESTS in t)
     }
 
+    @Test fun `an admin always gets the audit log entry, others only when the server allows`() {
+        assertTrue(V2Tool.AUDIT in V2Tools.tools(allowed("notifications.create"), role = "admin"))
+        assertFalse(V2Tool.AUDIT in V2Tools.tools(allowed("notifications.create"), role = "sheikh"))
+    }
+
     @Test fun `audit and database only for whoever the server allows`() {
         assertTrue(V2Tool.AUDIT in V2Tools.tools(allowed("audit.read", "database.admin")))
         assertFalse(V2Tool.AUDIT in V2Tools.tools(allowed("notifications.create")))

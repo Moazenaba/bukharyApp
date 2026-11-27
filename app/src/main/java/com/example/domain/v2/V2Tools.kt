@@ -39,7 +39,7 @@ object V2Tools {
      * The tools this person may use. [can] is the server's yes/no for an action (Permissions.can);
      * [observesExam] / [observesAny]: they hold an active «مراقب» assignment.
      */
-    fun tools(can: (String) -> Boolean, observesExam: Boolean = false, observesAny: Boolean = false): Set<V2Tool> = buildSet {
+    fun tools(can: (String) -> Boolean, observesExam: Boolean = false, observesAny: Boolean = false, role: String = ""): Set<V2Tool> = buildSet {
         add(V2Tool.MAPS)
         add(V2Tool.CALL_HEAD)
         add(V2Tool.CALENDAR)
@@ -54,7 +54,8 @@ object V2Tools {
         if (can("users.read")) add(V2Tool.USERS)
         if (can("exams.read")) add(V2Tool.EXAMS)
         if (can("notifications.create")) add(V2Tool.SEND_NOTICE)
-        if (can("audit.read")) add(V2Tool.AUDIT)
+        // Admins read the audit log (without what super admins did); the server filters it.
+        if (can("audit.read") || isAdmin(role)) add(V2Tool.AUDIT)
         if (can("database.admin")) add(V2Tool.DATABASE)
     }
 }

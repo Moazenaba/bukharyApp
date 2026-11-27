@@ -54,6 +54,7 @@ import com.example.domain.NextStep
 import com.example.domain.STAGE_ORDER
 import com.example.domain.StepKind
 import com.example.domain.v2.V2Stages
+import com.example.domain.v2.V2Tools
 import com.example.domain.v2.V2Tool
 import com.example.ui.components.UiMessages
 import com.example.ui.components.WhatsApp
@@ -70,6 +71,13 @@ private fun formTabFor(kind: StepKind): Int = when (kind) {
 
 private const val EDIT_TAB = 4
 
+/** The server action behind each stage (server/workflow.ts STAGE_ACTION). */
+private fun stageRight(stage: String): String = when (stage) {
+    "registration", "exam" -> "committees.reception"
+    "scoring", "aggregation", "review" -> "committees.scoring"
+    else -> "committees.finalize"
+}
+
 private fun failure(e: Exception, fallback: String) = (e as? OnlineApi.ApiFailure)?.message ?: fallback
 
 /**
@@ -84,6 +92,8 @@ fun V2CommitteeScreen(c: Committee, data: V2Data, actions: V2Actions, tools: Set
     var confirm by remember { mutableStateOf(false) }
     val confirmed = rememberV2Confirm()
     var editingStaff by remember { mutableStateOf(false) }
+    // An admin changes the committee's stage from here: tap the current stage to complete it, or the last done one to reopen it.
+    var stageToChange by remember { mutableStateOf<String?>(null) }
     val head = Logistics.headOf(c)
     val place = Logistics.placeOf(c)
     val mineAsObserver = Permissions.observingOn(c.id)
@@ -219,6 +229,8 @@ fun V2CommitteeScreen(c: Committee, data: V2Data, actions: V2Actions, tools: Set
                     if (i > 0) V2Divider(inset = 56.dp)
                     val s = c.stages.getStage(key)
                     val now = key == current
+                    val lastDone = s.completed && STAGE_ORDER.drop(i + 1).none { c.stages.getStage(it).completed }
+                    val mayChange = V2Tools.isAdmin(data.user.role.roleKey) && Permissions.canOn(stageRight(key), c.id) && (now || lastDone)
                     V2Row(
                         V2Stages.LABEL[key] ?: key,
                         when {
@@ -226,6 +238,8 @@ fun V2CommitteeScreen(c: Committee, data: V2Data, actions: V2Actions, tools: Set
                             now -> "المرحلة الحالية"
                             else -> null
                         },
+                        onClick = if (mayChange) ({ stageToChange = key }) else null,
+                        actionLabel = if (s.completed) "إعادة فتح المرحلة" else "إتمام المرحلة",
                         mark = {
                             // Done: a green check. Now: an accent dot. Ahead: a faint ring. The words above say the same.
                             Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) {
@@ -255,6 +269,21 @@ fun V2CommitteeScreen(c: Committee, data: V2Data, actions: V2Actions, tools: Set
             text = { Text("لجنة ${c.committeeNumber}: تأكيد الخطوة؟", style = V2Type.body) },
             confirmButton = { TextButton(onClick = { confirm = false; actions.oneTap(c, step); confirmed(); UiMessages.show("تم تسجيل: ${step.title}") }) { Text("تأكيد", style = V2Type.bodyStrong) } },
             dismissButton = { TextButton(onClick = { confirm = false }) { Text("إلغاء", style = V2Type.body) } }
+        )
+    }
+    stageToChange?.let { key ->
+        val completed = c.stages.getStage(key).completed
+        val label = V2Stages.LABEL[key] ?: key
+        AlertDialog(
+            onDismissRequest = { stageToChange = null },
+            title = { Text(if (completed) "إعادة فتح «$label»؟" else "إتمام «$label»؟", style = V2Type.heading) },
+            text = { Text(if (completed) "ترجع اللجنة لهذه المرحلة، ويتسجّل التغيير باسمك." else "تنتقل اللجنة للمرحلة التي بعدها، ويتسجّل التغيير باسمك.", style = V2Type.body) },
+            confirmButton = {
+                TextButton(onClick = { stageToChange = null; actions.setStage(c, key, !completed) }) {
+                    Text(if (completed) "إعادة فتح" else "إتمام", style = V2Type.bodyStrong)
+                }
+            },
+            dismissButton = { TextButton(onClick = { stageToChange = null }) { Text("إلغاء", style = V2Type.body) } }
         )
     }
     if (editingStaff) V2StaffDialog(c, data, onRetry = actions.loadCandidates, onDismiss = { editingStaff = false }) { ids -> actions.saveStaff(c, ids); editingStaff = false }
