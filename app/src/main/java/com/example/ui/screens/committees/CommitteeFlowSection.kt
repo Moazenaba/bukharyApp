@@ -143,7 +143,9 @@ fun CommitteeFlowSection(committee: Committee) {
 
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         FlowCard {
-            Text("مرحلة اللجنة: ${d.str("lifecycleLabel")}", fontWeight = FontWeight.Bold, color = tFg(Primary900))
+            // Not the nine work stages (exam → ceremony): this is who may act on the committee now (admin, manager, members).
+            Text("الحالة الإدارية: ${d.str("lifecycleLabel")}", fontWeight = FontWeight.Bold, color = tFg(Primary900))
+            Text("مين يقدر يتعامل مع اللجنة دلوقتي. غير مراحل الامتحان والتصحيح.", style = MaterialTheme.typography.bodySmall, color = tFg(TextMuted))
             // Each step is a chip: done (✓, tinted), the current one (bold, outlined), the ones ahead (faint).
             FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 FlowSteps.all.forEachIndexed { i, s ->
