@@ -221,7 +221,7 @@ fun V2CommitteeScreen(c: Committee, data: V2Data, actions: V2Actions, tools: Set
         }
 
         // 7. The nine stages
-        item(key = "stages-t") { V2Section("المراحل") }
+        item(key = "stages-t") { V2Section("مراحل العمل (من الامتحان للحفل)") }
         item(key = "stages") {
             V2Group {
                 val current = STAGE_ORDER.firstOrNull { !c.stages.getStage(it).completed }

@@ -188,7 +188,7 @@ fun V2NowScreen(data: V2Data, actions: V2Actions, onOpen: (String) -> Unit) {
         if (!tipSeen && hero != null) item(key = "tip") {
             V2Group {
                 V2Row(
-                    "أول مرة هنا؟", "الكارت الكبير فيه الذي مطلوب منك الآن، وزرار واحد ملوّن لتنفيذه. باقي المواعيد تحته.",
+                    "أول مرة هنا؟", "الكارت الكبير فيه ما هو مطلوب منك الآن، وزرار واحد ملوّن لتنفيذه. باقي المواعيد تحته.",
                     mark = { V2Mark(icon = Icons.Default.Info) },
                     trailing = {
                         TextButton(onClick = { tipSeen = true; runCatching { prefs.edit().putBoolean("v2_tip_now", true).apply() } }, modifier = Modifier.heightIn(min = 48.dp)) {
@@ -201,7 +201,7 @@ fun V2NowScreen(data: V2Data, actions: V2Actions, onOpen: (String) -> Unit) {
         item(key = "now") {
             val now = hero
             if (now == null) {
-                V2Empty("لا يوجد ما هو مطلوب منك الآن", "أول ما يُسند إليك امتحان أو حفل أو مهمة ستجهذا هنا.")
+                V2Empty("لا يوجد ما هو مطلوب منك الآن", "أول ما يُسند إليك امتحان أو حفل أو مهمة ستجده هنا.")
             } else {
                 val committee = now.committeeId?.let { id -> data.committees.firstOrNull { it.id == id } }
                 val step = committee?.let { NextStep.of(it) { a -> canOn(a, it.id) } }
@@ -258,7 +258,7 @@ fun V2NowScreen(data: V2Data, actions: V2Actions, onOpen: (String) -> Unit) {
             v2Rows(later, key = { "later-${it.key}" }) { f -> V2FeedRow(f, data, onOpen) }
         }
         if (hero != null && rest.size < 4) item(key = "all-done") {
-            Text("هذا كل الذي عليك الآن.", style = V2Type.small, color = LocalV2.current.muted, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp))
+            Text("هذا كل ما عليك الآن.", style = V2Type.small, color = LocalV2.current.muted, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp))
         }
         val shownAbove = (listOfNotNull(hero) + rest).mapNotNull { it.committeeId }.toSet()
         val mine = data.committees.filter { (Permissions.inScope(it.id) || Permissions.observingOn(it.id).isNotEmpty()) && it.id !in shownAbove }
@@ -420,10 +420,20 @@ fun V2CeremoniesScreen(data: V2Data, onOpen: (String) -> Unit) {
         c.ceremonyDetails.attendees.any { it.id == data.user.id } || Permissions.canOn("committees.finalize", c.id) ||
             Permissions.observingOn(c.id).any { it.task == "ceremony" }
     }.filter { it.ceremonyDetails.date.isNotBlank() || !it.stages.ceremony.completed }
-        .sortedBy { it.ceremonyDetails.date.ifBlank { "9999" } }
+        // Coming ones first (nearest first), then those without a date yet, then held or past ones (latest first):
+        // a plain date order put last month's ceremonies above next week's.
+        .sortedWith(compareBy<Committee>({ c ->
+            val d = c.ceremonyDetails.date.take(10)
+            when {
+                !c.stages.ceremony.completed && d.isNotBlank() && d >= data.today -> 0
+                !c.stages.ceremony.completed && d.isBlank() -> 1
+                else -> 2
+            }
+        }, { c -> if (c.stages.ceremony.completed || c.ceremonyDetails.date.take(10) < data.today) "" else c.ceremonyDetails.date })
+            .thenByDescending { it.ceremonyDetails.date })
     V2Scroll {
         item(key = "list") {
-            if (list.isEmpty()) V2Empty("لا توجد حفلات لك بعد", "عند دعوتك لحفل سيصلك إشعار يظهر هنا بموعهذا ومكانه.")
+            if (list.isEmpty()) V2Empty("لا توجد حفلات لك بعد", "عند دعوتك لحفل سيصلك إشعار يظهر هنا بموعده ومكانه.")
             else V2Group {
                 list.forEachIndexed { i, c ->
                     if (i > 0) V2Divider()
@@ -931,15 +941,29 @@ fun V2ExamsScreen(data: V2Data, actions: V2Actions) {
 @Composable
 fun V2CalendarScreen(data: V2Data, actions: V2Actions, onOpen: (String) -> Unit) {
     val upcoming = data.tasks.filter { (!it.completed || it.date.take(10) == data.today) && it.date.take(10) >= data.today }.sortedBy { it.date + TodayFeedBuilder.minutesOf(it.time).toString().padStart(4, '0') }
-    val late = data.tasks.filter { !it.completed && it.date.isNotBlank() && it.date.take(10) < data.today }
+    // Oldest first: the one waiting longest is the one to deal with.
+    val late = data.tasks.filter { !it.completed && it.date.isNotBlank() && it.date.take(10) < data.today }.sortedBy { it.date }
+    val shown = upcoming.take(60)
     V2Scroll {
         if (late.isNotEmpty()) {
-            item(key = "late-t") { V2Section("متأخرة") }
+            item(key = "late-t") { V2Section("متأخرة (${late.size})") }
             v2Rows(late, key = { "late-${it.id}" }) { t -> V2TaskRow(t, data, actions, onOpen) }
         }
-        item(key = "up-t") { V2Section("القادم") }
-        if (upcoming.isEmpty()) item(key = "up-empty") { V2Empty("لا توجد مواعيد قادمة", "المهام المسجلة في التقويم تظهر هنا يوماً بيوم.") }
-        else v2Rows(upcoming.take(60), key = { "up-${it.id}" }) { t -> V2TaskRow(t, data, actions, onOpen) }
+        if (upcoming.isEmpty()) {
+            item(key = "up-t") { V2Section("القادم") }
+            item(key = "up-empty") { V2Empty("لا توجد مواعيد قادمة", "المهام المسجلة في التقويم تظهر هنا يوماً بيوم.") }
+        } else {
+            // One heading per day («اليوم», «بكرة», «يوم الخميس», «الأحد 7/12»), so a long list reads as a calendar.
+            shown.groupBy { it.date.take(10) }.forEach { (day, tasks) ->
+                val label = DayText.relative(day, data.today).let { r -> if (r.startsWith("يوم ") || r == "اليوم" || r == "بكرة") "$r · ${DayText.shortDate(day)}" else r.ifBlank { day } }
+                item(key = "day-$day") { V2Section(label) }
+                v2Rows(tasks, key = { "up-${it.id}" }) { t -> V2TaskRow(t, data, actions, onOpen) }
+            }
+            if (upcoming.size > shown.size) item(key = "more") {
+                Text("يظهر أقرب ${shown.size} موعد من ${upcoming.size}.", style = V2Type.small, color = LocalV2.current.muted,
+                    textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp))
+            }
+        }
     }
 }
 
