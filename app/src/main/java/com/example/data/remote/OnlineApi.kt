@@ -128,8 +128,16 @@ object OnlineApi {
     // ---------------------------------------------------------------- courses
 
     /** Short fingerprint of all server data (GET /api/sync/state); null on an older server. */
-    suspend fun syncVersion(): String? = runCatching {
-        mapAdapter.fromJson(call("GET", "api/sync/state"))?.get("version") as? String
+    /** The server's data fingerprint, whole and per list ([parts] is null on an older server). */
+    data class SyncState(val version: String?, val parts: Map<String, String>?)
+
+    /** GET /api/sync/state: a few hundred bytes; null when the server could not be reached. */
+    suspend fun syncState(): SyncState? = runCatching {
+        val map = mapAdapter.fromJson(call("GET", "api/sync/state"))
+        SyncState(
+            map?.get("version") as? String,
+            (map?.get("parts") as? Map<*, *>)?.entries?.associate { (k, v) -> k.toString() to v.toString() }
+        )
     }.getOrNull()
 
     suspend fun saveCourse(course: Map<String, Any?>) { call("POST", "api/courses", course) }

@@ -175,6 +175,10 @@ interface ApiService {
     @GET("api/users")
     suspend fun getUsers(): Response<UsersResponse>
 
+    /** The same list as raw JSON, read once for both the local accounts and the management list. */
+    @GET("api/users")
+    suspend fun getUsersRaw(): Response<okhttp3.ResponseBody>
+
     /** Exam metadata only; the PDF is downloaded on demand by allowed roles. */
     @GET("api/exams")
     suspend fun getExams(): Response<ExamsResponse>

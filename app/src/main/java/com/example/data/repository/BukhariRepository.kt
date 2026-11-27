@@ -5,6 +5,7 @@ import androidx.room.withTransaction
 import com.example.data.local.AppDatabase
 import com.example.data.local.entities.AppUserEntity
 import com.example.data.local.entities.CommitteeEntity
+import com.example.data.local.entities.CourseEntity
 import com.example.data.local.entities.CustomPermissionEntity
 import com.example.data.local.entities.ExamEntity
 import com.example.data.local.entities.PendingOpEntity
@@ -31,6 +32,7 @@ import com.example.data.remote.ApiClient
 import com.example.data.remote.ApiService
 import com.example.data.remote.Permissions
 import com.example.data.remote.SheetRowDto
+import com.example.data.remote.StaffUserDto
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -60,7 +62,35 @@ sealed interface WriteResult {
     data class Rejected(val message: String) : WriteResult
 }
 
-data class SyncResult(val online: Boolean, val message: String)
+/**
+ * [staff]: the people list (GET /api/users) when it was downloaded in this sync, for the management screens,
+ * so the same list is not downloaded twice.
+ */
+data class SyncResult(val online: Boolean, val message: String, val staff: List<StaffUserDto>? = null)
+
+/**
+ * The lists a sync can download, named as the parts of the server's fingerprint (GET /api/sync/state).
+ * Null means all of them.
+ */
+object SyncSections {
+    const val COURSES = "courses"
+    const val COMMITTEES = "committees"
+    const val USERS = "users"
+    const val EXAMS = "exams"
+    const val TASKS = "tasks"
+    const val NOTIFICATIONS = "notifications"
+    const val PERMISSIONS = "permissions"
+    const val SHEET = "sheet"
+
+    /**
+     * Which lists to download, given the fingerprint parts at the last full load and now: null (all) on the first
+     * load, from an older server without parts, or when the person's own account changed (role, scope).
+     */
+    fun changed(previous: Map<String, String>?, current: Map<String, String>?): Set<String>? {
+        if (previous == null || current == null || previous["me"] != current["me"]) return null
+        return current.filter { (k, v) -> k != "me" && previous[k] != v }.keys
+    }
+}
 
 /**
  * Local-first data layer: reads come from Room (filled from the server by [syncWithRemoteApi]);
@@ -106,34 +136,45 @@ class BukhariRepository(
      * with the server's copy, so edits and deletions from the web show up here. A table
      * the user may not read is left as it is.
      */
-    suspend fun syncWithRemoteApi(): SyncResult = withContext(Dispatchers.IO) {
+    suspend fun syncWithRemoteApi(only: Set<String>? = null): SyncResult = withContext(Dispatchers.IO) {
         if (!ApiClient.isConfigured) return@withContext SyncResult(false, "لم يتم ضبط عنوان الخادم")
         ApiClient.skippedRecords = 0
-        val waiting = flushPendingOps().waiting
+        val flush = flushPendingOps()
+        val waiting = flush.waiting
         if (waiting > 0) {
             lastSyncOnline = false
             return@withContext SyncResult(false, "توجد $waiting تعديلات بانتظار الإرسال؛ سيتم التحديث بعد إرسالها")
         }
+        // A refused write was already shown on this phone: everything is reloaded so the server's copy replaces it.
+        val sections = if (flush.outcomes.values.any { it is WriteResult.Rejected }) null else only
+        fun wants(section: String) = sections == null || section in sections
         try {
-            val coursesRes = api.getCourses()
-            if (coursesRes.code() == 401) {
-                ApiClient.onUnauthorized?.invoke()
-                return@withContext SyncResult(false, "انتهت الجلسة")
+            var courses: List<CourseEntity>? = null
+            if (wants(SyncSections.COURSES)) {
+                val coursesRes = api.getCourses()
+                if (coursesRes.code() == 401) {
+                    ApiClient.onUnauthorized?.invoke()
+                    return@withContext SyncResult(false, "انتهت الجلسة")
+                }
+                if (!coursesRes.isSuccessful) {
+                    lastSyncOnline = false
+                    return@withContext SyncResult(false, "تعذر التحديث من الخادم (HTTP ${coursesRes.code()})")
+                }
+                courses = coursesRes.body()?.courses
             }
-            if (!coursesRes.isSuccessful) {
-                lastSyncOnline = false
-                return@withContext SyncResult(false, "تعذر التحديث من الخادم (HTTP ${coursesRes.code()})")
-            }
-            val courses = coursesRes.body()?.courses
-            val committees = api.getCommittees().bodyIfOk()?.committees
-            val users = if (Permissions.can("users.read")) api.getUsers().bodyIfOk()?.users else null
+            val committees = if (wants(SyncSections.COMMITTEES)) api.getCommittees().bodyIfOk()?.committees else null
+            // One download of the people list serves the local accounts and the management screens.
+            val people = if (wants(SyncSections.USERS) && Permissions.can("users.read")) api.getUsersRaw().bodyIfOk()?.use { readPeople(it.string()) } else null
+            val users = people?.first
             // A screen the user may not open is emptied, so nothing cached under an older role stays visible.
-            val exams = if (Permissions.can("exams.read")) api.getExams().bodyIfOk()?.exams else emptyList()
-            val tasks = api.getTasks().bodyIfOk()?.tasks
-            val notifications = api.getNotifications().bodyIfOk()?.notifications
-            val customPermissions = api.getCustomPermissions().bodyIfOk()?.permissions
-            if (Permissions.can("summerRows.read")) api.getSheetRows().bodyIfOk()?.rows?.let { _sheetRows.value = it }
-            else _sheetRows.value = emptyList()
+            val exams = if (!wants(SyncSections.EXAMS)) null else if (Permissions.can("exams.read")) api.getExams().bodyIfOk()?.exams else emptyList()
+            val tasks = if (wants(SyncSections.TASKS)) api.getTasks().bodyIfOk()?.tasks else null
+            val notifications = if (wants(SyncSections.NOTIFICATIONS)) api.getNotifications().bodyIfOk()?.notifications else null
+            val customPermissions = if (wants(SyncSections.PERMISSIONS)) api.getCustomPermissions().bodyIfOk()?.permissions else null
+            if (wants(SyncSections.SHEET)) {
+                if (Permissions.can("summerRows.read")) api.getSheetRows().bodyIfOk()?.rows?.let { _sheetRows.value = it }
+                else _sheetRows.value = emptyList()
+            }
 
             db.withTransaction {
                 courses?.let { db.courseDao().clearAll(); db.courseDao().insertCourses(it) }
@@ -153,7 +194,7 @@ class BukhariRepository(
             }
             lastSyncAt = System.currentTimeMillis()
             lastSyncOnline = true
-            SyncResult(true, "تم التحديث من الخادم")
+            SyncResult(true, "تم التحديث من الخادم", staff = people?.second)
         } catch (e: Exception) {
             Log.w(tag, "Sync failed: ${e.message}")
             lastSyncOnline = false
@@ -162,6 +203,17 @@ class BukhariRepository(
     }
 
     private fun <T> Response<T>.bodyIfOk(): T? = if (isSuccessful) body() else null
+
+    /** GET /api/users read as the local account rows and as the management list, from one download. */
+    private fun readPeople(json: String): Pair<List<AppUserEntity>, List<StaffUserDto>>? {
+        val moshi = ApiClient.moshi
+        val users = moshi.adapter(com.example.data.remote.UsersResponse::class.java).fromJson(json)?.users ?: return null
+        val staffType = com.squareup.moshi.Types.newParameterizedType(List::class.java, StaffUserDto::class.java)
+        val mapType = com.squareup.moshi.Types.newParameterizedType(Map::class.java, String::class.java, Any::class.java)
+        val raw = moshi.adapter<Map<String, Any?>>(mapType).fromJson(json)?.get("users")
+        val staff = moshi.adapter<List<StaffUserDto>>(staffType).fromJsonValue(raw) ?: emptyList()
+        return users to staff
+    }
 
     // ------------------------------------------------------------------ write queue
 
