@@ -28,7 +28,7 @@ class NoticeTimeTest {
         assertTrue(NoticeTime.short("2026-11-20T08:00:00.000Z", now).contains("20/11"))
     }
 
-    @Test fun `server timestamps with microseconds are read`() {
-        assertTrue(NoticeTime.parse("2026-11-27T09:55:00.123456Z") != null)
+    @Test fun `server timestamps with microseconds are read to the millisecond`() {
+        assertEquals(NoticeTime.parse("2026-11-27T09:55:00.123Z"), NoticeTime.parse("2026-11-27T09:55:00.123456Z"))
     }
 }

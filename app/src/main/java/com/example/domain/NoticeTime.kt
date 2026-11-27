@@ -16,9 +16,15 @@ object NoticeTime {
     private val CAIRO: TimeZone = TimeZone.getTimeZone("Africa/Cairo")
     private val ARABIC = Locale.forLanguageTag("ar-u-nu-latn")
 
-    /** Server timestamps (ISO, UTC); null when unreadable. */
-    fun parse(iso: String): Date? = listOf("yyyy-MM-dd'T'HH:mm:ss.SSSX", "yyyy-MM-dd'T'HH:mm:ssX", "yyyy-MM-dd'T'HH:mm:ss.SSSSSSX")
-        .firstNotNullOfOrNull { f -> runCatching { SimpleDateFormat(f, Locale.US).apply { isLenient = false }.parse(iso) }.getOrNull() }
+    /**
+     * Server timestamps (ISO, UTC); null when unreadable. Fractions of a second are cut to milliseconds first:
+     * SimpleDateFormat reads «.123456» as 123456 milliseconds (wrong by two minutes) or refuses it.
+     */
+    fun parse(iso: String): Date? {
+        val text = iso.trim().replace(Regex("""(\.\d{3})\d+"""), "$1")
+        return listOf("yyyy-MM-dd'T'HH:mm:ss.SSSX", "yyyy-MM-dd'T'HH:mm:ssX")
+            .firstNotNullOfOrNull { f -> runCatching { SimpleDateFormat(f, Locale.US).apply { isLenient = false }.parse(text) }.getOrNull() }
+    }
 
     private fun dayIndex(time: Long): Long {
         val c = Calendar.getInstance(CAIRO).apply { timeInMillis = time }
