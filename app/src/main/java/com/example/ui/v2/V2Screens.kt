@@ -1,6 +1,8 @@
 package com.example.ui.v2
 
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Settings
 import com.example.ui.components.UiMessages
@@ -509,7 +511,8 @@ fun V2PeopleScreen(data: V2Data, actions: V2Actions, tools: Set<V2Tool>) {
     var approving by remember { mutableStateOf<StaffUserDto?>(null) }
     var approvingId by remember { mutableStateOf<String?>(null) }
     val requests = data.staff.filter { it.status == "pending" && it.role != "super_admin" }
-    val approved = data.staff.filter { it.status == "approved" }
+    // Everyone the server sends, except people still waiting (they are above): approved, and also those who were declined or paused.
+    val approved = data.staff.filter { it.status != "pending" }
         .filter { query.isBlank() || it.name.contains(query.trim()) || it.phone.contains(query.trim()) }
         .sortedWith(compareBy<StaffUserDto> { roleOrder(it.role) }.thenBy { it.name })
     V2Scroll {
@@ -542,7 +545,7 @@ fun V2PeopleScreen(data: V2Data, actions: V2Actions, tools: Set<V2Tool>) {
                     val committees = if (u.allCommitteesAllowed) "كل اللجان" else if (u.assignedCommitteeIds.isEmpty()) "بدون لجان" else v2Count(u.assignedCommitteeIds.size, "لجنة واحدة", "لجنتين", "لجان", "لجنة")
                     V2Row(
                         title = u.name,
-                        subtitle = "${roleName(u.role)} · $committees",
+                        subtitle = listOfNotNull(roleName(u.role), committees, if (u.status == "approved") null else "غير مفعّل").joinToString(" · "),
                         mark = { V2Avatar(u.name) },
                         trailing = { if (u.phone.isNotBlank()) V2CallButton(u.name) { V2Intents.call(context, u.phone) } }
                     )
@@ -568,8 +571,8 @@ fun V2PeopleScreen(data: V2Data, actions: V2Actions, tools: Set<V2Tool>) {
     }
 }
 
-private fun roleOrder(role: String) = when (role) { "super_admin" -> 0; "admin" -> 1; "committee_head" -> 2; else -> 3 }
-fun roleName(role: String) = when (role) { "super_admin" -> "مشرف عام"; "admin" -> "أدمن"; "committee_head" -> "رئيس لجنة"; else -> "شيخ" }
+private fun roleOrder(role: String) = when (role) { "super_admin" -> 0; "admin" -> 1; "exams_manager" -> 2; "committee_head" -> 3; else -> 4 }
+fun roleName(role: String) = when (role) { "super_admin" -> "مشرف عام"; "admin" -> "أدمن"; "exams_manager" -> "مدير الحفلات والامتحانات"; "committee_head" -> "رئيس لجنة"; else -> "شيخ" }
 
 // ------------------------------------------------------------------------------------------- المزيد / حسابي
 
@@ -592,7 +595,7 @@ fun V2MoreScreen(data: V2Data, actions: V2Actions, tools: Set<V2Tool>, onPage: (
                 V2Row("التقويم", if (todays > 0) v2Count(todays, "مهمة اليوم", "مهمتين اليوم", "مهام اليوم", "مهمة اليوم") else "المواعيد والمهام", mark = { V2Mark(icon = Icons.Default.CalendarMonth) }, onClick = { onPage(V2Page.CALENDAR) })
                 if (V2Tool.SEND_NOTICE in tools) {
                     V2Divider()
-                    V2Row("إرسال تنبيه", "يوصل لكل المستخدمين", mark = { V2Mark(icon = Icons.Default.Campaign) }, onClick = { sending = true })
+                    V2Row("إرسال تنبيه", "للجميع، أو لفئة، أو لأشخاص محددين", mark = { V2Mark(icon = Icons.Default.Campaign) }, onClick = { sending = true })
                 }
                 if (data.courses.size > 1) {
                     V2Divider()
@@ -613,7 +616,7 @@ fun V2MoreScreen(data: V2Data, actions: V2Actions, tools: Set<V2Tool>, onPage: (
         }
         item(key = "account") { V2AccountRows(data, actions) }
     }
-    if (sending) V2NoticeDialog(onDismiss = { sending = false }) { t, b, done -> actions.sendNotice(t, b) { ok -> done(ok); if (ok) sending = false } }
+    if (sending) V2NoticeDialog(data.staff, actions.loadStaff, onDismiss = { sending = false }) { t, b, audience, done -> actions.sendNoticeTo(t, b, audience) { ok -> done(ok); if (ok) sending = false } }
     if (choosingCourse) {
         AlertDialog(
             onDismissRequest = { choosingCourse = false },
@@ -697,27 +700,92 @@ private fun V2AccountRows(data: V2Data, actions: V2Actions) {
     }
 }
 
+private enum class NoticeTo(val label: String) { ALL("للجميع"), GROUP("لفئة معينة"), PEOPLE("لأشخاص محددين") }
+
+/** The categories of people a notice can go to: the jobs on committees (server `staffRole`). */
+private val NOTICE_GROUPS = listOf("observer" to "المراقبون", "ceremony_sheikh" to "مشايخ الحفلات", "owner" to "مشايخ اللجان (أصحاب اللجان)")
+
+/**
+ * «إرسال تنبيه»: to everyone, to a category (observers, ceremony sheikhs, committee sheikhs), or to people picked
+ * from the system (one or many). A message to everyone is sent on the second tap.
+ */
 @Composable
-private fun V2NoticeDialog(onDismiss: () -> Unit, onSend: (String, String, (Boolean) -> Unit) -> Unit) {
+private fun V2NoticeDialog(
+    staff: List<StaffUserDto>,
+    onLoadStaff: () -> Unit,
+    onDismiss: () -> Unit,
+    onSend: (String, String, Map<String, Any?>, (Boolean) -> Unit) -> Unit
+) {
     var title by remember { mutableStateOf("") }
     var body by remember { mutableStateOf("") }
     var sent by remember { mutableStateOf(false) }
-    // A message to everyone is sent on the second tap: the first tap turns the button into a plain warning.
+    var to by remember { mutableStateOf(NoticeTo.ALL) }
+    var groups by remember { mutableStateOf(setOf<String>()) }
+    var picked by remember { mutableStateOf(setOf<String>()) }
+    var query by remember { mutableStateOf("") }
     var armed by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { if (staff.isEmpty()) onLoadStaff() }
+    val people = staff.filter { it.status == "approved" && (query.isBlank() || it.name.contains(query.trim()) || it.phone.contains(query.trim())) }.sortedBy { it.name }
+    val audience: Map<String, Any?>? = when (to) {
+        NoticeTo.ALL -> mapOf("kind" to "all")
+        NoticeTo.GROUP -> when (groups.size) {
+            0 -> null
+            1 -> mapOf("kind" to "staffRole", "staffRole" to groups.first())
+            else -> mapOf("kind" to "staffRole", "staffRoles" to groups.toList())
+        }
+        NoticeTo.PEOPLE -> if (picked.isEmpty()) null else mapOf("kind" to "users", "userIds" to picked.toList())
+    }
+    val heading = when (to) {
+        NoticeTo.ALL -> "إرسال تنبيه للجميع"
+        NoticeTo.GROUP -> "إرسال تنبيه لفئة"
+        NoticeTo.PEOPLE -> if (picked.size == 1) "إرسال تنبيه لشخص" else "إرسال تنبيه لأشخاص"
+    }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("إرسال تنبيه للجميع", style = V2Type.heading) },
+        title = { Text(heading, style = V2Type.heading) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Column(Modifier.heightIn(max = 460.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 OutlinedTextField(title, { title = it; armed = false }, label = { Text("العنوان") }, singleLine = true, textStyle = V2Type.body, shape = RoundedCornerShape(16.dp), colors = v2FieldColors(), modifier = Modifier.fillMaxWidth())
                 OutlinedTextField(body, { body = it; armed = false }, label = { Text("التفاصيل") }, minLines = 3, textStyle = V2Type.body, shape = RoundedCornerShape(16.dp), colors = v2FieldColors(), modifier = Modifier.fillMaxWidth())
+                Text("إلى مين؟", style = V2Type.label, color = LocalV2.current.muted)
+                V2Group {
+                    NoticeTo.values().forEachIndexed { i, o ->
+                        if (i > 0) V2Divider()
+                        V2Row(o.label, onClick = { to = o; armed = false }, selected = to == o,
+                            mark = { Icon(if (to == o) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked, null) })
+                    }
+                }
+                when (to) {
+                    NoticeTo.ALL -> Text("يوصل لكل المستخدمين المعتمدين.", style = V2Type.small, color = LocalV2.current.muted)
+                    NoticeTo.GROUP -> V2Group {
+                        NOTICE_GROUPS.forEachIndexed { i, (key, label) ->
+                            if (i > 0) V2Divider()
+                            V2Row(label, onClick = { groups = if (key in groups) groups - key else groups + key; armed = false }, selected = key in groups, multiple = true,
+                                mark = { Icon(if (key in groups) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked, null) })
+                        }
+                    }
+                    NoticeTo.PEOPLE -> {
+                        V2SearchField(query, { query = it }, "الاسم أو رقم الموبايل")
+                        if (staff.isEmpty()) Text("جارٍ تحميل المستخدمين…", style = V2Type.small, color = LocalV2.current.muted)
+                        else if (people.isEmpty()) Text("لا يوجد نتيجة للبحث.", style = V2Type.small, color = LocalV2.current.muted)
+                        else V2Group {
+                            people.forEachIndexed { i, u ->
+                                if (i > 0) V2Divider()
+                                V2Row(u.name, roleName(u.role), onClick = { picked = if (u.id in picked) picked - u.id else picked + u.id; armed = false }, selected = u.id in picked, multiple = true,
+                                    mark = { Icon(if (u.id in picked) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked, null) })
+                            }
+                        }
+                        if (picked.isNotEmpty()) Text("تم اختيار ${picked.size}", style = V2Type.small, color = LocalV2.current.muted)
+                    }
+                }
             }
         },
         confirmButton = {
-            TextButton(enabled = title.isNotBlank() && !sent, onClick = {
-                if (!armed) armed = true
-                else { sent = true; onSend(title.trim(), body.trim()) { ok -> if (!ok) { sent = false; armed = false } } }
-            }) { Text(if (armed) "تأكيد الإرسال للجميع" else "إرسال", style = V2Type.bodyStrong, color = if (armed) LocalV2.current.brick else LocalV2.current.ink) }
+            val everyone = to == NoticeTo.ALL
+            TextButton(enabled = title.isNotBlank() && audience != null && !sent, onClick = {
+                if (everyone && !armed) armed = true
+                else { sent = true; onSend(title.trim(), body.trim(), audience!!) { ok -> if (!ok) { sent = false; armed = false } } }
+            }) { Text(if (everyone && armed) "تأكيد الإرسال للجميع" else "إرسال", style = V2Type.bodyStrong, color = if (everyone && armed) LocalV2.current.brick else LocalV2.current.ink) }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("إلغاء", style = V2Type.body) } }
     )

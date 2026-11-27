@@ -502,6 +502,8 @@ class MainActivity : ComponentActivity() {
                                             ) { }
                                         },
                                         sendNotice = { t, b, done -> viewModel.sendNotification(t, b, "info", null, done) },
+                                        sendNoticeTo = { t, b, audience, done -> viewModel.sendNotificationTo(t, b, audience, done) },
+                                        setStage = { c, key, done -> viewModel.toggleStage(c.id, key, !done) },
                                         selectCourse = { viewModel.setSelectedCourseId(it) },
                                         v2Theme = { key ->
                                             v2Theme.value = key

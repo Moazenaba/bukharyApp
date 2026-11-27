@@ -198,6 +198,11 @@ object OnlineApi {
         call("POST", "api/notifications", mapOf("title" to title, "description" to description, "type" to type, "committeeId" to committeeId))
     }
 
+    /** A message to a chosen audience (the server's `audience`: all / staffRole / users...). Returns how many people it reached. */
+    suspend fun sendNotificationTo(title: String, description: String, audience: Map<String, Any?>) {
+        call("POST", "api/notifications", mapOf("title" to title, "description" to description, "type" to "info", "audience" to audience))
+    }
+
     suspend fun markAllNotificationsRead() { call("POST", "api/notifications/read-all") }
 
     /** Registers this phone for push notifications (FCM). */
