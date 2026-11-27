@@ -224,7 +224,9 @@ fun UsersManagementScreen(
                 if (shownApproved.isEmpty() && !isLoading) item { Text("لا يوجد مستخدمون مطابقون", color = tFg(TextMuted)) }
                 items(shownApproved, key = { it.id }) { u ->
                     val profile = profiles.find { it.id == u.profileId }
-                    val canEditUser = canGrant || (u.role == "sheikh" && canManage) || u.id == me.id
+                    // Another admin's account is shown to an admin but only a super admin changes it.
+                    val readOnlyAdmin = u.role == "admin" && !isSuperAdmin && u.id != me.id
+                    val canEditUser = !readOnlyAdmin && (canGrant || (u.role == "sheikh" && canManage) || u.id == me.id)
                     val placedOn = committees.count { c -> c.staff.any { it.id == u.id } }
                     val invitedTo = committees.filter { c -> c.ceremonyDetails.attendees.any { it.id == u.id } }
                     val canPlace = (u.role == "sheikh" || (u.role == "committee_head" && canGrant)) &&
@@ -241,10 +243,11 @@ fun UsersManagementScreen(
                                         if (u.role == "super_admin") Text("  👑 سوبر أدمن", style = MaterialTheme.typography.labelSmall, color = tFg(Color(0xFF92400E)))
                                     }
                                     Text("📞 ${u.phone} • ${roleLabel(u.role)}", style = MaterialTheme.typography.bodySmall, color = tFg(TextMuted))
+                                    if (readOnlyAdmin) Text("حساب أدمن: للعرض فقط، يعدّله المشرف العام", style = MaterialTheme.typography.labelSmall, color = tFg(TextMuted))
                                     if (u.mustChangePassword) Text("بانتظار تغيير كلمة المرور المؤقتة", style = MaterialTheme.typography.labelSmall, color = tFg(Color(0xFFB45309)))
                                 }
                                 if (canEditUser) IconButton(onClick = { editing = u }) { Icon(Icons.Default.Edit, "تعديل ${u.name}", tint = tFg(Primary700)) }
-                                if (u.role != "super_admin" && u.id != me.id && canDelete) IconButton(onClick = { deleting = u }) { Icon(Icons.Default.Delete, "حذف الحساب", tint = tFg(Danger)) }
+                                if (!readOnlyAdmin && u.role != "super_admin" && u.id != me.id && canDelete) IconButton(onClick = { deleting = u }) { Icon(Icons.Default.Delete, "حذف الحساب", tint = tFg(Danger)) }
                             }
                             InfoLine(
                                 "نظام الصلاحية المطبق:",
@@ -286,7 +289,7 @@ fun UsersManagementScreen(
                                 if (canPlace) {
                                     Button(onClick = { placing = u }) { Text("اللجان والحفلات") }
                                 }
-                                if (canGrant && u.role != "super_admin" && profiles.isNotEmpty()) {
+                                if (canGrant && !readOnlyAdmin && u.role != "super_admin" && profiles.isNotEmpty()) {
                                     OutlinedButton(onClick = { assigningProfile = u }) { Text("تغيير نظام الصلاحية") }
                                 }
                                 if (isSuperAdmin && u.id != me.id) {
