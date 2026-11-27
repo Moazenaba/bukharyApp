@@ -259,8 +259,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     @Volatile private var lastRefreshAt = 0L
-    /** Server data fingerprint at the last full refresh; a periodic check that finds it unchanged downloads nothing. */
-    @Volatile private var lastServerVersion: String? = null
+    /**
+     * The server's per-list fingerprint at the last successful load (GET /api/sync/state `parts`): a refresh
+     * downloads only the lists whose part changed since, and nothing at all when none did.
+     */
+    @Volatile private var lastParts: Map<String, String>? = null
+    /** Refused writes already announced, so the same ones are not announced again on every refresh. */
+    @Volatile private var announcedRefused = 0
 
     /**
      * Keeps the screens current while the app is on screen: called when the app comes back to the
@@ -270,20 +275,26 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun refreshWhileVisible() {
         if (!_isLoggedIn.value || _isSyncing.value || !_isNetworkAvailable.value) return
         if (System.currentTimeMillis() - lastRefreshAt < 15_000) return
-        viewModelScope.launch {
-            // A few bytes first; the full lists (megabytes for a large course) only when something changed.
-            val version = OnlineApi.syncVersion()
-            if (version != null && version == lastServerVersion && _unsentCount.value == 0) return@launch
-            refreshFromServer()
-        }
+        // A few hundred bytes first; a list (megabytes for a large course) only when it changed.
+        viewModelScope.launch { refreshFromServer() }
     }
 
-    /** Sends queued writes, reloads data and the user's permissions from the server. */
-    private suspend fun refreshFromServer(): Boolean = syncMutex.withLock {
+    /**
+     * Sends queued writes, then reloads from the server what changed since the last load (all of it with
+     * [force], on the first load, or when the person's own account changed), and the user's permissions.
+     * Use [force] when this phone shows something the server does not have (a refused or discarded write).
+     */
+    private suspend fun refreshFromServer(force: Boolean = false): Boolean = syncMutex.withLock {
         lastRefreshAt = System.currentTimeMillis()
-        _isSyncing.value = true
         // Read before loading, so a change made while loading is picked up by the next check.
-        val versionBefore = OnlineApi.syncVersion()
+        val state = OnlineApi.syncState()
+        val changed = if (force) null else com.example.data.repository.SyncSections.changed(lastParts, state?.parts)
+        // Nothing changed on the server and nothing waits here: no download at all.
+        if (changed != null && changed.isEmpty() && _unsentCount.value == 0 && repository.unsentCount() == 0) {
+            _lastSyncOk.value = true
+            return@withLock true
+        }
+        _isSyncing.value = true
         try {
             val me = authService.refreshMe()?.also { me ->
                 repository.cacheUser(me)
@@ -295,25 +306,25 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 _lastSyncOk.value = true
                 return@withLock true
             }
-            val result = repository.syncWithRemoteApi()
+            val result = repository.syncWithRemoteApi(changed)
             val status = repository.getDatabaseStatus()
             _databaseStatus.value = status
             _unsentCount.value = repository.unsentCount()
             val syncSuccess = result.online && status.pendingWrites == 0
             _lastSyncOk.value = syncSuccess
             if (syncSuccess) {
-                // Lists that only the management screens use, loaded with the rest like on the web.
-                try { _books.value = OnlineApi.books() } catch (_: Exception) { }
-                try { com.example.data.remote.AppSettings.current = OnlineApi.settings() } catch (_: Exception) { }
-                if (com.example.data.remote.Permissions.can("users.read")) {
-                    try { _staffUsers.value = OnlineApi.users() } catch (_: Exception) { }
-                }
-                lastServerVersion = versionBefore
+                // Lists that only the management screens use, loaded with the rest like on the web, when they changed.
+                if (changed == null || "books" in changed) try { _books.value = OnlineApi.books() } catch (_: Exception) { }
+                if (changed == null || "settings" in changed) try { com.example.data.remote.AppSettings.current = OnlineApi.settings() } catch (_: Exception) { }
+                result.staff?.let { _staffUsers.value = it }
+                lastParts = state?.parts
             }
-            // Writes the background worker sent and the server refused are reported, not lost (MOB-03).
-            if (status.refusedWrites.isNotEmpty()) {
-                showMessage("رفض الخادم ${status.refusedWrites.size} من التعديلات المرسلة؛ راجعها في «حالة البيانات والمزامنة»")
+            // Writes the background worker sent and the server refused are reported, not lost (MOB-03), once.
+            val refused = status.refusedWrites.size
+            if (refused > announcedRefused) {
+                showMessage("رفض الخادم $refused من التعديلات المرسلة؛ راجعها في «حالة البيانات والمزامنة»")
             }
+            announcedRefused = refused
             syncSuccess
         } finally {
             _isSyncing.value = false
@@ -323,7 +334,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     /** [onDone] runs when the refresh has really finished (success or not), so a screen can stop its spinner then. */
     fun syncNow(onDone: () -> Unit = {}) {
         viewModelScope.launch {
-            val ok = refreshFromServer()
+            val ok = refreshFromServer(force = true)
             showMessage(if (ok) "تم التحديث من الخادم" else "تعذر التحديث من الخادم؛ تعرض آخر بيانات محفوظة")
             onDone()
         }
@@ -339,7 +350,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
             is WriteResult.Rejected -> {
                 showMessage(result.message)
-                refreshFromServer()
+                refreshFromServer(force = true)
             }
         }
         _databaseStatus.value = repository.getDatabaseStatus()
@@ -418,7 +429,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     _currentNavScreen.value = AppNavScreen.HOME
                     _isLoggedIn.value = true
                     showMessage("أهلاً وسهلاً، ${result.user.name}")
-                    refreshFromServer()
+                    lastParts = null
+                    refreshFromServer(force = true)
                     com.example.push.PushNotifications.register(getApplication())
                 }
                 is AuthResult.Error -> { _loginError.value = result.message; showMessage(result.message) }
@@ -525,6 +537,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         if (revoke) authService.logout(com.example.push.PushNotifications.tokenForLogout(getApplication())) else authService.forgetSession()
         com.example.push.PushNotifications.forget(getApplication())
         repository.clearAllData(keepQueue = !discardUnsent)
+        // The local copy is gone: the next sign-in loads every list again.
+        lastParts = null
+        announcedRefused = 0
         deleteExamFiles()
         _databaseStatus.value = null
         _assignableUsers.value = emptyList()
@@ -705,7 +720,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun discardFailedWrites() {
         viewModelScope.launch {
             repository.discardFailedWrites()
-            refreshFromServer()
+            refreshFromServer(force = true)
             showMessage("تم تجاهل التعديلات التي تعذر إرسالها واستعادة بيانات الخادم")
         }
     }
@@ -713,7 +728,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     /** Sends a refused write again after reloading the server's current data (e.g. after a conflict). */
     fun retryRefusedWrite(id: Long) {
         viewModelScope.launch {
-            refreshFromServer()
+            refreshFromServer(force = true)
             val report = repository.retryRefusedWrite(id)
             val outcome = report.outcomes[id]
             showMessage(if (outcome is WriteResult.Rejected) "رفض الخادم التعديل مرة أخرى: ${outcome.message}" else "تمت إعادة إرسال التعديل")
@@ -724,7 +739,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun discardRefusedWrite(id: Long) {
         viewModelScope.launch {
             repository.discardRefusedWrite(id)
-            refreshFromServer()
+            refreshFromServer(force = true)
             showMessage("تم حذف التعديل المرفوض واستعادة بيانات الخادم")
         }
     }
