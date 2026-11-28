@@ -68,7 +68,7 @@ fun SimpleCeremoniesScreen(
                 PlaceRow(Logistics.ceremonyPlaceOf(c))
                 if (d.honoreesCount > 0) Text("عدد المكرمين: ${d.honoreesCount}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
                 val head = Logistics.headOf(c)
-                ContactRow("رئيس اللجنة", head?.name.orEmpty(), head?.phone.orEmpty(), "لسه ما اتسندش رئيس لجنة")
+                ContactRow("شيخ اللجنة", head?.name.orEmpty(), head?.phone.orEmpty(), "لسه ما اتسندش شيخ لجنة")
                 if (others.isNotEmpty()) Text("معك: ${others.joinToString("، ") { it.name }}", style = MaterialTheme.typography.bodySmall, color = tFg(TextMuted))
                 if (d.notes.isNotBlank()) Text(d.notes, style = MaterialTheme.typography.bodySmall, color = tFg(TextMuted))
                 if (c.stages.ceremony.completed) StatusPill("تم الحفل", Tone.SUCCESS)

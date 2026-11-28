@@ -82,7 +82,7 @@ fun CommitteeStaffSection(
             } else {
                 ChipFlow(Modifier, 6.dp) {
                     committee.staff.forEach { s ->
-                        AssistChip(onClick = {}, label = { Text(if (s.role == "committee_head") "${s.name} · رئيس لجنة" else s.name) })
+                        AssistChip(onClick = {}, label = { Text(if (s.role == "committee_head") "${s.name} · شيخ لجنة" else s.name) })
                     }
                 }
             }

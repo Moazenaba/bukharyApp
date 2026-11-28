@@ -91,7 +91,6 @@ fun V2CommitteeScreen(c: Committee, data: V2Data, actions: V2Actions, tools: Set
     val step = NextStep.of(c) { a -> Permissions.canOn(a, c.id) }
     var confirm by remember { mutableStateOf(false) }
     val confirmed = rememberV2Confirm()
-    var editingStaff by remember { mutableStateOf(false) }
     // An admin changes the committee's stage from here: tap the current stage to complete it, or the last done one to reopen it.
     var stageToChange by remember { mutableStateOf<String?>(null) }
     val head = Logistics.headOf(c)
@@ -153,8 +152,8 @@ fun V2CommitteeScreen(c: Committee, data: V2Data, actions: V2Actions, tools: Set
                 }
                 V2Divider()
                 V2Row(
-                    title = head?.name ?: "لم يُسند رئيس لجنة بعد",
-                    subtitle = if (head == null) null else if (head.phone.isBlank()) "رئيس اللجنة · لم يُسجل له رقم" else "رئيس اللجنة",
+                    title = head?.name ?: "لم يُسند شيخ اللجنة بعد",
+                    subtitle = if (head == null) null else if (head.phone.isBlank()) "شيخ اللجنة · لم يُسجل له رقم" else "شيخ اللجنة",
                     mark = { V2Avatar(head?.name ?: "؟") }
                 )
                 if (head != null && head.phone.isNotBlank() && head.id != data.user.id) {
@@ -195,29 +194,23 @@ fun V2CommitteeScreen(c: Committee, data: V2Data, actions: V2Actions, tools: Set
             item(key = "obs") { V2ObserverNotes(c, mineAsObserver.map { it.id to it.task }) }
         }
 
-        // 5. Team
-        item(key = "team-t") { V2Section("فريق اللجنة") }
+        // 5. The team: one section for everyone on the committee, each with their job, and one button to add a person
+        //    (the server sends each person only what they may see). Until it answers, or without a connection, the
+        //    committee's people the phone already has are listed.
         item(key = "team") {
-            V2Group {
-                // The head is already under «إلى أين؟»; the team lists everyone else.
-                val team = c.staff.filter { it.role != "committee_head" }
-                if (team.isEmpty()) V2Row("لم يُضَف شيوخ إلى اللجنة بعد")
-                team.forEachIndexed { i, s ->
-                    if (i > 0) V2Divider()
-                    V2Row(s.name, if (s.role == "committee_head") "رئيس اللجنة" else "شيخ", mark = { V2Avatar(s.name) })
-                }
-                if (V2Tool.STAFF in tools && Permissions.canOn("committees.members", c.id)) {
-                    V2Divider()
-                    Row(Modifier.padding(10.dp)) {
-                        V2Button("إضافة / إزالة شيوخ", { actions.loadCandidates(); editingStaff = true }, Modifier.fillMaxWidth(), kind = V2ButtonKind.SOLID)
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                V2Section("فريق اللجنة")
+                com.example.ui.screens.committees.CommitteeFlowSection(c, fallback = {
+                    V2Group {
+                        val team = c.staff
+                        if (team.isEmpty()) V2Row("لا يوجد أعضاء ظاهرون بعد")
+                        team.forEachIndexed { i, m ->
+                            if (i > 0) V2Divider()
+                            V2Row(m.name, if (m.role == "committee_head") "شيخ اللجنة" else "مراقب", mark = { V2Avatar(m.name) })
+                        }
                     }
-                }
+                })
             }
-        }
-
-        // 6. Observers sent to this committee
-        if (V2Tool.OBSERVERS in tools && Permissions.canOn("assignments.manage", c.id)) {
-            item(key = "flow") { com.example.ui.screens.committees.CommitteeFlowSection(c) }
         }
 
         // 7. The nine stages
@@ -286,7 +279,6 @@ fun V2CommitteeScreen(c: Committee, data: V2Data, actions: V2Actions, tools: Set
             dismissButton = { TextButton(onClick = { stageToChange = null }) { Text("إلغاء", style = V2Type.body) } }
         )
     }
-    if (editingStaff) V2StaffDialog(c, data, onRetry = actions.loadCandidates, onDismiss = { editingStaff = false }) { ids -> actions.saveStaff(c, ids); editingStaff = false }
 }
 
 /** For the person sent here as «مراقب»: what they were sent to do, their notes, and a box for a new one. */
@@ -340,143 +332,6 @@ private fun V2ObserverNotes(c: Committee, mine: List<Pair<String, String>>) {
                 }
             }, Modifier.fillMaxWidth(), enabled = text.isNotBlank() && !saving, busy = saving)
         }
-    }
-}
-
-/** For whoever may assign: the people sent to observe this committee, add one, end or cancel. */
-@Composable
-private fun V2ObserversSection(c: Committee, data: V2Data, actions: V2Actions) {
-    val p = LocalV2.current
-    val scope = rememberCoroutineScope()
-    var list by remember(c.id) { mutableStateOf<List<CommitteeAssignment>?>(null) }
-    var failed by remember(c.id) { mutableStateOf(false) }
-    var reload by remember { mutableIntStateOf(0) }
-    var adding by remember { mutableStateOf(false) }
-    var finishing by remember { mutableStateOf<Pair<CommitteeAssignment, String>?>(null) }
-    LaunchedEffect(c.id, reload) {
-        failed = false
-        list = try { OnlineApi.assignments(committeeId = c.id) } catch (e: CancellationException) { throw e } catch (e: Exception) { failed = true; null }
-    }
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        V2Section("المراقبون")
-        V2Group {
-            val rows = list
-            when {
-                failed -> V2Retry("المراقبين") { reload++ }
-                rows == null -> V2Row("جارٍ التحميل…")
-                rows.isEmpty() -> V2Row("لا يوجد مراقبون مكلّفون", "المراقب يفضل على رتبته ويشوف اللجنة للقراءة فقط.")
-                else -> rows.forEachIndexed { i, a ->
-                    if (i > 0) V2Divider()
-                    V2Row(
-                        a.userName,
-                        "${AssignmentText.task(a.task)} · ${AssignmentText.dates(a.startsOn, a.endsOn)} · أسنده ${a.assignedBy}",
-                        mark = { V2Avatar(a.userName) },
-                        trailing = { V2Tag(AssignmentText.status(a.status), if (a.status == "active") V2Tone.WATCH else V2Tone.WAIT) },
-                        onClick = if (a.status == "active") ({ finishing = a to "end" }) else null
-                    )
-                }
-            }
-            V2Divider()
-            Row(Modifier.padding(10.dp)) {
-                V2Button("تكليف مراقب", { actions.loadCandidates(); adding = true }, Modifier.fillMaxWidth(), kind = V2ButtonKind.SOLID, icon = Icons.Default.Visibility)
-            }
-        }
-    }
-
-    finishing?.let { (a, _) ->
-        AlertDialog(
-            onDismissRequest = { finishing = null },
-            title = { Text("تكليف ${a.userName}", style = V2Type.heading) },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text("${AssignmentText.task(a.task)}. أي اختيار يوقف صلاحيات المراقبة فورًا ويبقى السجل.", style = V2Type.body)
-                    // Two choices as rows (the dialog's own button is only «رجوع»), so the two can't be mistaken for each other.
-                    V2Group {
-                        V2Row("إنهاء التكليف", "انتهى المطلوب من المراقب", mark = { V2Mark(icon = Icons.Default.CheckCircle) }, actionLabel = "إنهاء", onClick = {
-                            finishing = null
-                            scope.launch {
-                                try { OnlineApi.finishAssignment(a.id, "end"); reload++ } catch (e: CancellationException) { throw e } catch (e: Exception) { UiMessages.show(failure(e, "تعذر إنهاء التكليف")) }
-                            }
-                        })
-                        V2Divider()
-                        V2Row("إلغاء التكليف", "التكليف اتسند بالغلط أو اتغيّر", mark = { V2Mark(icon = Icons.Default.Close, late = true) }, actionLabel = "إلغاء", onClick = {
-                            finishing = null
-                            scope.launch {
-                                try { OnlineApi.finishAssignment(a.id, "cancel"); reload++ } catch (e: CancellationException) { throw e } catch (e: Exception) { UiMessages.show(failure(e, "تعذر إلغاء التكليف")) }
-                            }
-                        })
-                    }
-                }
-            },
-            confirmButton = {},
-            dismissButton = { TextButton(onClick = { finishing = null }) { Text("رجوع", style = V2Type.body) } }
-        )
-    }
-
-    if (adding) {
-        var picked by remember { mutableStateOf<String?>(null) }
-        var task by remember { mutableStateOf("exam") }
-        var endsOn by remember { mutableStateOf("") }
-        var search by remember { mutableStateOf("") }
-        var saving by remember { mutableStateOf(false) }
-        val onCommittee = c.staff.map { it.id }.toSet()
-        val people = data.candidates?.filter { (it.role == "sheikh" || it.role == "committee_head") && it.id !in onCommittee && it.id != data.user.id }
-        AlertDialog(
-            onDismissRequest = { if (!saving) adding = false },
-            title = { Text("تكليف مراقب: لجنة ${c.committeeNumber}", style = V2Type.heading) },
-            text = {
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    item {
-                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            V2Chip(AssignmentText.task("exam"), task == "exam") { task = "exam" }
-                            V2Chip(AssignmentText.task("ceremony"), task == "ceremony") { task = "ceremony" }
-                        }
-                    }
-                    item {
-                        // When the observing ends: picked, never typed (no date format to get wrong).
-                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text("ينتهي", style = V2Type.smallStrong, color = p.muted)
-                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                listOf("" to "مفتوح", v2PlusDays(data.today, 7) to "أسبوع", v2PlusDays(data.today, 30) to "شهر").forEach { (d, label) ->
-                                    V2Chip(label, endsOn == d) { endsOn = d }
-                                }
-                            }
-                        }
-                    }
-                    if ((people?.size ?: 0) > 8) item {
-                        OutlinedTextField(search, { search = it }, singleLine = true, textStyle = V2Type.body, shape = RoundedCornerShape(50),
-                            colors = v2FieldColors(), placeholder = { Text("ابحث بالاسم", style = V2Type.body) }, modifier = Modifier.fillMaxWidth())
-                    }
-                    if (people == null) item { V2LoadingNames { actions.loadCandidates() } }
-                    items(people.orEmpty().filter { search.isBlank() || it.name.contains(search.trim()) }, key = { it.id }) { person ->
-                        val on = picked == person.id
-                        V2Row(person.name, roleName(person.role),
-                            mark = { Icon(if (on) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked, null, tint = if (on) p.leaf else p.muted) },
-                            onClick = { picked = person.id }, selected = on)
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(enabled = picked != null && !saving, onClick = {
-                    val who = picked ?: return@TextButton
-                    saving = true
-                    scope.launch {
-                        try {
-                            OnlineApi.createAssignment(who, c.id, task, endsOn.trim().ifEmpty { null })
-                            adding = false
-                            reload++
-                        } catch (e: CancellationException) {
-                            throw e
-                        } catch (e: Exception) {
-                            UiMessages.show(failure(e, "تعذر إنشاء التكليف"))
-                        } finally {
-                            saving = false
-                        }
-                    }
-                }) { Text("تكليف", style = V2Type.bodyStrong) }
-            },
-            dismissButton = { TextButton(enabled = !saving, onClick = { adding = false }) { Text("إلغاء", style = V2Type.body) } }
-        )
     }
 }
 

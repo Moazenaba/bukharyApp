@@ -153,7 +153,7 @@ fun CommitteeSummaryCard(
         if (head != null && head.phone.isNotBlank()) {
             androidx.compose.material3.OutlinedButton(
                 onClick = { callPhone(context, head.phone) }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
-            ) { Icon(Icons.Default.Phone, null); Text("  اتصال برئيس اللجنة: ${head.name}") }
+            ) { Icon(Icons.Default.Phone, null); Text("  اتصال بشيخ اللجنة: ${head.name}") }
         }
         // A committee that is only here because the person was sent to observe it.
         Permissions.observingOn(committee.id).takeIf { it.isNotEmpty() }?.let { refs ->

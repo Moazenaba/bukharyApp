@@ -95,11 +95,12 @@ private fun FlowCard(content: @Composable ColumnScope.() -> Unit) {
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun CommitteeFlowSection(committee: Committee) {
+fun CommitteeFlowSection(committee: Committee, fallback: (@Composable () -> Unit)? = null) {
     val scope = rememberCoroutineScope()
     var data by remember(committee.id) { mutableStateOf<Map<String, Any?>?>(null) }
     var reload by remember { mutableIntStateOf(0) }
     var adding by remember { mutableStateOf<String?>(null) }
+    var choosingRole by remember { mutableStateOf(false) }
     var stepTo by remember { mutableStateOf<FlowSteps.Step?>(null) }
     var excusing by remember { mutableStateOf<Map<String, Any?>?>(null) }
     var removing by remember { mutableStateOf<Map<String, Any?>?>(null) }
@@ -115,7 +116,8 @@ fun CommitteeFlowSection(committee: Committee) {
             null
         }
     }
-    val d = data ?: return
+    // Until the server has answered (or when it cannot be reached): what the phone already knows, if the caller has it.
+    val d = data ?: run { fallback?.invoke(); return }
 
     fun act(fallback: String, block: suspend () -> Unit) {
         scope.launch {
@@ -142,7 +144,11 @@ fun CommitteeFlowSection(committee: Committee) {
     val ceremonyOpen = isAdmin || at >= FlowSteps.index("accredited")
 
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        FlowCard {
+        // Who may move the committee on (the admin, the exams manager) sees every step and the button; everyone else just
+        // reads where it stands, in one line: the steps are not theirs to take.
+        if (!full && !canStep) {
+            Text("الحالة الإدارية: ${d.str("lifecycleLabel")}", style = MaterialTheme.typography.bodySmall, color = tFg(TextMuted))
+        } else FlowCard {
             // Not the nine work stages (exam → ceremony): this is who may act on the committee now (admin, manager, members).
             Text("الحالة الإدارية: ${d.str("lifecycleLabel")}", fontWeight = FontWeight.Bold, color = tFg(Primary900))
             Text("مين يقدر يتعامل مع اللجنة دلوقتي. غير مراحل الامتحان والتصحيح.", style = MaterialTheme.typography.bodySmall, color = tFg(TextMuted))
@@ -192,11 +198,24 @@ fun CommitteeFlowSection(committee: Committee) {
             }
         }
 
+        // One card for everyone on the committee, each with their job: the committee's sheikh, the observers, the
+        // ceremony's sheikhs. One button adds a person and asks for the job.
         FlowCard {
-            Text("شيخ اللجنة", fontWeight = FontWeight.Bold, color = tFg(Primary900))
             val owner = d.obj("owner")
-            if (owner == null) Text("لم يُحدد بعد", color = tFg(TextMuted))
-            else PersonLine(owner.str("name"), owner.str("phone"))
+            val observers = d.objs("observers")
+            val sheikhs = d.objs("ceremonySheikhs")
+            val roles = buildList {
+                if (canStaff && observersOpen && viewer != "ceremony_sheikh") add("observer")
+                if (canStaff && ceremonyOpen && viewer != "observer") add("ceremony_sheikh")
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("فريق اللجنة", fontWeight = FontWeight.Bold, color = tFg(Primary900), modifier = Modifier.weight(1f))
+                if (roles.isNotEmpty()) OutlinedButton(
+                    onClick = { if (roles.size == 1) adding = roles.first() else choosingRole = true },
+                    modifier = Modifier.heightIn(min = 48.dp)
+                ) { Text("إضافة شخص") }
+            }
+            TeamLine("شيخ اللجنة", if (owner == null) "لم يُحدد بعد" else owner.str("name"), owner?.str("phone").orEmpty(), null, false) {}
             if (Permissions.can("committees.delegate") && full && owner != null) {
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable {
                     act("تعذر الحفظ") { OnlineApi.setCanAssign(committee.id, d["ownerCanAssign"] != true) }
@@ -204,6 +223,11 @@ fun CommitteeFlowSection(committee: Committee) {
                     Checkbox(checked = d["ownerCanAssign"] == true, onCheckedChange = { v -> act("تعذر الحفظ") { OnlineApi.setCanAssign(committee.id, v) } })
                     Text("السماح لشيخ اللجنة بالتعيين")
                 }
+            }
+            if (viewer != "ceremony_sheikh") observers.forEach { s -> TeamLine("مراقب", s.str("name"), s.str("phone"), s, canStaff) { removing = s } }
+            if (viewer != "observer") sheikhs.forEach { s -> TeamLine("شيخ الحفلة", s.str("name"), s.str("phone"), s, canStaff) { removing = s } }
+            if (observers.isEmpty() && sheikhs.isEmpty()) {
+                Text("لا يوجد مراقبون أو مشايخ حفلة بعد.", color = tFg(TextMuted), style = MaterialTheme.typography.bodySmall)
             }
             val driver = d.obj("driver")
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -215,26 +239,10 @@ fun CommitteeFlowSection(committee: Committee) {
             }
         }
 
-        if (viewer != "ceremony_sheikh") {
-            FlowCard {
-                val observers = d.objs("observers")
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("المراقبون (${observers.size})", fontWeight = FontWeight.Bold, color = tFg(Primary900), modifier = Modifier.weight(1f))
-                    if (canStaff && observersOpen) OutlinedButton(onClick = { adding = "observer" }, modifier = Modifier.heightIn(min = 48.dp)) { Text("إضافة مراقب") }
-                }
-                if (observers.isEmpty()) Text("لا يوجد مراقبون بعد.", color = tFg(TextMuted), style = MaterialTheme.typography.bodySmall)
-                observers.forEach { s -> StaffLine(s, canStaff) { removing = s } }
-            }
-        }
-
         if (viewer != "observer") {
             FlowCard {
-                val sheikhs = d.objs("ceremonySheikhs")
                 val c = committee.ceremonyDetails
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("الحفلة ومشايخها (${sheikhs.size})", fontWeight = FontWeight.Bold, color = tFg(Primary900), modifier = Modifier.weight(1f))
-                    if (canStaff && ceremonyOpen) OutlinedButton(onClick = { adding = "ceremony_sheikh" }, modifier = Modifier.heightIn(min = 48.dp)) { Text("تعيين شيخ") }
-                }
+                Text("الحفلة", fontWeight = FontWeight.Bold, color = tFg(Primary900))
                 val date = listOf(c.date, c.time).filter { it.isNotBlank() }.joinToString(" ")
                 Text(
                     if (date.isBlank() && c.venue.isBlank()) "لم تُنشأ الحفلة بعد."
@@ -242,9 +250,23 @@ fun CommitteeFlowSection(committee: Committee) {
                     style = MaterialTheme.typography.bodySmall
                 )
                 if (Permissions.can("committees.ceremony") && full) TextButton(onClick = { editingCeremony = true }) { Text(if (date.isBlank()) "إنشاء الحفلة" else "تعديل الحفلة") }
-                sheikhs.forEach { s -> StaffLine(s, canStaff) { removing = s } }
             }
         }
+    }
+
+    if (choosingRole) {
+        AlertDialog(
+            onDismissRequest = { choosingRole = false },
+            title = { Text("بدور إيه؟") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(onClick = { choosingRole = false; adding = "observer" }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("مراقب") }
+                    OutlinedButton(onClick = { choosingRole = false; adding = "ceremony_sheikh" }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("شيخ الحفلة") }
+                }
+            },
+            confirmButton = {},
+            dismissButton = { TextButton(onClick = { choosingRole = false }) { Text("رجوع") } }
+        )
     }
 
     stepTo?.let { s ->
@@ -343,15 +365,17 @@ private fun PersonLine(name: String, phone: String) {
     Text(if (phone.isBlank()) name else "$name · $phone", fontWeight = FontWeight.SemiBold)
 }
 
+/** One person on the team: their job first (a small label), then name and phone; «إزالة» for who may staff. */
 @Composable
-private fun StaffLine(s: Map<String, Any?>, canRemove: Boolean, onRemove: () -> Unit) {
+private fun TeamLine(job: String, name: String, phone: String, s: Map<String, Any?>?, canRemove: Boolean, onRemove: () -> Unit) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
-            PersonLine(s.str("name"), s.str("phone"))
-            if (s.str("note").isNotBlank()) Text("ملاحظة: ${s.str("note")}", style = MaterialTheme.typography.bodySmall, color = tFg(TextMuted))
-            if (s["notified"] == false) Text("لم يُبلّغ بعد", style = MaterialTheme.typography.bodySmall, color = tFg(TextMuted))
+            Text(job, style = MaterialTheme.typography.labelSmall, color = tFg(TextMuted))
+            PersonLine(name, phone)
+            if (s != null && s.str("note").isNotBlank()) Text("ملاحظة: ${s.str("note")}", style = MaterialTheme.typography.bodySmall, color = tFg(TextMuted))
+            if (s != null && s["notified"] == false) Text("لم يُبلّغ بعد", style = MaterialTheme.typography.bodySmall, color = tFg(TextMuted))
         }
-        if (canRemove) TextButton(onClick = onRemove, modifier = Modifier.heightIn(min = 48.dp)) { Text("إزالة") }
+        if (canRemove && s != null) TextButton(onClick = onRemove, modifier = Modifier.heightIn(min = 48.dp)) { Text("إزالة") }
     }
 }
 
