@@ -130,7 +130,7 @@ fun SimpleCommitteeScreen(
                 val when_ = committee.examDate?.takeIf { it.isNotBlank() }?.let { DayText.relative(it, today) }.orEmpty()
                 val facts = listOfNotNull(when_.takeIf { it.isNotBlank() }?.let { "الامتحان: $it" }, Logistics.studentsText(committee.studentsCount))
                 if (facts.isNotEmpty()) Text(facts.joinToString(" · "), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold, color = tFg(Color(0xFF0F172A)))
-                ContactRow("رئيس اللجنة", head?.name.orEmpty(), head?.phone.orEmpty(), "لسه ما اتسندش رئيس لجنة")
+                ContactRow("شيخ اللجنة", head?.name.orEmpty(), head?.phone.orEmpty(), "لسه ما اتسندش شيخ لجنة")
             }
 
             // 1. Status line

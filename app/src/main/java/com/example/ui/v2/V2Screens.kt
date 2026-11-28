@@ -242,7 +242,7 @@ fun V2NowScreen(data: V2Data, actions: V2Actions, onOpen: (String) -> Unit) {
                     }
                     // Never offer to call yourself: the head sees this card too.
                     if (now.headPhone.isNotBlank() && committee?.let { Logistics.headOf(it)?.id } != data.user.id) {
-                        V2Button("اتصال برئيس اللجنة ${now.headName}".trim(), { V2Intents.call(context, now.headPhone) }, Modifier.fillMaxWidth(), kind = V2ButtonKind.ON_HERO, icon = Icons.Default.Phone)
+                        V2Button("اتصال بشيخ اللجنة ${now.headName}".trim(), { V2Intents.call(context, now.headPhone) }, Modifier.fillMaxWidth(), kind = V2ButtonKind.ON_HERO, icon = Icons.Default.Phone)
                     }
                 }
             }
@@ -454,7 +454,7 @@ fun V2CeremoniesScreen(data: V2Data, onOpen: (String) -> Unit) {
     }
 }
 
-// ------------------------------------------------------------------------------------------- الفريق (رئيس اللجنة)
+// ------------------------------------------------------------------------------------------- الفريق (شيخ اللجنة)
 
 @Composable
 fun V2TeamScreen(data: V2Data, actions: V2Actions, onOpen: (String) -> Unit) {
@@ -470,7 +470,7 @@ fun V2TeamScreen(data: V2Data, actions: V2Actions, onOpen: (String) -> Unit) {
                     // The head is the reader: list the sheikhs only, then two plain rows for what can be done.
                     c.staff.filter { it.id != data.user.id }.forEachIndexed { i, s ->
                         if (i > 0) V2Divider()
-                        V2Row(title = s.name, subtitle = if (s.role == "committee_head") "رئيس اللجنة" else "شيخ", mark = { V2Avatar(s.name) })
+                        V2Row(title = s.name, subtitle = if (s.role == "committee_head") "شيخ اللجنة" else "شيخ", mark = { V2Avatar(s.name) })
                     }
                     V2Divider()
                     V2Row("إضافة أو إزالة شيوخ", mark = { V2Mark(icon = Icons.Default.Groups) }, onClick = { actions.loadCandidates(); editing = c }, actionLabel = "تعديل الشيوخ")
@@ -498,7 +498,7 @@ fun V2StaffDialog(c: Committee, data: V2Data, onRetry: () -> Unit, onDismiss: ()
                     val on = person.id in picked
                     V2Row(
                         title = person.name,
-                        subtitle = if (person.role == "committee_head") "رئيس لجنة" else "شيخ",
+                        subtitle = if (person.role == "committee_head") "شيخ لجنة" else "شيخ",
                         mark = { Icon(if (on) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked, null, tint = if (on) p.leaf else p.muted) },
                         onClick = { picked = if (on) picked - person.id else picked + person.id },
                         selected = on, multiple = true
@@ -589,7 +589,7 @@ fun V2PeopleScreen(data: V2Data, actions: V2Actions, tools: Set<V2Tool>) {
 }
 
 private fun roleOrder(role: String) = when (role) { "super_admin" -> 0; "admin" -> 1; "exams_manager" -> 2; "committee_head" -> 3; else -> 4 }
-fun roleName(role: String) = when (role) { "super_admin" -> "مشرف عام"; "admin" -> "أدمن"; "exams_manager" -> "مدير الحفلات والامتحانات"; "committee_head" -> "رئيس لجنة"; else -> "شيخ" }
+fun roleName(role: String) = when (role) { "super_admin" -> "مشرف عام"; "admin" -> "أدمن"; "exams_manager" -> "مدير الحفلات والامتحانات"; "committee_head" -> "شيخ لجنة"; else -> "شيخ" }
 
 // ------------------------------------------------------------------------------------------- المزيد / حسابي
 
@@ -1052,7 +1052,7 @@ private fun V2ApproveDialog(u: StaffUserDto, data: V2Data, onDismiss: () -> Unit
                 if (canGrant) item {
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         V2Chip("شيخ", role == "sheikh") { role = "sheikh" }
-                        V2Chip("رئيس لجنة", role == "committee_head") { role = "committee_head" }
+                        V2Chip("شيخ لجنة", role == "committee_head") { role = "committee_head" }
                     }
                 }
                 item { V2Row("كل اللجان", "يشوف كل لجان الدورة", onClick = { all = !all }, selected = all, multiple = true) }
