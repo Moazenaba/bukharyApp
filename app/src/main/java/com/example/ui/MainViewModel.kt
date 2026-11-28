@@ -465,7 +465,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun joinStatusLabel(status: String, interviewDate: String?): String = when (status) {
-        "pending" -> "قيد مراجعة المشرف العام"
+        "pending" -> "قيد مراجعة الإدارة"
         "interview" -> "تم تحديد موعد مقابلة شخصية" + (interviewDate?.let { ": $it" } ?: "")
         "approved" -> "تم اعتماد الحساب، يمكنك تسجيل الدخول الآن"
         "rejected" -> "تم الاعتذار عن قبول الطلب"

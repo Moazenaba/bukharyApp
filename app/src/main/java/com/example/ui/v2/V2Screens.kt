@@ -85,6 +85,7 @@ import com.example.domain.NoticeTime
 import com.example.data.model.NotificationItem
 import androidx.compose.material.icons.filled.PriorityHigh
 import androidx.compose.material.icons.filled.Outbox
+import com.example.domain.AuditText
 import com.example.domain.NoticeAudience
 import com.example.domain.NoticeTo
 import com.example.domain.DayText
@@ -459,61 +460,25 @@ fun V2CeremoniesScreen(data: V2Data, onOpen: (String) -> Unit) {
 @Composable
 fun V2TeamScreen(data: V2Data, actions: V2Actions, onOpen: (String) -> Unit) {
     val mine = data.committees.filter { Permissions.canOn("committees.members", it.id) }.sortedBy { it.committeeNumber }
-    var editing by remember { mutableStateOf<Committee?>(null) }
     V2Scroll {
-        if (mine.isEmpty()) item(key = "empty") { V2Empty("لا توجد لجان ترأسها", "عندما تُسند إليك الإدارة لجنة يمكنك إضافة شيوخها من هنا.") }
+        if (mine.isEmpty()) item(key = "empty") { V2Empty("لا توجد لجان تشرف عليها", "عندما تُسند إليك الإدارة لجنة تظهر هنا، وتضيف فريقها من صفحتها.") }
         mine.forEach { c ->
             item(key = "t-${c.id}") { V2Section("لجنة ${c.committeeNumber} · ${c.committeeName}") }
             item(key = "g-${c.id}") {
                 V2Group {
-                    if (c.staff.none { it.id != data.user.id }) V2Row(title = "لم يُضَف شيوخ إلى اللجنة بعد")
-                    // The head is the reader: list the sheikhs only, then two plain rows for what can be done.
-                    c.staff.filter { it.id != data.user.id }.forEachIndexed { i, s ->
+                    val others = c.staff.filter { it.id != data.user.id }
+                    if (others.isEmpty()) V2Row(title = "لم يُضَف أحد إلى فريق اللجنة بعد")
+                    others.forEachIndexed { i, s ->
                         if (i > 0) V2Divider()
-                        V2Row(title = s.name, subtitle = if (s.role == "committee_head") "شيخ اللجنة" else "شيخ", mark = { V2Avatar(s.name) })
+                        V2Row(title = s.name, subtitle = if (s.role == "committee_head") "شيخ اللجنة" else "مراقب", mark = { V2Avatar(s.name) })
                     }
                     V2Divider()
-                    V2Row("إضافة أو إزالة شيوخ", mark = { V2Mark(icon = Icons.Default.Groups) }, onClick = { actions.loadCandidates(); editing = c }, actionLabel = "تعديل الشيوخ")
-                    V2Divider()
-                    V2Row("المراقبون ومراحل اللجنة", mark = { V2Mark(icon = Icons.Default.Visibility) }, onClick = { onOpen(c.id) })
+                    // Adding and removing people is in one place: the committee's own page («فريق اللجنة»).
+                    V2Row("فريق اللجنة وإضافة شخص", mark = { V2Mark(icon = Icons.Default.Groups) }, onClick = { onOpen(c.id) }, actionLabel = "فتح اللجنة")
                 }
             }
         }
     }
-    editing?.let { c -> V2StaffDialog(c, data, onRetry = actions.loadCandidates, onDismiss = { editing = null }) { ids -> actions.saveStaff(c, ids); editing = null } }
-}
-
-@Composable
-fun V2StaffDialog(c: Committee, data: V2Data, onRetry: () -> Unit, onDismiss: () -> Unit, onSave: (List<String>) -> Unit) {
-    val p = LocalV2.current
-    var picked by remember(c.id) { mutableStateOf(c.staff.map { it.id }.toSet()) }
-    val people = data.candidates?.filter { (it.role == "sheikh" || it.role == "committee_head") && it.id != data.user.id }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("شيوخ لجنة ${c.committeeNumber}", style = V2Type.heading) },
-        text = {
-            LazyColumn(Modifier.fillMaxWidth().padding(top = 4.dp)) {
-                if (people == null) item { V2LoadingNames(onRetry) }
-                items(people.orEmpty(), key = { it.id }) { person ->
-                    val on = person.id in picked
-                    V2Row(
-                        title = person.name,
-                        subtitle = if (person.role == "committee_head") "شيخ لجنة" else "شيخ",
-                        mark = { Icon(if (on) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked, null, tint = if (on) p.leaf else p.muted) },
-                        onClick = { picked = if (on) picked - person.id else picked + person.id },
-                        selected = on, multiple = true
-                    )
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(enabled = people != null, onClick = {
-                val allowed = people.orEmpty().map { it.id }.toSet()
-                onSave(picked.filter { it in allowed })
-            }) { Text("حفظ", style = V2Type.bodyStrong) }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("إلغاء", style = V2Type.body) } }
-    )
 }
 
 // ------------------------------------------------------------------------------------------- الناس (الإدارة)
@@ -527,7 +492,8 @@ fun V2PeopleScreen(data: V2Data, actions: V2Actions, tools: Set<V2Tool>) {
     var rejecting by remember { mutableStateOf<StaffUserDto?>(null) }
     var approving by remember { mutableStateOf<StaffUserDto?>(null) }
     var approvingId by remember { mutableStateOf<String?>(null) }
-    val requests = data.staff.filter { it.status == "pending" && it.role != "super_admin" }
+    // Oldest first: the one waiting longest is the one to answer first.
+    val requests = data.staff.filter { it.status == "pending" && it.role != "super_admin" }.sortedBy { it.createdAt }
     // Everyone the server sends, except people still waiting (they are above): approved, and also those who were declined or paused.
     val approved = data.staff.filter { it.status != "pending" }
         .filter { query.isBlank() || it.name.contains(query.trim()) || it.phone.contains(query.trim()) }
@@ -539,7 +505,20 @@ fun V2PeopleScreen(data: V2Data, actions: V2Actions, tools: Set<V2Tool>) {
                 V2Group {
                     requests.forEachIndexed { i, u ->
                         if (i > 0) V2Divider()
-                        V2Row(title = u.name, subtitle = listOf(roleName(u.role), v2Phone(u.phone)).filter { it.isNotBlank() }.joinToString(" · "), mark = { V2Avatar(u.name) })
+                        V2Row(
+                            title = u.name,
+                            // When it came, so the oldest request is the one dealt with first; and what helps decide.
+                            subtitle = listOf(roleName(u.role), v2Phone(u.phone), NoticeTime.short(u.createdAt, System.currentTimeMillis())).filter { it.isNotBlank() }.joinToString(" · "),
+                            mark = { V2Avatar(u.name) },
+                            under = {
+                                val about = listOfNotNull(
+                                    u.quranLevel?.takeIf { it.isNotBlank() }?.let { "الحفظ: $it" },
+                                    u.qualification?.takeIf { it.isNotBlank() }?.let { "المؤهل: $it" },
+                                    u.availability?.takeIf { it.isNotBlank() }?.let { "الإتاحة: $it" }
+                                )
+                                if (about.isNotEmpty()) Text(about.joinToString(" · "), style = V2Type.small, color = LocalV2.current.muted, maxLines = 3)
+                            }
+                        )
                         if (V2Tool.JOIN_REQUESTS in tools) {
                             Row(Modifier.padding(start = 14.dp, end = 14.dp, bottom = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 V2Button("قبول", { approving = u }, Modifier.weight(1f), kind = V2ButtonKind.CTA, icon = Icons.Default.CheckCircle, busy = approvingId == u.id)
@@ -626,7 +605,7 @@ fun V2MoreScreen(data: V2Data, actions: V2Actions, tools: Set<V2Tool>, onPage: (
         if (V2Tool.AUDIT in tools || V2Tool.DATABASE in tools) {
             item(key = "admin") {
                 V2Group {
-                    if (V2Tool.AUDIT in tools) V2Row("سجل التدقيق", "يفتح في الواجهة الكاملة", mark = { V2Mark(icon = Icons.Default.History) }, onClick = { actions.openClassic(AppNavScreen.AUDIT) })
+                    if (V2Tool.AUDIT in tools) V2Row("سجل التدقيق", "من عمل إيه ومتى", mark = { V2Mark(icon = Icons.Default.History) }, onClick = { onPage(V2Page.AUDIT) })
                     if (V2Tool.DATABASE in tools) {
                         if (V2Tool.AUDIT in tools) V2Divider()
                         V2Row("حالة قاعدة البيانات", "يفتح في الواجهة الكاملة", mark = { V2Mark(icon = Icons.Default.Storage) }, onClick = { actions.openClassic(AppNavScreen.DATABASE_INSPECTOR) })
@@ -652,6 +631,65 @@ fun V2MoreScreen(data: V2Data, actions: V2Actions, tools: Set<V2Tool>, onPage: (
             },
             confirmButton = { TextButton(onClick = { choosingCourse = false }) { Text("إغلاق", style = V2Type.body) } }
         )
+    }
+}
+
+/** The audit log inside «الواجهات 2»: newest first, filtered by what was changed, loaded in pages of 50. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun V2AuditScreen() {
+    val p = LocalV2.current
+    var entity by rememberSaveable { mutableStateOf("") }
+    var logs by remember { mutableStateOf<List<com.example.data.remote.AuditLogDto>>(emptyList()) }
+    var loading by remember { mutableStateOf(true) }
+    var failed by remember { mutableStateOf(false) }
+    var more by remember { mutableStateOf(false) }
+    var page by remember { mutableStateOf(0) }
+    var reload by remember { mutableStateOf(0) }
+    LaunchedEffect(entity, page, reload) {
+        loading = true
+        failed = false
+        try {
+            val before = if (page == 0) null else logs.lastOrNull()?.timestamp
+            val got = OnlineApi.auditLogs(entity.ifBlank { null }, before, 50)
+            logs = if (page == 0) got else logs + got
+            more = got.size == 50
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            failed = true
+        }
+        loading = false
+    }
+    val now = remember(logs) { System.currentTimeMillis() }
+    V2Scroll {
+        item(key = "chips") {
+            FlowRow(Modifier.selectableGroup(), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                AuditText.ENTITIES.forEach { (k, label) -> V2Chip(label, entity == k) { if (entity != k) { entity = k; page = 0; logs = emptyList() } } }
+            }
+        }
+        when {
+            failed && logs.isEmpty() -> item(key = "failed") { V2Retry("سجل التدقيق") { page = 0; reload++ } }
+            logs.isEmpty() && !loading -> item(key = "empty") { V2Empty("لا توجد سجلات", "أي تعديل يُسجَّل هنا مع اسم من قام به ووقته.") }
+            else -> v2Rows(logs, key = { "a-${it.id}" }) { l ->
+                V2Row(
+                    title = AuditText.action(l.action),
+                    subtitle = listOfNotNull(
+                        l.user?.takeIf { it.isNotBlank() }?.let { u -> u + (l.role?.let { r -> " (${roleName(r)})" } ?: "") },
+                        NoticeTime.short(l.timestamp, now).ifBlank { null },
+                        l.details.takeIf { it.isNotBlank() }
+                    ).joinToString(" · "),
+                    mark = { V2Mark(icon = Icons.Default.History, late = l.status.isNotBlank() && l.status != "success") },
+                    trailing = { if (l.status.isNotBlank() && l.status != "success") V2Tag("فشل", V2Tone.LATE) }
+                )
+            }
+        }
+        item(key = "more") {
+            when {
+                loading -> Box(Modifier.fillMaxWidth().padding(12.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 2.dp, color = p.muted) }
+                more && logs.isNotEmpty() -> V2Button("تحميل المزيد", { page++ }, Modifier.fillMaxWidth(), kind = V2ButtonKind.QUIET)
+            }
+        }
     }
 }
 
