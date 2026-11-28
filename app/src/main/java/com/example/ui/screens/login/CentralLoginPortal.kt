@@ -275,7 +275,7 @@ fun CentralLoginPortal(
             title = { Text("نسيت كلمة المرور؟") },
             text = {
                 Text(
-                    "تواصل مع المشرف العام ليعيد تعيين كلمة المرور لحسابك. سجّل الدخول بكلمة المرور المؤقتة التي يعطيك إياها، وسيطلب منك التطبيق اختيار كلمة مرور جديدة قبل المتابعة."
+                    "تواصل مع الإدارة (الأدمن أو المشرف العام) ليعيد تعيين كلمة المرور لحسابك. سجّل الدخول بكلمة المرور المؤقتة التي يعطيك إياها، وسيطلب منك التطبيق اختيار كلمة مرور جديدة قبل المتابعة."
                 )
             },
             confirmButton = { TextButton(onClick = { showForgotPassword = false }) { Text("حسناً") } }
@@ -430,7 +430,7 @@ private fun RegisterForm(
     )
     Spacer(modifier = Modifier.height(10.dp))
     Text(
-        text = "تنضم كشيخ، والأدمن هو من يسند إليك اللجان والحفلات أو يجعلك رئيس لجنة.",
+        text = "تنضم كشيخ، والأدمن هو من يسند إليك اللجان والحفلات أو يجعلك شيخ لجنة.",
         style = MaterialTheme.typography.bodySmall,
         color = tFg(TextMuted)
     )
@@ -575,7 +575,7 @@ private fun RequestReceiptDialog(code: String, onTrack: () -> Unit, onDismiss: (
         title = { Text("تم إرسال طلب الانضمام") },
         text = {
             Column {
-                Text("طلبك الآن قيد مراجعة المشرف العام. كود متابعة الطلب:")
+                Text("طلبك الآن قيد مراجعة الإدارة. كود متابعة الطلب:")
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     code,

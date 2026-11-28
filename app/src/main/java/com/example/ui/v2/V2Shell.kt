@@ -146,7 +146,7 @@ class V2Actions(
 )
 
 /** Pages that open on top of a tab (with a back arrow). */
-enum class V2Page(val title: String) { INBOX("الإشعارات"), EXAMS("الامتحانات"), CALENDAR("التقويم"), ACCOUNT("حسابي") }
+enum class V2Page(val title: String) { INBOX("الإشعارات"), EXAMS("الامتحانات"), CALENDAR("التقويم"), ACCOUNT("حسابي"), AUDIT("سجل التدقيق") }
 
 @Composable
 fun V2Shell(
@@ -255,6 +255,7 @@ fun V2Shell(
                     pg == V2Page.EXAMS -> V2ExamsScreen(data, actions)
                     pg == V2Page.CALENDAR -> V2CalendarScreen(data, actions, onOpenCommittee)
                     pg == V2Page.ACCOUNT -> V2AccountScreen(data, actions)
+                    pg == V2Page.AUDIT -> V2AuditScreen()
                     else -> when (t) {
                         V2Tab.NOW -> V2NowScreen(data, actions, onOpenCommittee)
                         V2Tab.MINE -> V2CommitteeListScreen(data, onOpenCommittee, filter, { filter = it }, mineOnly = true)
